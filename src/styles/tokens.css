@@ -1,0 +1,22 @@
+:root {
+  font-family: 'Manrope Variable', 'Segoe UI', sans-serif;
+  color: #26352f;
+  background: #f7f7f2;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  --bg: #f7f7f2;
+  --surface: #ffffff;
+  --ink: #26352f;
+  --muted: #69746d;
+  --line: #e0e5dc;
+  --orange: #c34a27;
+  --orange-hover: #a73b1c;
+  --green: #285241;
+  --green-hover: #1c3e30;
+  --sage: #eaf0e6;
+  --sand: #f1eddd;
+  --peach: #f4e5dc;
+  --radius: 20px;
+  --shadow: 0 12px 36px rgb(32 52 39 / 5%);
+}
