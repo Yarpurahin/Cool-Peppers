@@ -47,7 +47,7 @@ export function Header() {
             <NavLink to="/profile" className="profile-link">
               <Icon name="user" size={17} />
               <span>
-                Профиль <small>демо</small>
+                Профиль
               </span>
             </NavLink>
             <NavLink to="/register" className="register-link">

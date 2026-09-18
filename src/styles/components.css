@@ -304,6 +304,7 @@
 .footer-brand > p {
   color: var(--muted);
   font-size: 11px;
+  margin-top: 5px;
 }
 .footer-links {
   display: flex;

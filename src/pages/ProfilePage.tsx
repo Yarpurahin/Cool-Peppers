@@ -22,7 +22,6 @@ export function ProfilePage() {
           </p>
           <h1>Моя практика</h1>
         </div>
-        <span className="badge badge--outline">Демонстрационный профиль</span>
       </div>
       <div className="profile-overview">
         <div className="profile-person">
