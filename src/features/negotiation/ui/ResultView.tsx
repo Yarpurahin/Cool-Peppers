@@ -11,7 +11,7 @@ export function ResultView({
   feedback,
 }: {
   model: ResultViewModel;
-  onRestart: () => void;
+  onRestart?: () => void;
   notice?: ReactNode;
   feedback?: ReactNode;
 }) {
@@ -86,10 +86,12 @@ export function ResultView({
             ))}
           </section>
           <div className="button-row">
-            <Button onClick={onRestart}>
-              <Icon name="reset" size={18} />
-              Попробовать ещё раз
-            </Button>
+            {onRestart && (
+              <Button onClick={onRestart}>
+                <Icon name="reset" size={18} />
+                Попробовать ещё раз
+              </Button>
+            )}
             <ButtonLink to="/scenarios" variant="outline">
               Другие сценарии <Icon name="arrow" size={18} />
             </ButtonLink>

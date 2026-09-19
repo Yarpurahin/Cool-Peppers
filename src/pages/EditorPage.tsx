@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { findScenario } from '../data/scenarios.ts';
-import type { DialogueNode, Scenario } from '../types/scenario.ts';
+import type { DemoDialogueNode, ScenarioPreview } from '../types/scenario.ts';
 import { Button, ButtonLink } from '../components/ui/Button.tsx';
 import { DemoNotice } from '../components/ui/DemoNotice.tsx';
 import { Icon } from '../components/ui/Icon.tsx';
@@ -14,10 +14,10 @@ export function EditorPage() {
   return scenario ? <EditorScreen scenario={scenario} key={scenario.id} /> : <ErrorPage />;
 }
 
-function EditorScreen({ scenario }: { scenario: Scenario }) {
+function EditorScreen({ scenario }: { scenario: ScenarioPreview }) {
   const [tab, setTab] = useState<'description' | 'dialogue'>('dialogue');
   const [selected, setSelected] = useState(0);
-  const [nodes, setNodes] = useState<DialogueNode[]>(() => structuredClone(scenario.dialogue));
+  const [nodes, setNodes] = useState<DemoDialogueNode[]>(() => structuredClone(scenario.dialogue));
   const [description, setDescription] = useState({
     title: scenario.title,
     context: scenario.context,
@@ -30,12 +30,12 @@ function EditorScreen({ scenario }: { scenario: Scenario }) {
   });
   const show = useDemoMessage();
   const node = nodes[selected];
-  function updateNode(patch: Partial<DialogueNode>) {
+  function updateNode(patch: Partial<DemoDialogueNode>) {
     setNodes((previous) =>
       previous.map((item, index) => (index === selected ? { ...item, ...patch } : item)),
     );
   }
-  function updateAnswer(index: number, patch: Partial<DialogueNode['answers'][number]>) {
+  function updateAnswer(index: number, patch: Partial<DemoDialogueNode['answers'][number]>) {
     updateNode({
       answers: node.answers.map((item, answerIndex) =>
         index === answerIndex ? { ...item, ...patch } : item,

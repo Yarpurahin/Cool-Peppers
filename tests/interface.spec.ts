@@ -118,17 +118,17 @@ test('auth validates form without pretending login or sending credentials', asyn
 });
 
 test('dialogue never advances and result is clearly a sample', async ({ page }) => {
-  await page.goto('/scenarios/terms/play');
+  await page.goto('/scenarios/feedback/play');
   await expect(page.getByRole('button', { name: 'Ответить' })).toBeDisabled();
   await page.getByRole('radio').first().check();
   await page.getByRole('button', { name: 'Ответить' }).click();
   await expect(page.getByRole('dialog')).toContainText('Ответ не отправлен');
   await page.getByRole('button', { name: 'Понятно' }).click();
-  await expect(page).toHaveURL('/scenarios/terms/play');
-  await expect(page.locator('.dialogue-message')).toContainText('140 000 рублей');
+  await expect(page).toHaveURL('/scenarios/feedback/play');
+  await expect(page.locator('.dialogue-message')).toContainText('Я не согласен с вашей оценкой');
   await page.getByRole('link', { name: 'Пример разбора' }).click();
   await expect(page.locator('.demo-notice')).toContainText('не оценивают ваши действия');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Нашли вариант для обсуждения');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Согласовали следующий шаг');
 });
 
 test('mobile menu, keyboard focus and dialog focus return', async ({ page }) => {

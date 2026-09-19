@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
-import type { Scenario } from '../../types/scenario.ts';
+import type { ScenarioPreview } from '../../types/scenario.ts';
 import { ScenarioArt } from './ScenarioArt.tsx';
 import { Icon } from '../ui/Icon.tsx';
 
-export function ScenarioCard({ scenario, index }: { scenario: Scenario; index: number }) {
+export function ScenarioCard({ scenario, index }: { scenario: ScenarioPreview; index: number }) {
   return (
     <article className="scenario-card">
       <Link to={`/scenarios/${scenario.id}`} aria-label={`${scenario.title} — открыть сценарий`}>

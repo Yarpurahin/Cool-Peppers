@@ -4,6 +4,7 @@ import { defineConfig } from '@playwright/test';
 const executablePath = process.env.PW_EXECUTABLE_PATH;
 export default defineConfig({
   testDir: './tests',
+  testMatch: '**/*.spec.ts',
   fullyParallel: false,
   workers: 1,
   retries: 0,

@@ -1,65 +1,79 @@
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { findScenario } from '../data/scenarios.ts';
-import type { Scenario } from '../types/scenario.ts';
-import { ButtonLink } from '../components/ui/Button.tsx';
-import { DemoNotice } from '../components/ui/DemoNotice.tsx';
-import { useDemoMessage } from '../app/DemoProvider.tsx';
+import { Button, ButtonLink } from '../components/ui/Button.tsx';
+import { findNegotiation } from '../features/negotiation/data/registry.ts';
+import { useNegotiation } from '../features/negotiation/NegotiationProvider.tsx';
+import { toPlayView } from '../features/negotiation/presentation.ts';
+import type { CompiledScenario } from '../features/negotiation/model/engine.ts';
 import { PlayView } from '../features/negotiation/ui/PlayView.tsx';
+import { DemoPlayPage } from '../features/negotiation/ui/DemoPlayPage.tsx';
 import { ErrorPage } from './ErrorPage.tsx';
 
 export function PlayPage() {
   const { scenarioId } = useParams();
-  const scenario = findScenario(scenarioId);
-  return scenario ? <PlayScreen scenario={scenario} key={scenario.id} /> : <ErrorPage />;
+  const scenario = findNegotiation(scenarioId);
+  if (scenario) return <ActivePlay scenario={scenario} key={scenarioId} />;
+  return findScenario(scenarioId) ? <DemoPlayPage /> : <ErrorPage />;
 }
 
-function PlayScreen({ scenario }: { scenario: Scenario }) {
+function ActivePlay({ scenario }: { scenario: CompiledScenario }) {
+  const { entries, submit, restart, save } = useNegotiation();
+  const scenarioId = scenario.definition.metadata.id;
+  const { attempt, message } = entries.get(scenarioId)!;
   const [selected, setSelected] = useState<string | null>(null);
-  const show = useDemoMessage();
-  const first = scenario.dialogue[0];
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+  if (attempt.status === 'completed')
+    return (
+      <div className="container page negotiation-empty">
+        <h1>Эта тренировка уже завершена</h1>
+        <p>Посмотрите разбор или попробуйте другой путь в новой попытке.</p>
+        {message && (
+          <p className="negotiation-notice" role="status">
+            {message}
+          </p>
+        )}
+        <div className="button-row">
+          <ButtonLink to={`/scenarios/${scenarioId}/result`}>Посмотреть результат</ButtonLink>
+          {scenario.definition.settings.allowRestart && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSelected(null);
+                setError('');
+                restart(scenario);
+              }}
+            >
+              Начать заново
+            </Button>
+          )}
+        </div>
+      </div>
+    );
   return (
     <PlayView
-      model={{
-        scenarioId: scenario.id,
-        title: scenario.title,
-        goal: scenario.goal,
-        role: scenario.role,
-        tip: 'Не ищите «идеальную» реплику. Выберите подход, который хотите попробовать.',
-        character: scenario.person,
-        question: { id: 'demo-first', title: first.title, text: first.speech },
-        answers: first.answers.map((answer, index) => ({ id: String(index), text: answer.text })),
-        step: 1,
-        history: [],
-        stages: [
-          { id: 'understand', title: 'Понять позицию', state: 'current' },
-          { id: 'options', title: 'Найти варианты', state: 'future' },
-          { id: 'agree', title: 'Договориться о шаге', state: 'future' },
-        ],
-      }}
+      model={toPlayView(scenario, attempt)}
       selectedId={selected}
-      onSelect={setSelected}
-      onAnswer={() =>
-        show(
-          'Ответ не отправлен',
-          'Это макет экрана. Продолжение диалога появится после подключения логики сценария.',
-        )
-      }
-      onSaveExit={() =>
-        show('Сохранение появится позже', 'Это макет экрана, прохождение ещё не запущено.')
-      }
-      notice={
-        <DemoNotice>
-          Демонстрация диалога. Реплики можно выбирать, но прохождение и оценка пока не подключены.
-        </DemoNotice>
-      }
-      footer={
-        <div className="result-preview-link">
-          <ButtonLink to={`/scenarios/${scenario.id}/result`} variant="outline">
-            Пример разбора
-          </ButtonLink>
-        </div>
-      }
+      onSelect={(id) => {
+        setSelected(id);
+        setError('');
+      }}
+      message={error || message}
+      onSaveExit={() => {
+        if (save(scenarioId)) navigate(`/scenarios/${scenarioId}`);
+      }}
+      onAnswer={() => {
+        if (selected === null) return;
+        try {
+          const next = submit(scenario, attempt.id, attempt.currentNodeId, selected);
+          setSelected(null);
+          setError('');
+          if (next.status === 'completed') navigate(`/scenarios/${scenarioId}/result`);
+        } catch (cause) {
+          setError(cause instanceof Error ? cause.message : 'Не удалось подтвердить ответ.');
+        }
+      }}
     />
   );
 }

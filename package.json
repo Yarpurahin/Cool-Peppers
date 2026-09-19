@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit",
     "test:ui": "playwright test",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "test:logic": "node --experimental-strip-types --test tests/unit/*.test.ts",
+    "test": "npm run test:logic && npm run test:ui"
   },
   "engines": {
     "node": ">=22.12.0"

@@ -1,6 +1,7 @@
 import { BrowserRouter } from 'react-router-dom';
 import { DemoProvider } from './DemoProvider.tsx';
 import { AppRoutes } from '../routes/AppRoutes.tsx';
+import { NegotiationProvider } from '../features/negotiation/NegotiationProvider.tsx';
 import { RouteEffects } from '../routes/RouteEffects.tsx';
 
 export function App() {
@@ -8,7 +9,9 @@ export function App() {
     <BrowserRouter>
       <DemoProvider>
         <RouteEffects />
-        <AppRoutes />
+        <NegotiationProvider>
+          <AppRoutes />
+        </NegotiationProvider>
       </DemoProvider>
     </BrowserRouter>
   );

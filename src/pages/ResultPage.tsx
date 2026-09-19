@@ -1,53 +1,76 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { findScenario } from '../data/scenarios.ts';
-import { DemoNotice } from '../components/ui/DemoNotice.tsx';
-import { useDemoMessage } from '../app/DemoProvider.tsx';
+import { ButtonLink } from '../components/ui/Button.tsx';
+import { findNegotiation } from '../features/negotiation/data/registry.ts';
+import { useNegotiation } from '../features/negotiation/NegotiationProvider.tsx';
+import { toResultView } from '../features/negotiation/presentation.ts';
+import type { CompiledScenario } from '../features/negotiation/model/engine.ts';
 import { ResultView } from '../features/negotiation/ui/ResultView.tsx';
 import { FeedbackForm } from '../features/negotiation/ui/FeedbackForm.tsx';
+import { DemoResultPage } from '../features/negotiation/ui/DemoResultPage.tsx';
 import { ErrorPage } from './ErrorPage.tsx';
 
 export function ResultPage() {
   const { scenarioId } = useParams();
-  const scenario = findScenario(scenarioId);
+  const scenario = findNegotiation(scenarioId);
+  if (scenario) return <ActiveResult scenario={scenario} key={scenarioId} />;
+  return findScenario(scenarioId) ? <DemoResultPage /> : <ErrorPage />;
+}
+
+function ActiveResult({ scenario }: { scenario: CompiledScenario }) {
+  const { entries, restart, saveFeedback, loadFeedback } = useNegotiation();
+  const scenarioId = scenario.definition.metadata.id;
+  const { attempt, message } = entries.get(scenarioId)!;
   const navigate = useNavigate();
-  const show = useDemoMessage();
-  if (!scenario) return <ErrorPage />;
+  if (attempt.status !== 'completed')
+    return (
+      <div className="container page negotiation-empty">
+        <h1>Результата пока нет</h1>
+        <p>
+          {attempt.history.length
+            ? 'Продолжите сохранённый разговор, чтобы получить разбор.'
+            : 'Пройдите тренировку, чтобы увидеть разбор своих решений.'}
+        </p>
+        {message && (
+          <p className="negotiation-notice" role="status">
+            {message}
+          </p>
+        )}
+        <ButtonLink to={`/scenarios/${scenarioId}/play`}>
+          {attempt.history.length ? 'Продолжить переговоры' : 'Начать переговоры'}
+        </ButtonLink>
+      </div>
+    );
   return (
     <ResultView
-      model={{
-        scenarioId: scenario.id,
-        title: scenario.title,
-        outcome: scenario.example.outcome,
-        outcomeType: 'neutral',
-        subtitle: 'Пример разбора',
-        nextStep: scenario.example.nextStep,
-        metric: {
-          value: scenario.example.score,
-          label: 'из 100 · пример',
-          percent: scenario.example.score,
-        },
-        reviews: scenario.example.observations.map((item, index) => ({
-          ...item,
-          id: String(index),
-          penalty: 0,
-        })),
-      }}
-      onRestart={() => navigate(`/scenarios/${scenario.id}/play`)}
+      model={toResultView(scenario, attempt)}
+      onRestart={
+        scenario.definition.settings.allowRestart
+          ? () => {
+              restart(scenario);
+              navigate(`/scenarios/${scenarioId}/play`);
+            }
+          : undefined
+      }
       notice={
-        <DemoNotice>
-          Пример обратной связи. Этот разбор и баллы подготовлены заранее и не оценивают ваши
-          действия.
-        </DemoNotice>
+        message ? (
+          <p className="negotiation-notice" role="status">
+            {message}
+          </p>
+        ) : undefined
       }
       feedback={
-        <FeedbackForm
-          key={scenario.id}
-          caption="Демонстрационная форма"
-          onSubmit={() => {
-            show('Отправка отзыва пока недоступна', 'Ваш отзыв никуда не отправлен.');
-            return 'Демонстрационная форма: отзыв не сохранён.';
-          }}
-        />
+        scenario.definition.settings.collectFeedback ? (
+          <FeedbackForm
+            key={attempt.id}
+            initial={loadFeedback(scenarioId, attempt.id)}
+            caption="Отзыв сохранится в этом браузере"
+            onSubmit={(input) => {
+              saveFeedback(scenarioId, input);
+              return 'Спасибо! Отзыв сохранён в этом браузере.';
+            }}
+          />
+        ) : undefined
       }
     />
   );

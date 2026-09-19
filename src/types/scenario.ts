@@ -1,12 +1,13 @@
+// Catalogue presentation and legacy editor/demo fixtures; executable types live in features/negotiation/model/types.ts.
 export type ScenarioArt = 'calendar' | 'conversation' | 'agreement';
 
-export interface DialogueNode {
+export interface DemoDialogueNode {
   title: string;
   speech: string;
   answers: { text: string; next: number }[];
 }
 
-export interface Scenario {
+export interface ScenarioPreview {
   id: string;
   title: string;
   category: string;
@@ -20,7 +21,7 @@ export interface Scenario {
   role: string;
   art: ScenarioArt;
   person: { name: string; initials: string; role: string; character: string; quote: string };
-  dialogue: DialogueNode[];
+  dialogue: DemoDialogueNode[];
   example: {
     score: number;
     outcome: string;
