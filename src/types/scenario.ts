@@ -11,7 +11,7 @@ export interface ScenarioPreview {
   id: string;
   title: string;
   category: string;
-  level: 'Начальный' | 'Средний';
+  level: 'Начальный' | 'Средний' | 'Продвинутый';
   duration: string;
   skill: string;
   description: string;

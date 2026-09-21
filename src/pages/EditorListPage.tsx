@@ -1,69 +1,129 @@
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { api, errorMessage } from '../api/client.ts';
+import { useCatalog } from '../app/DataProvider.tsx';
 import { Button, ButtonLink } from '../components/ui/Button.tsx';
-import { DemoNotice } from '../components/ui/DemoNotice.tsx';
 import { Icon } from '../components/ui/Icon.tsx';
-import { scenarios } from '../data/scenarios.ts';
-import { useDemoMessage } from '../app/DemoProvider.tsx';
 
+interface Row {
+  id: string;
+  title: string;
+  revision: number;
+  publishedVersion: number | null;
+  archivedAt: string | null;
+}
 export function EditorListPage() {
-  const show = useDemoMessage();
-  const scenario = scenarios[0];
+  const { scenarios, refreshCatalog } = useCatalog();
+  const navigate = useNavigate();
+  const [rows, setRows] = useState<Row[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [sourceId, setSourceId] = useState('terms');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const load = async () => {
+    setRows(await api<Row[]>('/editor'));
+  };
+  useEffect(() => {
+    void load()
+      .catch((cause) => setError(errorMessage(cause)))
+      .finally(() => setLoading(false));
+  }, []);
   return (
     <div className="container page editor-list-page">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">
-            <span className="accent-dot" />
-            Редактор сценариев
-          </p>
+          <p className="eyebrow">Редактор сценариев</p>
           <h1>Мои сценарии</h1>
-          <p>Создавайте ситуации, в которых хочется разобраться.</p>
+          <p>Сохраняйте черновики и публикуйте новые версии.</p>
         </div>
-        <Button
-          onClick={() =>
-            show(
-              'Создание сценария появится позже',
-              'Пока можно открыть пример редактора и посмотреть его экраны. Новый сценарий не создан.',
-            )
-          }
-        >
-          <Icon name="plus" size={19} />
-          Создать сценарий
-        </Button>
       </div>
-      <DemoNotice>Демонстрация редактора. Сценарии не сохраняются и не публикуются.</DemoNotice>
-      <section className="panel editor-list">
-        <div className="editor-list-head">
-          <span>Название</span>
-          <span>Вопросы</span>
-          <span>Видимость</span>
-          <span />
-        </div>
-        <div className="editor-list-row">
-          <div className="editor-list-title">
-            <span className="icon-tile">
-              <Icon name="book" size={24} />
-            </span>
-            <div>
-              <h2>{scenario.title}</h2>
-              <p>{scenario.category}</p>
-            </div>
-          </div>
-          <span className="question-count">
-            {scenario.dialogue.length}
-            <span className="mobile-only"> вопроса</span>
-          </span>
-          <span className="badge badge--orange">Черновик · пример</span>
-          <ButtonLink to={`/editor/${scenario.id}`} variant="outline">
-            Открыть <Icon name="edit" size={17} />
-          </ButtonLink>
+      <section className="panel description-editor">
+        <div className="two-fields">
+          <label className="field">
+            Основа нового сценария
+            <select value={sourceId} onChange={(e) => setSourceId(e.target.value)}>
+              {scenarios.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.title}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Button
+            disabled={busy || !sourceId}
+            onClick={async () => {
+              setBusy(true);
+              setError('');
+              try {
+                const result = await api<{ id: string }>('/editor', {
+                  method: 'POST',
+                  body: { sourceId },
+                });
+                navigate(`/editor/${result.id}`);
+              } catch (cause) {
+                setError(errorMessage(cause));
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            <Icon name="plus" />
+            Создать копию
+          </Button>
         </div>
       </section>
-      <section className="tip-box editor-tip">
-        <Icon name="bulb" size={25} />
-        <div>
-          <h2>Начните с одной сложной ситуации</h2>
-          <p>Опишите интересы сторон, добавьте реплики и свяжите ответы с вопросами.</p>
-        </div>
+      {error && (
+        <p className="field-error" role="alert">
+          {error}
+        </p>
+      )}
+      {loading && <p role="status">Загружаем черновики…</p>}
+      {!loading && !rows.length && (
+        <p>Ваших сценариев пока нет. Выберите основу и создайте свою копию.</p>
+      )}
+      <section className="panel editor-list">
+        {rows.map((row) => (
+          <div className="editor-list-row" key={row.id}>
+            <div className="editor-list-title">
+              <Icon name="book" />
+              <div>
+                <h2>{row.title}</h2>
+                <p>Редакция черновика: {row.revision}</p>
+              </div>
+            </div>
+            <span className="badge">
+              {row.archivedAt
+                ? 'Архив'
+                : row.publishedVersion
+                  ? `Опубликован · v${row.publishedVersion}`
+                  : 'Черновик'}
+            </span>
+            <ButtonLink to={`/editor/${row.id}`} variant="outline">
+              Открыть
+            </ButtonLink>
+            {row.publishedVersion && !row.archivedAt && (
+              <Button
+                disabled={busy}
+                variant="outline"
+                onClick={async () => {
+                  setBusy(true);
+                  setError('');
+                  try {
+                    await api(`/editor/${row.id}/archive`, { method: 'POST' });
+                    await load();
+                    await refreshCatalog();
+                  } catch (cause) {
+                    setError(errorMessage(cause));
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                В архив
+              </Button>
+            )}
+          </div>
+        ))}
       </section>
     </div>
   );

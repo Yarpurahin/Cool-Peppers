@@ -1,10 +1,11 @@
 import { useSearchParams } from 'react-router-dom';
-import { scenarios } from '../data/scenarios.ts';
+import { useCatalog } from '../app/DataProvider.tsx';
 import { ScenarioCard } from '../components/scenarios/ScenarioCard.tsx';
 import { Button } from '../components/ui/Button.tsx';
 import { Icon } from '../components/ui/Icon.tsx';
 
 export function CatalogPage() {
+  const { scenarios } = useCatalog();
   const [params, setParams] = useSearchParams();
   const query = params.get('q') ?? '';
   const category = params.get('category') ?? '';

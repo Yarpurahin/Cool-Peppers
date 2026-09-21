@@ -10,10 +10,12 @@ import { ResultPage } from '../pages/ResultPage.tsx';
 import { EditorListPage } from '../pages/EditorListPage.tsx';
 import { EditorPage } from '../pages/EditorPage.tsx';
 import { ErrorPage } from '../pages/ErrorPage.tsx';
-import { findScenario } from '../data/scenarios.ts';
+import { RequireAuth, useCatalog } from '../app/DataProvider.tsx';
+import { AttemptPage } from '../pages/AttemptPage.tsx';
 
 // Unknown scenario IDs receive a genuine not-found screen, never another scenario.
 function ValidScenario() {
+  const { findScenario } = useCatalog();
   const { scenarioId } = useParams();
   return findScenario(scenarioId) ? <Outlet /> : <ErrorPage />;
 }
@@ -26,15 +28,44 @@ export function AppRoutes() {
         <Route path="scenarios" element={<CatalogPage />} />
         <Route path="register" element={<AuthPage key="register" mode="register" />} />
         <Route path="login" element={<AuthPage key="login" mode="login" />} />
-        <Route path="profile" element={<ProfilePage />} />
-        <Route path="editor" element={<EditorListPage />} />
+        <Route
+          path="profile"
+          element={
+            <RequireAuth>
+              <ProfilePage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="attempts/:attemptId"
+          element={
+            <RequireAuth>
+              <AttemptPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="editor/:scenarioId"
+          element={
+            <RequireAuth>
+              <EditorPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="editor"
+          element={
+            <RequireAuth>
+              <EditorListPage />
+            </RequireAuth>
+          }
+        />
       </Route>
       <Route element={<ValidScenario />}>
         <Route element={<Layout />}>
           <Route path="scenarios/:scenarioId" element={<ScenarioPage />} />
           <Route path="scenarios/:scenarioId/play" element={<PlayPage />} />
           <Route path="scenarios/:scenarioId/result" element={<ResultPage />} />
-          <Route path="editor/:scenarioId" element={<EditorPage />} />
         </Route>
       </Route>
       <Route path="404" element={<ErrorPage />} />

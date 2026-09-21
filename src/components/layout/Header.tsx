@@ -1,9 +1,11 @@
 import { useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { Logo } from './Logo.tsx';
+import { useCatalog } from '../../app/DataProvider.tsx';
 import { Icon } from '../ui/Icon.tsx';
 
 export function Header() {
+  const { user } = useCatalog();
   const [open, setOpen] = useState(false);
   const toggle = useRef<HTMLButtonElement>(null);
   return (
@@ -46,16 +48,18 @@ export function Header() {
           <div className="nav-account">
             <NavLink to="/profile" className="profile-link">
               <Icon name="user" size={17} />
-              <span>
-                Профиль
-              </span>
+              <span>Профиль</span>
             </NavLink>
-            <NavLink to="/register" className="register-link">
-              Регистрация
-            </NavLink>
-            <NavLink to="/login" className="button button--primary button--small">
-              Войти <Icon name="arrow" size={16} />
-            </NavLink>
+            {!user && (
+              <>
+                <NavLink to="/register" className="register-link">
+                  Регистрация
+                </NavLink>
+                <NavLink to="/login" className="button button--primary button--small">
+                  Войти <Icon name="arrow" size={16} />
+                </NavLink>
+              </>
+            )}
           </div>
         </nav>
       </div>

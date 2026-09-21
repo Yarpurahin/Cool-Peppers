@@ -207,3 +207,7 @@
     text-align: center;
   }
 }
+
+.editor-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
+.json-editor { font-family: ui-monospace, Consolas, monospace; font-size: 13px; line-height: 1.6; tab-size: 2; }
+.editor-page .field-error { overflow-wrap: anywhere; }

@@ -1,111 +1,139 @@
-import { createContext, useContext, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { negotiationScenarios } from './data/registry.ts';
-import { answerQuestion, startAttempt } from './model/engine.ts';
+import { api, errorMessage } from '../../api/client.ts';
+import { useCatalog } from '../../app/DataProvider.tsx';
+import type { AttemptDetail } from '../../types/api.ts';
+import { compileScenario } from './model/engine.ts';
 import type { CompiledScenario } from './model/engine.ts';
 import type { Feedback, ScenarioAttempt } from './model/types.ts';
-import { createAttemptRepository } from './storage/attemptRepository.ts';
-import type { AttemptRepository } from './storage/attemptRepository.ts';
 
-const browserRepository = createAttemptRepository(() => window.localStorage);
-interface Entry {
-  attempt: ScenarioAttempt;
-  message: string;
+interface Entry extends AttemptDetail {
+  scenario: CompiledScenario;
 }
 interface ContextValue {
   entries: ReadonlyMap<string, Entry>;
-  submit: (
-    scenario: CompiledScenario,
+  loading: boolean;
+  error: string;
+  reload: () => Promise<void>;
+  ensure: (id: string) => Promise<Entry>;
+  submit: (id: string, nodeId: string, answerId: string) => Promise<ScenarioAttempt>;
+  restart: (id: string) => Promise<void>;
+  saveFeedback: (
     attemptId: string,
-    nodeId: string,
-    answerId: string,
-  ) => ScenarioAttempt;
-  restart: (scenario: CompiledScenario) => void;
-  save: (scenarioId: string) => boolean;
-  loadFeedback: (scenarioId: string, attemptId: string) => Feedback | undefined;
-  saveFeedback: (scenarioId: string, input: { helpful: boolean; comment: string }) => void;
+    input: { helpful: boolean; comment: string },
+  ) => Promise<Feedback>;
 }
-const NegotiationContext = createContext<ContextValue | null>(null);
-const newAttempt = (scenario: CompiledScenario) =>
-  startAttempt(scenario, crypto.randomUUID(), new Date().toISOString());
+const Context = createContext<ContextValue | null>(null);
+const entry = (value: AttemptDetail): Entry => ({
+  ...value,
+  scenario: compileScenario(value.definition),
+});
 
-export function NegotiationProvider({
-  children,
-  repository = browserRepository,
-}: {
-  children: ReactNode;
-  repository?: AttemptRepository;
-}) {
-  const [entries, setEntries] = useState<ReadonlyMap<string, Entry>>(
-    () =>
-      new Map(
-        negotiationScenarios.map((scenario) => {
-          const loaded = repository.load(scenario);
-          return [
-            scenario.definition.metadata.id,
-            { attempt: loaded.attempt ?? newAttempt(scenario), message: loaded.warning ?? '' },
-          ];
-        }),
-      ),
-  );
+export function NegotiationProvider({ children }: { children: ReactNode }) {
+  const { user } = useCatalog();
+  const [entries, setEntries] = useState<ReadonlyMap<string, Entry>>(new Map());
   const latest = useRef(entries);
-  const writeEntry = (id: string, entry: Entry) => {
+  const [loading, setLoading] = useState(Boolean(user));
+  const [error, setError] = useState('');
+  const pending = useRef(new Map<string, Promise<Entry>>());
+  const write = (value: AttemptDetail) => {
+    const nextEntry = entry(value);
     const next = new Map(latest.current);
-    next.set(id, entry);
+    next.set(value.attempt.scenarioId, nextEntry);
     latest.current = next;
     setEntries(next);
+    return nextEntry;
   };
-  const persist = (attempt: ScenarioAttempt) => {
+  const reload = async () => {
+    if (!user) return;
+    setLoading(true);
+    setError('');
     try {
-      repository.save(attempt);
-      writeEntry(attempt.scenarioId, { attempt, message: '' });
-      return true;
-    } catch {
-      writeEntry(attempt.scenarioId, {
-        attempt,
-        message:
-          'Не удалось сохранить прогресс в браузере. Можно продолжить здесь; после закрытия или перезагрузки страницы новые ответы могут потеряться.',
-      });
-      return false;
+      const values = await api<AttemptDetail[]>('/attempts/current');
+      const next = new Map(values.map((v) => [v.attempt.scenarioId, entry(v)]));
+      latest.current = next;
+      setEntries(next);
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setLoading(false);
     }
   };
-  const value: ContextValue = {
-    entries,
-    submit(scenario, attemptId, nodeId, answerId) {
-      const entry = latest.current.get(scenario.definition.metadata.id);
-      if (!entry || entry.attempt.id !== attemptId)
-        throw new Error('Попытка изменилась. Выберите ответ ещё раз.');
-      // Synchronous ref prevents two clicks in one render from applying two transitions.
-      const now = new Date(Math.max(Date.now(), Date.parse(entry.attempt.updatedAt))).toISOString();
-      const next = answerQuestion(scenario, entry.attempt, nodeId, answerId, now);
-      persist(next);
-      return next;
-    },
-    restart(scenario) {
-      if (!scenario.definition.settings.allowRestart) return;
-      persist(newAttempt(scenario));
-    },
-    save(scenarioId) {
-      const entry = latest.current.get(scenarioId);
-      return entry ? persist(entry.attempt) : false;
-    },
-    loadFeedback: repository.loadFeedback,
-    saveFeedback(scenarioId, input) {
-      const attempt = latest.current.get(scenarioId)?.attempt;
-      if (!attempt || attempt.status !== 'completed')
-        throw new Error('Сначала завершите тренировку');
-      repository.saveFeedback(scenarioId, {
-        attemptId: attempt.id,
-        ...input,
-        createdAt: new Date().toISOString(),
-      });
-    },
-  };
-  return <NegotiationContext.Provider value={value}>{children}</NegotiationContext.Provider>;
+  useEffect(() => {
+    let cancelled = false;
+    if (user)
+      api<AttemptDetail[]>('/attempts/current')
+        .then((values) => {
+          if (cancelled) return;
+          const next = new Map(values.map((v) => [v.attempt.scenarioId, entry(v)]));
+          for (const [id, value] of latest.current) next.set(id, value);
+          latest.current = next;
+          setEntries(next);
+        })
+        .catch((cause) => {
+          if (!cancelled) setError(errorMessage(cause));
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+  return (
+    <Context.Provider
+      value={{
+        entries,
+        loading,
+        error,
+        reload,
+        ensure: async (id) => {
+          const existing = latest.current.get(id);
+          if (existing) return existing;
+          const running = pending.current.get(id);
+          if (running) return running;
+          const promise = api<AttemptDetail>(`/scenarios/${encodeURIComponent(id)}/attempts`, {
+            method: 'POST',
+          })
+            .then(write)
+            .finally(() => pending.current.delete(id));
+          pending.current.set(id, promise);
+          return promise;
+        },
+        submit: async (id, nodeId, answerId) => {
+          const current = latest.current.get(id);
+          if (!current) throw new Error('Попытка не загружена');
+          const saved = await api<AttemptDetail>(`/attempts/${current.attempt.id}/answers`, {
+            method: 'POST',
+            body: { nodeId, answerId, expectedAnswers: current.attempt.history.length },
+          });
+          return write(saved).attempt;
+        },
+        restart: async (id) => {
+          const current = latest.current.get(id);
+          const saved = await api<AttemptDetail>(`/scenarios/${encodeURIComponent(id)}/attempts`, {
+            method: 'POST',
+            body: { restart: true, expectedAttemptId: current?.attempt.id },
+          });
+          write(saved);
+        },
+        saveFeedback: async (attemptId, input) => {
+          const saved = await api<Feedback>(`/attempts/${attemptId}/feedback`, {
+            method: 'PUT',
+            body: input,
+          });
+          const current = [...latest.current.values()].find((v) => v.attempt.id === attemptId);
+          if (current) write({ ...current, feedback: saved });
+          return saved;
+        },
+      }}
+    >
+      {children}
+    </Context.Provider>
+  );
 }
-
 export function useNegotiation() {
-  const context = useContext(NegotiationContext);
-  if (!context) throw new Error('NegotiationProvider is required');
-  return context;
+  const value = useContext(Context);
+  if (!value) throw new Error('NegotiationProvider is required');
+  return value;
 }
