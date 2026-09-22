@@ -1,31 +1,55 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link } from 'react-router-dom';
-import { useDemoMessage } from '../app/DemoProvider.tsx';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '../components/ui/Button.tsx';
 import { Icon } from '../components/ui/Icon.tsx';
 import { PasswordField } from '../components/ui/PasswordField.tsx';
-import { DemoNotice } from '../components/ui/DemoNotice.tsx';
+import { api, errorMessage } from '../api/client.ts';
+import { useCatalog } from '../app/DataProvider.tsx';
+import type { User } from '../types/api.ts';
 
 export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
   const register = mode === 'register';
-  const show = useDemoMessage();
   const [error, setError] = useState('');
-  function submit(event: FormEvent<HTMLFormElement>) {
+  const [busy, setBusy] = useState(false);
+  const { user, setUser } = useCatalog();
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const requested = params.get('next') ?? '/profile';
+  const destination =
+    requested.startsWith('/') &&
+    !requested.startsWith('//') &&
+    !requested.includes('\\') &&
+    !/^\/(login|register)(?:[/?#]|$)/.test(requested)
+      ? requested
+      : '/profile';
+  if (user) return <Navigate to={destination} replace />;
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const fields = new FormData(event.currentTarget);
     if (register && fields.get('password') !== fields.get('confirmPassword')) {
       setError('Пароли не совпадают. Проверьте повторный ввод.');
       return;
     }
+    if (busy) return;
     setError('');
-    event.currentTarget.reset();
-    show(
-      register ? 'Регистрация появится позже' : 'Вход пока недоступен',
-      register
-        ? 'Это демонстрационная форма. Аккаунт не создан, введённые данные никуда не отправлены. Поля очищены.'
-        : 'Это демонстрационная форма. Вход не выполнен, введённые данные никуда не отправлены. Поля очищены.',
-    );
+    setBusy(true);
+    try {
+      const account = await api<User>(register ? '/auth/register' : '/auth/login', {
+        method: 'POST',
+        body: {
+          email: fields.get('email'),
+          password: fields.get('password'),
+          ...(register ? { name: fields.get('name') } : {}),
+        },
+      });
+      setUser(account);
+      navigate(destination, { replace: true });
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setBusy(false);
+    }
   }
   return (
     <div className="container page auth-page">
@@ -126,56 +150,20 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
           {register && (
             <PasswordField label="Повторите пароль" name="confirmPassword" newPassword />
           )}
-          {register && (
-            <label className="checkbox-field">
-              <input type="checkbox" name="consent" required />
-              <span>
-                Принимаю{' '}
-                <button
-                  type="button"
-                  className="inline-link"
-                  onClick={() =>
-                    show(
-                      'Условия использования',
-                      'Документ будет добавлен перед запуском регистрации. Сейчас аккаунты не создаются и данные не собираются.',
-                    )
-                  }
-                >
-                  условия использования
-                </button>{' '}
-                и{' '}
-                <button
-                  type="button"
-                  className="inline-link"
-                  onClick={() =>
-                    show(
-                      'Конфиденциальность',
-                      'В этой версии введённые данные не отправляются и не сохраняются. Политика сервиса появится до запуска регистрации.',
-                    )
-                  }
-                >
-                  политику конфиденциальности
-                </button>
-              </span>
-            </label>
-          )}
           {error && (
             <p className="field-error" role="alert">
               {error}
             </p>
           )}
-          <Button type="submit" className="button--full">
+          <Button type="submit" disabled={busy} className="button--full">
             {register ? 'Создать аккаунт' : 'Войти'}
             <Icon name="arrow" size={19} />
           </Button>
-          <DemoNotice>
-            Демонстрационная форма. {register ? 'Создание аккаунтов' : 'Авторизация'} пока
-            недоступно.
-          </DemoNotice>
+          <p className="subtle-caption">Профиль и результаты сохраняются в вашем аккаунте.</p>
         </form>
         <p className="auth-switch">
           {register ? 'Уже есть аккаунт? ' : 'Нет аккаунта? '}
-          <Link to={register ? '/login' : '/register'}>
+          <Link to={`${register ? '/login' : '/register'}?next=${encodeURIComponent(destination)}`}>
             {register ? 'Войти' : 'Зарегистрироваться'}
           </Link>
         </p>

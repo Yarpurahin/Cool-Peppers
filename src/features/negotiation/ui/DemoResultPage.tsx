@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from 'react-router-dom';
-import { findScenario } from '../../../data/scenarios.ts';
+import { useCatalog } from '../../../app/DataProvider.tsx';
 import { DemoNotice } from '../../../components/ui/DemoNotice.tsx';
 import { useDemoMessage } from '../../../app/DemoProvider.tsx';
 import { ResultView } from './ResultView.tsx';
@@ -7,6 +7,7 @@ import { FeedbackForm } from './FeedbackForm.tsx';
 import { ErrorPage } from '../../../pages/ErrorPage.tsx';
 
 export function DemoResultPage() {
+  const { findScenario } = useCatalog();
   const { scenarioId } = useParams();
   const scenario = findScenario(scenarioId);
   const navigate = useNavigate();

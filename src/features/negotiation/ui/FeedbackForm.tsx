@@ -8,13 +8,14 @@ export function FeedbackForm({
   caption = 'Отзыв необязателен',
   initial,
 }: {
-  onSubmit: (input: FeedbackInput) => string;
+  onSubmit: (input: FeedbackInput) => string | Promise<string>;
   caption?: string;
   initial?: FeedbackInput;
 }) {
   const [helpful, setHelpful] = useState<boolean | null>(initial?.helpful ?? null);
   const [comment, setComment] = useState(initial?.comment ?? '');
   const [message, setMessage] = useState('');
+  const [busy, setBusy] = useState(false);
   return (
     <aside className="panel feedback-panel">
       <p className="eyebrow">Ваша обратная связь</p>
@@ -22,16 +23,24 @@ export function FeedbackForm({
       <p>Помог ли сценарий посмотреть на разговор по-новому?</p>
       <form
         className="form-stack"
-        onSubmit={(event) => {
+        onSubmit={async (event) => {
           event.preventDefault();
           if (helpful === null) {
             setMessage('Выберите «Да» или «Не совсем».');
             return;
           }
+          if (busy) return;
+          setBusy(true);
           try {
-            setMessage(onSubmit({ helpful, comment: comment.trim() }));
-          } catch {
-            setMessage('Не удалось сохранить отзыв. Попробуйте ещё раз.');
+            setMessage(await onSubmit({ helpful, comment: comment.trim() }));
+          } catch (cause) {
+            setMessage(
+              cause instanceof Error
+                ? cause.message
+                : 'Не удалось сохранить отзыв. Попробуйте ещё раз.',
+            );
+          } finally {
+            setBusy(false);
           }
         }}
       >
@@ -62,7 +71,7 @@ export function FeedbackForm({
             placeholder="Поделитесь впечатлением"
           />
         </label>
-        <Button type="submit" variant="secondary" className="button--full">
+        <Button type="submit" disabled={busy} variant="secondary" className="button--full">
           Отправить отзыв <Icon name="arrow" size={17} />
         </Button>
         <p className="subtle-caption">{caption}</p>

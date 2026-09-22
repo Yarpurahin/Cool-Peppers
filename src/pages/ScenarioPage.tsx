@@ -1,14 +1,14 @@
 import { Link, useParams } from 'react-router-dom';
-import { findScenario } from '../data/scenarios.ts';
+import { useCatalog } from '../app/DataProvider.tsx';
 import { ButtonLink } from '../components/ui/Button.tsx';
 import { Icon } from '../components/ui/Icon.tsx';
 import { ScenarioArt } from '../components/scenarios/ScenarioArt.tsx';
 import { ScenarioMeta } from '../components/scenarios/ScenarioMeta.tsx';
-import { findNegotiation } from '../features/negotiation/data/registry.ts';
 import { useNegotiation } from '../features/negotiation/NegotiationProvider.tsx';
 import { ErrorPage } from './ErrorPage.tsx';
 
 export function ScenarioPage() {
+  const { findScenario, findNegotiation } = useCatalog();
   const { scenarioId } = useParams();
   const scenario = findScenario(scenarioId);
   const negotiation = findNegotiation(scenarioId);
@@ -52,10 +52,10 @@ export function ScenarioPage() {
             <h2>Как пройдёт разговор</h2>
             <p>
               {negotiation
-                ? 'Выбирайте реплики и подтверждайте ответ. Ваш выбор меняет ход разговора. После завершения вы получите разбор своих решений. Прогресс сохраняется в этом браузере.'
+                ? 'Выбирайте реплики и подтверждайте ответ. Ваш выбор меняет ход разговора. После завершения вы получите разбор своих решений. Прогресс сохраняется в вашем аккаунте.'
                 : 'В готовом тренажёре вы сможете выбирать реплики и пробовать разные подходы, а затем разобрать свои решения. Сейчас можно посмотреть демонстрационный экран диалога.'}
             </p>
-            {negotiation && (
+            {negotiation && negotiation.definition.settings.failure.rule !== 'none' && (
               <p className="negotiation-rules">
                 {negotiation.definition.settings.assessmentNote} Порог провала —{' '}
                 {negotiation.failureThreshold} штрафных баллов: половина всех{' '}

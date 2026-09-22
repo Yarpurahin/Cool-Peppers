@@ -1,57 +1,86 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { demoProfile, practiceHistory } from '../data/profile.ts';
-import { findScenario } from '../data/scenarios.ts';
+import { api, errorMessage } from '../api/client.ts';
+import { useCatalog } from '../app/DataProvider.tsx';
+import type { HistoryRow, User } from '../types/api.ts';
 import { Button } from '../components/ui/Button.tsx';
 import { Icon } from '../components/ui/Icon.tsx';
-import { DemoNotice } from '../components/ui/DemoNotice.tsx';
-import { useDemoMessage } from '../app/DemoProvider.tsx';
 
+interface History {
+  total: number;
+  completed: number;
+  penalties: number;
+  rows: HistoryRow[];
+}
 export function ProfilePage() {
-  const show = useDemoMessage();
-  const average = Math.round(
-    practiceHistory.reduce((sum, row) => sum + row.score, 0) / practiceHistory.length,
-  );
-  const minutes = practiceHistory.reduce((sum, row) => sum + row.duration, 0);
+  const { user, setUser, logout } = useCatalog();
+  const [history, setHistory] = useState<History | null>(null);
+  const [offset, setOffset] = useState(0);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [historyError, setHistoryError] = useState('');
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    const controller = new AbortController();
+    setHistoryError('');
+    api<History>(`/me/history?offset=${offset}&limit=20`, { signal: controller.signal })
+      .then(setHistory)
+      .catch((cause) => {
+        if (!controller.signal.aborted) setHistoryError(errorMessage(cause));
+      });
+    return () => controller.abort();
+  }, [offset, retry]);
+  if (!user) return null;
+  const initials = user.name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase();
   return (
     <div className="container page profile-page">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">
-            <span className="accent-dot" />
-            Личное пространство
-          </p>
+          <p className="eyebrow">Личное пространство</p>
           <h1>Моя практика</h1>
         </div>
+        <Button
+          variant="outline"
+          disabled={busy}
+          onClick={() => {
+            setBusy(true);
+            void logout().catch((cause) => {
+              setError(errorMessage(cause));
+              setBusy(false);
+            });
+          }}
+        >
+          Выйти
+        </Button>
       </div>
       <div className="profile-overview">
         <div className="profile-person">
-          <span className="avatar avatar--large">{demoProfile.initials}</span>
+          <span className="avatar avatar--large">{initials}</span>
           <div>
-            <h2>{demoProfile.name}</h2>
+            <h2>{user.name}</h2>
             <p>Участник Арены</p>
           </div>
         </div>
         <div className="stat stat--dark">
-          <span>Средний балл</span>
-          <strong>
-            {average}
-            <small> / 100</small>
-          </strong>
-          <p>По {practiceHistory.length} примерам тренировок</p>
-          <Icon name="chart" size={22} />
+          <span>Завершено</span>
+          <strong>{history?.completed ?? '—'}</strong>
+          <p>Тренировок</p>
         </div>
         <div className="stat">
-          <span>Тренировок</span>
-          <strong>{String(practiceHistory.length).padStart(2, '0')}</strong>
-          <p>Каждая — новый опыт</p>
+          <span>Всего попыток</span>
+          <strong>{history?.total ?? '—'}</strong>
+          <p>Включая незавершённые</p>
         </div>
         <div className="stat">
-          <span>Время практики</span>
-          <strong>
-            {minutes}
-            <small> мин</small>
-          </strong>
-          <p>Вклад в уверенность</p>
+          <span>Штрафные баллы</span>
+          <strong>{history?.penalties ?? '—'}</strong>
+          <p>По завершённым попыткам</p>
         </div>
       </div>
       <section className="panel personal-panel">
@@ -60,12 +89,26 @@ export function ProfilePage() {
           <Icon name="user" />
         </div>
         <form
-          onSubmit={(event) => {
+          onSubmit={async (event) => {
             event.preventDefault();
-            show(
-              'Сохранение пока недоступно',
-              'Вы редактируете пример профиля. Изменения не сохранены и исчезнут после ухода со страницы.',
-            );
+            if (busy) return;
+            const data = new FormData(event.currentTarget);
+            setBusy(true);
+            setError('');
+            setNotice('');
+            try {
+              setUser(
+                await api<User>('/me', {
+                  method: 'PATCH',
+                  body: { name: data.get('name'), email: data.get('email') },
+                }),
+              );
+              setNotice('Изменения сохранены.');
+            } catch (cause) {
+              setError(errorMessage(cause));
+            } finally {
+              setBusy(false);
+            }
           }}
         >
           <div className="two-fields">
@@ -73,10 +116,10 @@ export function ProfilePage() {
               Имя
               <input
                 name="name"
-                defaultValue={demoProfile.name}
+                defaultValue={user.name}
                 required
                 maxLength={100}
-                autoComplete="off"
+                autoComplete="name"
               />
             </label>
             <label className="field">
@@ -84,71 +127,94 @@ export function ProfilePage() {
               <input
                 name="email"
                 type="email"
-                defaultValue={demoProfile.email}
+                defaultValue={user.email}
                 required
-                autoComplete="off"
+                maxLength={254}
+                autoComplete="email"
               />
             </label>
           </div>
           <div className="form-bottom">
-            <Button type="submit" variant="secondary">
-              <Icon name="check" size={18} />
+            <Button type="submit" disabled={busy} variant="secondary">
               Сохранить изменения
             </Button>
-            <p>Данные приведены для примера</p>
+            {notice && <p role="status">{notice}</p>}
           </div>
+          {error && (
+            <p className="field-error" role="alert">
+              {error}
+            </p>
+          )}
         </form>
       </section>
       <section className="panel history-panel">
         <div className="panel-heading">
-          <div>
-            <p className="eyebrow">Каждый разговор имеет значение</p>
-            <h2>История практики</h2>
-          </div>
-          <span className="badge">Пример данных</span>
+          <h2>История практики</h2>
         </div>
+        {historyError && (
+          <p role="alert">
+            {historyError}{' '}
+            <Button variant="outline" onClick={() => setRetry((n) => n + 1)}>
+              Повторить
+            </Button>
+          </p>
+        )}
+        {!history && !historyError && <p role="status">Загружаем историю…</p>}
+        {history?.total === 0 && (
+          <p>
+            История пока пуста. <Link to="/scenarios">Выберите сценарий</Link> и начните тренировку.
+          </p>
+        )}
         <div className="history-list">
-          {practiceHistory.map((row, index) => {
-            const scenario = findScenario(row.scenarioId)!;
-            return (
-              <article className="history-row" key={row.scenarioId}>
-                <span className={`history-icon cover--${scenario.art}`}>
-                  <Icon
-                    name={index === 0 ? 'clock' : index === 1 ? 'message' : 'check'}
-                    size={23}
-                  />
-                </span>
-                <div className="history-title">
-                  <h3>{scenario.title}</h3>
-                  <p>
-                    {row.date} <span>·</span> {row.duration} мин
-                  </p>
-                </div>
-                <div className="history-score">
-                  <strong>{row.score}</strong>
-                  <span> / 100</span>
-                  <div className="score-track">
-                    <span style={{ width: `${row.score}%` }} />
-                  </div>
-                </div>
-                <Link
-                  className="review-link"
-                  to={`/scenarios/${row.scenarioId}/result`}
-                  aria-label={`Разбор: ${scenario.title}`}
-                >
-                  <Icon name="chart" size={17} />
-                  <span>Разбор</span>
-                  <Icon name="upRight" size={18} />
-                </Link>
-              </article>
-            );
-          })}
+          {history?.rows.map((row) => (
+            <article className="history-row" key={row.id}>
+              <span className="history-icon">
+                <Icon name={row.status === 'completed' ? 'check' : 'clock'} />
+              </span>
+              <div className="history-title">
+                <h3>{row.title}</h3>
+                <p>
+                  {new Date(row.startedAt).toLocaleString('ru-RU')} · версия {row.scenarioVersion}
+                </p>
+                <p>
+                  {row.outcome ??
+                    (row.abandonedAt ? 'Прервана при повторном запуске' : 'В процессе')}{' '}
+                  · ответов: {row.answers}
+                </p>
+              </div>
+              <div className="history-score">
+                <strong>{row.penalties}</strong>
+                <span> штрафов</span>
+              </div>
+              <Link className="review-link" to={`/attempts/${row.id}`}>
+                {row.status === 'completed' ? 'Разбор' : 'История'}{' '}
+                <Icon name="upRight" size={18} />
+              </Link>
+            </article>
+          ))}
         </div>
+        {history && history.total > 20 && (
+          <div className="button-row">
+            <Button
+              disabled={offset === 0}
+              variant="outline"
+              onClick={() => setOffset((n) => Math.max(0, n - 20))}
+            >
+              Назад
+            </Button>
+            <span>
+              {offset + 1}–{Math.min(offset + 20, history.total)} из {history.total}
+            </span>
+            <Button
+              disabled={offset + 20 >= history.total}
+              variant="outline"
+              onClick={() => setOffset((n) => n + 20)}
+            >
+              Далее
+            </Button>
+          </div>
+        )}
       </section>
-      <DemoNotice>
-        История и баллы — готовые примеры. Пройденные тренировки появятся здесь после подключения
-        сценариев.
-      </DemoNotice>
     </div>
   );
 }

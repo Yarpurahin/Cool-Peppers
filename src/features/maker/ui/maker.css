@@ -1,0 +1,1064 @@
+/* Maker uses the original Arena palette and typography. */
+.maker-page {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--ink);
+}
+.maker-page button,
+.maker-test-drawer button {
+  cursor: pointer;
+  font: inherit;
+}
+.maker-page button:disabled,
+.maker-test-drawer button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.maker-header {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--line);
+  background: #fafaf6;
+  min-height: 84px;
+  z-index: 6;
+}
+.maker-back,
+.maker-text-button {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  padding: 0;
+  color: var(--green);
+  background: none;
+  border: 0;
+  text-align: left;
+}
+.maker-back {
+  flex-shrink: 0;
+  font-size: 12px !important;
+}
+.maker-heading {
+  flex: 1;
+  min-width: 100px;
+}
+.maker-heading h1 {
+  margin: 0 0 8px;
+  font-size: 17px;
+  line-height: 1.35;
+  letter-spacing: -0.4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 580px;
+}
+.maker-heading > div {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.maker-status {
+  background: #fae8dd;
+  color: #a53b1d;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 800;
+}
+.maker-save-status {
+  color: var(--muted);
+  font-size: 10px;
+}
+.maker-history-buttons,
+.maker-header-actions {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+.maker-primary,
+.maker-secondary,
+.maker-icon-button {
+  min-height: 39px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 12px;
+  font-weight: 800 !important;
+  font-size: 11px !important;
+  white-space: nowrap;
+  color: var(--green);
+  background: #fff;
+}
+.maker-primary {
+  color: #fff;
+  border-color: var(--orange);
+  background: var(--orange);
+}
+.maker-primary:hover {
+  background: var(--orange-hover);
+}
+.maker-secondary:hover,
+.maker-icon-button:hover {
+  background: var(--sage);
+}
+.maker-icon-button {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 6px;
+}
+.maker-workspace {
+  display: grid;
+  grid-template-columns: 224px minmax(0, 1fr) 326px;
+  min-height: 0;
+  flex: 1;
+  position: relative;
+}
+.is-inspector-closed .maker-workspace {
+  grid-template-columns: 224px minmax(0, 1fr);
+}
+.maker-sidebar {
+  padding: 24px 16px;
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
+  min-height: 0;
+  background: #f8f8f3;
+}
+.maker-sidebar > .eyebrow {
+  font-size: 10px;
+  padding: 0 10px 20px;
+  border-bottom: 1px solid var(--line);
+  letter-spacing: 2px;
+  display: flex;
+  gap: 9px;
+  align-items: center;
+}
+.maker-sidebar nav {
+  display: grid;
+  gap: 3px;
+  margin: 20px 0 24px;
+}
+.maker-sidebar nav button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: none;
+  padding: 12px;
+  border: 0;
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: left;
+}
+.maker-sidebar nav span {
+  flex: 1;
+}
+.maker-sidebar nav b,
+.maker-section-heading > span {
+  border-radius: 6px;
+  padding: 1px 5px;
+  font-size: 10px;
+  background: #edf0e9;
+  font-weight: 600;
+  color: var(--muted);
+}
+.maker-sidebar nav .is-active {
+  background: white;
+  color: var(--green);
+  font-weight: 800;
+  box-shadow: var(--shadow);
+}
+.maker-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 22px 0 12px;
+}
+.maker-section-heading h2,
+.maker-section-heading h3 {
+  font-size: 12px;
+  margin: 0;
+}
+.maker-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 9px;
+  background: white;
+}
+.maker-search input {
+  background: none;
+  border: 0;
+  min-width: 0;
+  width: 100%;
+  padding: 3px;
+  font-size: 11px;
+}
+.maker-node-list {
+  display: grid;
+  gap: 3px;
+  margin: 10px 0 14px;
+}
+.maker-node-list button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 11px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: var(--muted);
+  text-align: left;
+  font-size: 11px;
+}
+.maker-node-list strong {
+  font-weight: 600;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+.maker-node-list button > span {
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.maker-node-list button i {
+  font-size: 8px;
+}
+.maker-node-list .is-active {
+  background: var(--sage);
+  color: var(--green);
+}
+.maker-dashed-button {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 12px;
+  border: 1px dashed #a1b7a4;
+  border-radius: 9px;
+  background: none;
+  color: var(--green);
+  font-size: 11px !important;
+}
+.maker-sidebar-hint {
+  margin: 25px 0 0;
+  padding: 15px 0 0;
+  border-top: 1px solid var(--line);
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.maker-canvas {
+  min-width: 0;
+  min-height: 0;
+  background: #f7f8f3;
+}
+.maker-canvas .react-flow__node {
+  border-radius: 15px;
+}
+.maker-card {
+  width: 292px;
+  background: #fff;
+  border: 1px solid #cbd7ca;
+  border-radius: 15px;
+  box-shadow: 0 4px 20px #243d3010;
+  color: var(--ink);
+}
+.react-flow__node.selected .maker-card {
+  border-color: #527e61;
+  box-shadow:
+    0 0 0 3px #49745520,
+    0 6px 20px #243d3010;
+}
+.maker-card.has-error,
+.react-flow__node.selected .maker-card.has-error {
+  border: 2px solid #d25235;
+}
+.maker-card-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 17px 17px 0;
+}
+.maker-avatar {
+  padding: 9px 5px;
+  border-radius: 9px;
+  background: var(--sage);
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 900;
+  min-width: 30px;
+  text-align: center;
+}
+.maker-card-heading > div {
+  flex: 1;
+  min-width: 0;
+}
+.maker-card-heading strong {
+  font-size: 11px;
+  display: block;
+  overflow-wrap: anywhere;
+}
+.maker-card-heading div > span {
+  display: block;
+  margin-top: 3px;
+  font-size: 9px;
+  color: var(--muted);
+}
+.maker-warning-dot {
+  width: 8px;
+  height: 8px;
+  display: inline-block;
+  flex-shrink: 0;
+  background: #d7a72d;
+  border-radius: 50%;
+}
+.maker-card-text {
+  margin: 13px 17px 10px;
+  font-size: 12px;
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.maker-card-caption {
+  padding: 0 17px 12px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 9px;
+  color: var(--muted);
+}
+.maker-card-caption b {
+  border-radius: 4px;
+  color: var(--green);
+  background: var(--sage);
+  padding: 2px 5px;
+}
+.maker-card-reactions {
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 14px 14px;
+}
+.maker-card-reaction {
+  position: relative;
+  border-top: 1px solid #eef1eb;
+}
+.maker-card-reaction:first-child {
+  border-top: 0;
+}
+.maker-card-reaction.is-selected {
+  background: #edf3e9;
+}
+.maker-card-reaction button {
+  width: 100%;
+  height: 42px;
+  background: none;
+  text-align: left;
+  border: 0;
+  padding: 10px 32px 10px 17px;
+  font-size: 11px;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+.maker-card .react-flow__handle {
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border: 2px solid #769681;
+}
+.maker-card .react-flow__handle::after {
+  content: '';
+  position: absolute;
+  inset: -7px;
+}
+.maker-card-reaction .react-flow__handle {
+  right: 15px;
+  transform: translateY(-50%);
+}
+.maker-card .react-flow__handle.is-unlinked {
+  border-color: var(--orange);
+}
+.maker-card-empty {
+  color: var(--muted);
+  margin: 12px 17px;
+  font-size: 11px;
+}
+.maker-ending {
+  padding: 18px;
+}
+.maker-ending-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.maker-ending p {
+  font-size: 11px;
+  line-height: 1.6;
+  margin: 11px 0;
+  overflow-wrap: anywhere;
+}
+.maker-ending small {
+  font-size: 9px;
+  font-weight: 800;
+}
+.maker-ending--success {
+  background: #f2f8ef;
+  border-color: #7d9f82;
+  color: #2d5939;
+}
+.maker-ending--neutral {
+  background: #f9f7ee;
+  border-color: #cfc8ae;
+  color: #776938;
+}
+.maker-ending--failure {
+  background: #fff5ee;
+  border-color: #dbac95;
+  color: #a54423;
+}
+.maker-canvas-tools {
+  display: flex;
+  gap: 7px;
+}
+.maker-canvas-tools button,
+.maker-open-inspector {
+  padding: 9px 11px;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  background: #fffffff2;
+  color: var(--green);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 10px !important;
+  font-weight: 800;
+  box-shadow: 0 3px 10px #00000005;
+}
+.maker-canvas-count {
+  font-size: 10px;
+  color: var(--muted);
+  background: #f7f8f3dd;
+  padding: 8px;
+  border-radius: 7px;
+}
+.maker-canvas .react-flow__controls {
+  box-shadow: none;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  overflow: hidden;
+}
+.maker-canvas .react-flow__controls-button {
+  color: var(--green);
+  fill: var(--green);
+  background: white;
+  padding: 9px;
+  height: 36px;
+  width: 36px;
+}
+.maker-canvas .react-flow__minimap {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  width: 145px;
+  height: 90px;
+}
+.maker-canvas .react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--orange);
+  stroke-width: 3;
+}
+.maker-canvas .react-flow__attribution {
+  font-size: 8px;
+  opacity: 0.65;
+}
+.maker-inspector {
+  background: white;
+  border-left: 1px solid var(--line);
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  z-index: 5;
+}
+.maker-inspector-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 24px 20px 20px;
+  gap: 10px;
+  border-bottom: 1px solid var(--line);
+}
+.maker-inspector-heading > div {
+  min-width: 0;
+}
+.maker-inspector-heading .eyebrow {
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  margin: 0 0 9px;
+}
+.maker-inspector-heading h2 {
+  font-size: 16px;
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
+}
+.maker-inspector-heading code {
+  font-size: 9px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.maker-inspector-fields {
+  border: 0;
+  padding: 20px;
+  margin: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.maker-inspector .field {
+  gap: 8px;
+  font-size: 11px;
+}
+.maker-inspector input,
+.maker-inspector select,
+.maker-inspector textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #cdd8cb;
+  background: white;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 11px;
+  color: var(--ink);
+  font-family: inherit;
+}
+.maker-inspector textarea {
+  resize: vertical;
+  min-height: 85px;
+  line-height: 1.7;
+}
+.maker-inspector .field small,
+.maker-hint,
+.maker-entity-fields > small {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.7;
+  font-weight: 400;
+}
+.maker-inspector .checkbox-field {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.maker-inspector input[type='checkbox'] {
+  width: 16px;
+  flex-shrink: 0;
+  accent-color: var(--green);
+  margin-top: 2px;
+}
+.maker-inspector .maker-section-heading {
+  margin: 4px 0 -10px;
+}
+.maker-reaction-list {
+  display: grid;
+  gap: 6px;
+}
+.maker-reaction-list > button {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fafbf8;
+  text-align: left;
+  color: var(--ink);
+}
+.maker-reaction-list > button > span {
+  font-size: 10px;
+  color: var(--muted);
+}
+.maker-reaction-list > button > div {
+  flex: 1;
+  min-width: 0;
+}
+.maker-reaction-list strong {
+  font-size: 11px;
+  display: block;
+  overflow-wrap: anywhere;
+}
+.maker-reaction-list small {
+  font-size: 9px;
+  color: var(--muted);
+  display: block;
+  margin-top: 5px;
+}
+.maker-example {
+  display: flex;
+  gap: 7px;
+}
+.maker-legacy {
+  background: #f7f6ef;
+  padding: 14px;
+  border-radius: 10px;
+  font-size: 10px;
+  line-height: 1.7;
+}
+.maker-legacy .field {
+  margin: 12px 0;
+}
+.maker-block-actions {
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 10px;
+}
+.maker-block-actions > button,
+.maker-danger-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  padding: 11px;
+  border: 1px solid var(--line);
+  background: white;
+  color: var(--green);
+  border-radius: 9px;
+  font-size: 11px !important;
+}
+.maker-danger-button {
+  color: #b54228 !important;
+  border-color: #eac0ae !important;
+}
+.maker-text-button {
+  font-size: 11px !important;
+  line-height: 1.6;
+}
+.maker-entity-fields {
+  display: grid;
+  gap: 13px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 18px;
+}
+.maker-open-inspector {
+  position: absolute;
+  right: 18px;
+  top: 58px;
+  z-index: 4;
+}
+.maker-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 22px;
+  font-size: 12px;
+  background: #edf4e8;
+  color: var(--green);
+  border-bottom: 1px solid var(--line);
+}
+.maker-notice.is-error {
+  background: #fff0e9;
+  color: #aa4026;
+}
+.maker-notice > button {
+  background: none;
+  border: 0;
+  color: inherit;
+  padding: 5px;
+}
+.maker-mobile-tools {
+  display: none;
+}
+.maker-validation {
+  position: absolute;
+  bottom: 16px;
+  left: 242px;
+  right: 342px;
+  z-index: 6;
+  background: white;
+  border: 1px solid var(--line);
+  box-shadow: 0 12px 50px #26352f29;
+  border-radius: 14px;
+  max-height: 45%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.is-inspector-closed .maker-validation {
+  right: 16px;
+}
+.maker-validation > header {
+  padding: 15px 17px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.maker-validation h2 {
+  font-size: 14px;
+  margin: 0 0 4px;
+}
+.maker-validation header p {
+  color: var(--muted);
+  font-size: 10px;
+  margin: 0;
+}
+.maker-validation > div {
+  overflow-y: auto;
+  min-height: 0;
+}
+.maker-issue {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: 0;
+  background: white;
+  padding: 12px 17px;
+  text-align: left;
+  border-bottom: 1px solid #edf0e9;
+  font-size: 11px !important;
+  color: #ae452f;
+}
+.maker-issue:hover {
+  background: #f9f9f5;
+}
+.maker-issue > span {
+  flex: 1;
+}
+.maker-issue small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 9px;
+}
+.maker-issue--warning {
+  color: #957224;
+}
+.maker-validation-success {
+  display: flex;
+  gap: 9px;
+  padding: 14px 18px;
+  color: var(--green);
+  font-size: 12px;
+}
+.maker-menu-overlay {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+  border: 0;
+  z-index: 19;
+}
+.maker-branch-menu {
+  position: fixed;
+  width: 230px;
+  border: 1px solid var(--line);
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 12px 40px #26352f25;
+  padding: 10px;
+  z-index: 20;
+}
+.maker-branch-menu p {
+  margin: 5px 8px 9px;
+  font-size: 11px;
+  font-weight: 800;
+}
+.maker-branch-menu button {
+  width: 100%;
+  padding: 10px;
+  display: flex;
+  gap: 8px;
+  background: none;
+  border: 0;
+  color: var(--green);
+  font-size: 12px;
+  border-radius: 8px;
+  text-align: left;
+}
+.maker-branch-menu button:hover {
+  background: var(--sage);
+}
+.maker-test-drawer {
+  inset: 0 0 0 auto;
+  width: min(540px, 100vw);
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0 0 0 auto;
+  border: 0;
+  border-left: 1px solid var(--line);
+  padding: 0;
+  color: var(--ink);
+  background: #fafbf7;
+}
+.maker-test-drawer[open] {
+  display: flex;
+  flex-direction: column;
+}
+.maker-test-drawer::backdrop {
+  background: #16291f75;
+}
+.maker-test-drawer > header {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  padding: 24px;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+}
+.maker-test-drawer h2 {
+  font-size: 18px;
+  margin: 6px 0 0;
+}
+.maker-test-drawer .eyebrow {
+  font-size: 10px;
+  margin: 0;
+}
+.maker-test-note {
+  background: var(--sage);
+  padding: 12px 24px;
+  margin: 0;
+  color: var(--green);
+  font-size: 11px;
+}
+.maker-test-conversation {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 24px;
+}
+.maker-test-speech {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 14px 14px 14px 3px;
+  padding: 16px;
+  margin: 0 28px 18px 0;
+}
+.maker-test-speech small {
+  font-size: 10px;
+  color: var(--green);
+  font-weight: 800;
+}
+.maker-test-speech p {
+  font-size: 13px;
+  line-height: 1.75;
+  margin: 10px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.maker-test-answer {
+  border-radius: 14px 14px 3px 14px;
+  background: #e7efdf;
+  padding: 14px 16px;
+  margin: 0 0 22px 34px;
+  font-size: 12px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.maker-test-drawer > footer {
+  padding: 20px 24px;
+  border-top: 1px solid var(--line);
+  background: white;
+  max-height: 45dvh;
+  overflow-y: auto;
+}
+.maker-test-choices {
+  display: grid;
+  gap: 9px;
+  margin-bottom: 18px;
+}
+.maker-test-choices > button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid #a9bda8;
+  padding: 14px;
+  background: white;
+  color: var(--green);
+  font-size: 12px;
+  text-align: left;
+  border-radius: 9px;
+}
+.maker-test-choices > button:hover {
+  background: var(--sage);
+}
+.maker-test-choices svg {
+  flex-shrink: 0;
+}
+.maker-test-ending {
+  border-radius: 14px;
+  border: 1px solid;
+  padding: 24px;
+  line-height: 1.8;
+}
+.maker-test-ending h3 {
+  font-size: 20px;
+  margin: 8px 0;
+}
+.maker-test-ending p {
+  font-size: 13px;
+}
+.maker-test-ending small {
+  font-size: 10px;
+}
+@media (max-width: 1250px) {
+  .maker-header {
+    gap: 12px;
+    padding: 12px 16px;
+  }
+  .maker-workspace {
+    grid-template-columns: 194px minmax(0, 1fr) 300px;
+  }
+  .is-inspector-closed .maker-workspace {
+    grid-template-columns: 194px minmax(0, 1fr);
+  }
+  .maker-sidebar {
+    padding: 20px 12px;
+  }
+  .maker-heading h1 {
+    font-size: 15px;
+  }
+  .maker-history-buttons {
+    display: none;
+  }
+  .maker-canvas-count {
+    display: none;
+  }
+  .maker-validation {
+    left: 208px;
+    right: 314px;
+  }
+}
+@media (max-width: 1000px) {
+  .maker-header {
+    flex-wrap: wrap;
+  }
+  .maker-heading {
+    min-width: 180px;
+  }
+  .maker-header-actions {
+    flex: 0 0 100%;
+    justify-content: flex-end;
+  }
+  .maker-workspace,
+  .is-inspector-closed .maker-workspace {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+  .is-inspector-closed .maker-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .maker-sidebar {
+    display: none;
+  }
+  .maker-mobile-tools {
+    display: flex;
+    border-bottom: 1px solid var(--line);
+    gap: 10px;
+    padding: 8px 14px;
+  }
+  .maker-mobile-tools button {
+    border: 0;
+    background: none;
+    color: var(--green);
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px;
+  }
+  .is-sidebar-open .maker-sidebar {
+    display: block;
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 240px;
+    z-index: 9;
+    box-shadow: 8px 0 24px #26352f22;
+  }
+  .maker-validation {
+    left: 14px;
+    right: 314px;
+  }
+}
+@media (max-width: 640px) {
+  .maker-workspace,
+  .is-inspector-closed .maker-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .maker-header {
+    padding: 12px;
+    gap: 10px;
+  }
+  .maker-heading h1 {
+    max-width: calc(100vw - 100px);
+    font-size: 13px;
+  }
+  .maker-back span {
+    display: none;
+  }
+  .maker-header-actions {
+    justify-content: flex-start;
+    gap: 5px;
+  }
+  .maker-primary,
+  .maker-secondary {
+    padding: 8px 9px;
+    font-size: 10px !important;
+    min-height: 35px;
+  }
+  .maker-header-actions svg {
+    display: none;
+  }
+  .maker-inspector {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: min(320px, calc(100vw - 38px));
+    box-shadow: -8px 0 24px #26352f20;
+    z-index: 8;
+  }
+  .maker-validation,
+  .is-inspector-closed .maker-validation {
+    left: 10px;
+    right: 10px;
+    z-index: 10;
+  }
+  .maker-canvas .react-flow__minimap {
+    display: none;
+  }
+  .maker-canvas-tools {
+    gap: 4px;
+  }
+  .maker-canvas-tools button {
+    padding: 8px;
+    font-size: 9px !important;
+  }
+  .maker-canvas-tools svg {
+    display: none;
+  }
+}

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { findScenario } from '../../../data/scenarios.ts';
+import { useCatalog } from '../../../app/DataProvider.tsx';
 import type { ScenarioPreview } from '../../../types/scenario.ts';
 import { ButtonLink } from '../../../components/ui/Button.tsx';
 import { DemoNotice } from '../../../components/ui/DemoNotice.tsx';
@@ -9,6 +9,7 @@ import { PlayView } from './PlayView.tsx';
 import { ErrorPage } from '../../../pages/ErrorPage.tsx';
 
 export function DemoPlayPage() {
+  const { findScenario } = useCatalog();
   const { scenarioId } = useParams();
   const scenario = findScenario(scenarioId);
   return scenario ? <PlayScreen scenario={scenario} key={scenario.id} /> : <ErrorPage />;

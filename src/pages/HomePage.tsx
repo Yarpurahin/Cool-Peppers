@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import conversationImage from '../assets/images/conversation.png';
-import { scenarios } from '../data/scenarios.ts';
+import { useCatalog } from '../app/DataProvider.tsx';
 import { ButtonLink } from '../components/ui/Button.tsx';
 import { Icon } from '../components/ui/Icon.tsx';
 import type { IconName } from '../components/ui/Icon.tsx';
@@ -13,6 +13,7 @@ const benefits: { icon: IconName; title: string; text: string }[] = [
 ];
 
 export function HomePage() {
+  const { scenarios } = useCatalog();
   return (
     <div className="container home-page">
       <section className="hero">

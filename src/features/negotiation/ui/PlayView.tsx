@@ -6,6 +6,7 @@ import { Icon } from '../../../components/ui/Icon.tsx';
 import type { PlayViewModel } from './types.ts';
 
 interface Props {
+  busy?: boolean;
   model: PlayViewModel;
   selectedId: string | null;
   onSelect: (id: string) => void;
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export function PlayView({
+  busy = false,
   model,
   selectedId,
   onSelect,
@@ -45,7 +47,7 @@ export function PlayView({
           <h1>{model.title}</h1>
           <p>{model.question.title}</p>
         </div>
-        <Button variant="outline" onClick={onSaveExit}>
+        <Button variant="outline" onClick={onSaveExit} disabled={busy}>
           <Icon name="save" size={17} />
           Сохранить и выйти
         </Button>
@@ -98,7 +100,7 @@ export function PlayView({
               if (selectedId !== null) onAnswer();
             }}
           >
-            <fieldset className="answer-list">
+            <fieldset className="answer-list" disabled={busy}>
               <legend>Как вы ответите?</legend>
               <p className="muted answer-help">Выберите одну реплику</p>
               {model.answers.map((answer, index) => (
@@ -125,7 +127,7 @@ export function PlayView({
             </fieldset>
             <div className="dialogue-submit">
               <p>Реплика станет частью диалога после подтверждения.</p>
-              <Button type="submit" disabled={selectedId === null}>
+              <Button type="submit" disabled={selectedId === null || busy}>
                 Ответить <Icon name="arrow" size={18} />
               </Button>
             </div>

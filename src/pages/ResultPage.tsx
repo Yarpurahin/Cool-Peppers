@@ -1,10 +1,10 @@
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { findScenario } from '../data/scenarios.ts';
-import { ButtonLink } from '../components/ui/Button.tsx';
-import { findNegotiation } from '../features/negotiation/data/registry.ts';
+import { RequireAuth, useCatalog } from '../app/DataProvider.tsx';
+import { errorMessage } from '../api/client.ts';
+import { Button, ButtonLink } from '../components/ui/Button.tsx';
 import { useNegotiation } from '../features/negotiation/NegotiationProvider.tsx';
 import { toResultView } from '../features/negotiation/presentation.ts';
-import type { CompiledScenario } from '../features/negotiation/model/engine.ts';
 import { ResultView } from '../features/negotiation/ui/ResultView.tsx';
 import { FeedbackForm } from '../features/negotiation/ui/FeedbackForm.tsx';
 import { DemoResultPage } from '../features/negotiation/ui/DemoResultPage.tsx';
@@ -12,62 +12,64 @@ import { ErrorPage } from './ErrorPage.tsx';
 
 export function ResultPage() {
   const { scenarioId } = useParams();
-  const scenario = findNegotiation(scenarioId);
-  if (scenario) return <ActiveResult scenario={scenario} key={scenarioId} />;
+  const { findNegotiation, findScenario } = useCatalog();
+  if (findNegotiation(scenarioId))
+    return (
+      <RequireAuth>
+        <ActiveResult id={scenarioId!} key={scenarioId} />
+      </RequireAuth>
+    );
   return findScenario(scenarioId) ? <DemoResultPage /> : <ErrorPage />;
 }
-
-function ActiveResult({ scenario }: { scenario: CompiledScenario }) {
-  const { entries, restart, saveFeedback, loadFeedback } = useNegotiation();
-  const scenarioId = scenario.definition.metadata.id;
-  const { attempt, message } = entries.get(scenarioId)!;
+function ActiveResult({ id }: { id: string }) {
+  const { entries, restart, saveFeedback, loading, error: loadError, reload } = useNegotiation();
+  const value = entries.get(id);
   const navigate = useNavigate();
-  if (attempt.status !== 'completed')
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  if (loading || loadError)
+    return (
+      <div className="container page">
+        <p role="status">{loadError || 'Загружаем результат…'}</p>
+        {loadError && <Button onClick={() => void reload()}>Повторить</Button>}
+      </div>
+    );
+  if (!value || value.attempt.status !== 'completed')
     return (
       <div className="container page negotiation-empty">
         <h1>Результата пока нет</h1>
-        <p>
-          {attempt.history.length
-            ? 'Продолжите сохранённый разговор, чтобы получить разбор.'
-            : 'Пройдите тренировку, чтобы увидеть разбор своих решений.'}
-        </p>
-        {message && (
-          <p className="negotiation-notice" role="status">
-            {message}
-          </p>
-        )}
-        <ButtonLink to={`/scenarios/${scenarioId}/play`}>
-          {attempt.history.length ? 'Продолжить переговоры' : 'Начать переговоры'}
+        <p>Пройдите тренировку, чтобы увидеть разбор своих решений.</p>
+        <ButtonLink to={`/scenarios/${id}/play`}>
+          {value?.attempt.history.length ? 'Продолжить переговоры' : 'Начать переговоры'}
         </ButtonLink>
       </div>
     );
+  const { scenario, attempt, feedback } = value;
   return (
     <ResultView
       model={toResultView(scenario, attempt)}
       onRestart={
-        scenario.definition.settings.allowRestart
+        scenario.definition.settings.allowRestart && !busy
           ? () => {
-              restart(scenario);
-              navigate(`/scenarios/${scenarioId}/play`);
+              setBusy(true);
+              setError('');
+              void restart(id)
+                .then(() => navigate(`/scenarios/${id}/play`))
+                .catch((cause) => setError(errorMessage(cause)))
+                .finally(() => setBusy(false));
             }
           : undefined
       }
-      notice={
-        message ? (
-          <p className="negotiation-notice" role="status">
-            {message}
-          </p>
-        ) : undefined
-      }
+      notice={error ? <p role="alert">{error}</p> : undefined}
       feedback={
         scenario.definition.settings.collectFeedback ? (
           <FeedbackForm
             key={attempt.id}
-            initial={loadFeedback(scenarioId, attempt.id)}
-            caption="Отзыв сохранится в этом браузере"
-            onSubmit={(input) => {
-              saveFeedback(scenarioId, input);
-              return 'Спасибо! Отзыв сохранён в этом браузере.';
+            initial={feedback}
+            caption="Отзыв сохранится в вашем аккаунте"
+            onSubmit={async (input) => {
+              await saveFeedback(attempt.id, input);
+              return 'Спасибо! Отзыв сохранён.';
             }}
           />
         ) : undefined
