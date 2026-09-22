@@ -22,7 +22,9 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: 'npm start',
+      command: process.env.PGLITE_UI
+        ? 'node --experimental-strip-types tests/support/ui-server.ts'
+        : 'npm start',
       url: 'http://127.0.0.1:3001/api/health',
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,

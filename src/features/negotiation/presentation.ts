@@ -41,22 +41,27 @@ export function toResultView(
   if (attempt.status !== 'completed') throw new Error('Попытка ещё не завершена');
   const ending = scenario.endings.get(attempt.endingId)!;
   const definition = scenario.definition;
+  const assessed = definition.settings.failure.rule !== 'none';
   return {
     scenarioId: definition.metadata.id,
     title: definition.metadata.title,
     outcome: ending.title,
     outcomeType: ending.type,
-    subtitle: `Ответов: ${attempt.history.length} · Штрафных баллов: ${attempt.penalties}`,
+    subtitle: assessed
+      ? `Ответов: ${attempt.history.length} · Штрафных баллов: ${attempt.penalties}`
+      : `Выбрано реакций: ${attempt.history.length}`,
     nextStep: `${ending.description} ${ending.nextStep}`,
-    metric: {
-      value: attempt.penalties,
-      label: `штрафы · порог ${scenario.failureThreshold}`,
-      percent: (attempt.penalties / scenario.failureThreshold) * 100,
-    },
+    metric: assessed
+      ? {
+          value: attempt.penalties,
+          label: `штрафы · порог ${scenario.failureThreshold}`,
+          percent: (attempt.penalties / scenario.failureThreshold) * 100,
+        }
+      : { value: attempt.history.length, label: 'шагов диалога', percent: 100 },
     note: definition.settings.assessmentNote,
     reviews: getReview(scenario, attempt).map(({ node, answer, question }, index) => ({
       id: `${node.id}-${index}`,
-      title: answer.penalty > 0 ? 'Обратите внимание' : 'Удачный шаг',
+      title: assessed ? (answer.penalty > 0 ? 'Обратите внимание' : 'Удачный шаг') : 'Ваш выбор',
       text: answer.feedback,
       quote: answer.text,
       question,

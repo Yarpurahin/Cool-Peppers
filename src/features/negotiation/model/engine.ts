@@ -7,6 +7,9 @@ import type {
   ScenarioAttempt,
   ScenarioDefinition,
 } from './types.ts';
+import type { MakerDefinition } from '../../maker/model/types.ts';
+import { isMakerDefinition, toRuntimeDefinition } from '../../maker/model/adapter.ts';
+import { validateMaker } from '../../maker/model/validation.ts';
 
 export interface CompiledScenario {
   definition: ScenarioDefinition;
@@ -21,7 +24,15 @@ function requireValid(condition: unknown, message: string): asserts condition {
 }
 
 /** Validate authored data once, before offering the scenario to a player. */
-export function compileScenario(definition: ScenarioDefinition): CompiledScenario {
+export function compileScenario(input: ScenarioDefinition): CompiledScenario;
+export function compileScenario(input: MakerDefinition): CompiledScenario;
+export function compileScenario(input: ScenarioDefinition | MakerDefinition): CompiledScenario;
+export function compileScenario(input: ScenarioDefinition | MakerDefinition): CompiledScenario {
+  if (isMakerDefinition(input)) {
+    const errors = validateMaker(input).filter((issue) => issue.severity === 'error');
+    requireValid(!errors.length, errors.map((issue) => issue.message).join('\n'));
+  }
+  const definition = isMakerDefinition(input) ? toRuntimeDefinition(input) : input;
   const unique = <T extends { id: string }>(items: readonly T[], label: string) => {
     const map = new Map(items.map((item) => [item.id, item]));
     requireValid(
@@ -42,13 +53,15 @@ export function compileScenario(definition: ScenarioDefinition): CompiledScenari
   const stages = unique(definition.stages, 'этапы');
   requireValid(nodes.has(definition.startNodeId), 'Нет начального вопроса');
   requireValid(
-    definition.settings.failure.rule === 'half-all-questions',
+    ['half-all-questions', 'none'].includes(definition.settings.failure.rule),
     'Неизвестное правило оценки',
   );
-  requireValid(
-    endings.get(definition.settings.failure.endingId)?.type === 'failure',
-    'Нет концовки провала',
-  );
+  if (definition.settings.failure.rule === 'half-all-questions') {
+    requireValid(
+      endings.get(definition.settings.failure.endingId)?.type === 'failure',
+      'Нет концовки провала',
+    );
+  }
   const answers = new Map<string, AnswerOption>();
   for (const node of nodes.values()) {
     requireValid(
@@ -96,10 +109,11 @@ export function compileScenario(definition: ScenarioDefinition): CompiledScenari
       variants.add(variant.afterAnswerId);
     }
   }
-  // A finite, acyclic graph keeps attempts bounded and makes the total unambiguous.
+  // Legacy graphs remain acyclic. Maker graphs may revisit a node and are bounded by the attempt step limit.
   const visited = new Set<string>();
   const active = new Set<string>();
   function visit(id: string) {
+    if (active.has(id) && definition.settings.navigation === 'graph') return;
     requireValid(!active.has(id), `Цикл в сценарии: ${id}`);
     if (visited.has(id)) return;
     active.add(id);
@@ -109,13 +123,15 @@ export function compileScenario(definition: ScenarioDefinition): CompiledScenari
     visited.add(id);
   }
   visit(definition.startNodeId);
-  requireValid(visited.size === nodes.size, 'В сценарии есть недостижимые вопросы');
+  if (definition.settings.navigation !== 'graph')
+    requireValid(visited.size === nodes.size, 'В сценарии есть недостижимые вопросы');
   return {
     definition,
     nodes,
     endings,
     totalQuestions: visited.size,
-    failureThreshold: Math.ceil(visited.size / 2),
+    failureThreshold:
+      definition.settings.failure.rule === 'none' ? Infinity : Math.ceil(nodes.size / 2),
   };
 }
 
@@ -156,6 +172,10 @@ export function answerQuestion(
     'Версия сценария изменилась',
   );
   requireValid(attempt.status === 'in-progress', 'Попытка уже завершена');
+  requireValid(
+    attempt.history.length < 500,
+    'Достигнут лимит 500 шагов. Перезапустите прохождение.',
+  );
   requireValid(attempt.currentNodeId === nodeId, 'Этот вопрос уже обработан');
   requireValid(
     Number.isFinite(Date.parse(now)) && Date.parse(now) >= Date.parse(attempt.updatedAt),
@@ -175,7 +195,10 @@ export function answerQuestion(
     history: [...attempt.history, { nodeId, answerId, answeredAt: now }],
   };
   // Failure overrides a normal ending on the same answer.
-  if (penalties >= scenario.failureThreshold)
+  if (
+    scenario.definition.settings.failure.rule === 'half-all-questions' &&
+    penalties >= scenario.failureThreshold
+  )
     return {
       ...base,
       status: 'completed',

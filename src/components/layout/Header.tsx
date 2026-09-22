@@ -43,7 +43,7 @@ export function Header() {
         >
           <div className="nav-pages">
             <NavLink to="/scenarios">Сценарии</NavLink>
-            <NavLink to="/editor">Редактор</NavLink>
+            {user?.role === 'admin' && <NavLink to="/admin">Админ-панель</NavLink>}
           </div>
           <div className="nav-account">
             <NavLink to="/profile" className="profile-link">

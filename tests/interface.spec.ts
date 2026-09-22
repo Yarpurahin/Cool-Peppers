@@ -1,11 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { register } from './helpers.ts';
+import { loginAdmin, register } from './helpers.ts';
 
 for (const width of [390, 1440])
   test(`pages fit at ${width}px and use database-backed content`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await register(page);
-    for (const path of ['/', '/scenarios', '/scenarios/terms', '/profile', '/editor', '/404']) {
+    for (const path of ['/', '/scenarios', '/scenarios/terms', '/profile', '/404']) {
       await page.goto(path);
       await expect(page.locator('h1')).toBeVisible();
       await expect(page.locator('body')).not.toContainText('Загружаем сценарии…');
@@ -61,26 +61,33 @@ test('registration form, profile editing, logout and login work', async ({ page 
   await expect(page.getByLabel('Имя', { exact: true })).toHaveValue('Андрей Тест');
 });
 
-test('editor saves drafts, publishes and shows a persisted new scenario', async ({ page }) => {
+test('editor is admin-only and an admin can publish a persisted scenario', async ({ page }) => {
   await register(page);
+  await page.goto('/editor');
+  await expect(page).toHaveURL('/profile');
+  await loginAdmin(page);
+  await page.reload();
   await page.goto('/editor');
   await page.getByRole('button', { name: 'Создать копию' }).click();
   await expect(page).toHaveURL(/\/editor\/custom-/);
+  await page.getByRole('button', { name: 'Основное', exact: true }).click();
   const title = `Сценарий ${crypto.randomUUID().slice(0, 8)}`;
   await page.getByRole('textbox', { name: 'Название сценария', exact: true }).fill(title);
   await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
-  await expect(page.getByRole('status')).toHaveText('Черновик сохранён.');
+  await expect(page.locator('.maker-notice')).toHaveText('Черновик сохранён.');
   await page.reload();
+  await page.getByRole('button', { name: 'Основное', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Название сценария', exact: true })).toHaveValue(
     title,
   );
-  await page.getByRole('tab', { name: 'Диалог', exact: true }).click();
+  await page.locator('.maker-node-list').first().getByRole('button').first().click();
   await page
     .getByRole('textbox', { name: 'Реплика персонажа', exact: true })
     .fill('Что для вас важно в новом предложении?');
   await page.getByRole('button', { name: 'Опубликовать', exact: true }).click();
-  await expect(page.getByRole('status')).toHaveText('Опубликована версия 1.');
-  await page.getByRole('link', { name: 'Опубликованная версия' }).click();
+  await expect(page.locator('.maker-notice')).toHaveText('Опубликована версия 1.');
+  const id = page.url().split('/').at(-1);
+  await page.goto(`/scenarios/${id}`);
   await expect(page.locator('h1')).toHaveText(title);
   await page.getByRole('link', { name: 'Начать переговоры', exact: true }).click();
   await expect(page.locator('.dialogue-message')).toContainText(

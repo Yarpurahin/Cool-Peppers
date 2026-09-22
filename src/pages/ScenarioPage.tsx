@@ -55,7 +55,7 @@ export function ScenarioPage() {
                 ? 'Выбирайте реплики и подтверждайте ответ. Ваш выбор меняет ход разговора. После завершения вы получите разбор своих решений. Прогресс сохраняется в вашем аккаунте.'
                 : 'В готовом тренажёре вы сможете выбирать реплики и пробовать разные подходы, а затем разобрать свои решения. Сейчас можно посмотреть демонстрационный экран диалога.'}
             </p>
-            {negotiation && (
+            {negotiation && negotiation.definition.settings.failure.rule !== 'none' && (
               <p className="negotiation-rules">
                 {negotiation.definition.settings.assessmentNote} Порог провала —{' '}
                 {negotiation.failureThreshold} штрафных баллов: половина всех{' '}

@@ -63,7 +63,8 @@ export interface ScenarioDefinition {
   settings: {
     allowRestart: boolean;
     collectFeedback: boolean;
-    failure: { rule: 'half-all-questions'; endingId: EndingId };
+    failure: { rule: 'half-all-questions'; endingId: EndingId } | { rule: 'none' };
+    navigation?: 'graph';
     assessmentNote?: string;
   };
   startNodeId: NodeId;
