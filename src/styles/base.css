@@ -88,6 +88,14 @@ button {
   background: none;
   color: inherit;
 }
+/* Low specificity gives unstyled controls an interaction state without overriding variants. */
+:where(button:not(:disabled):not(.maker-menu-overlay)):hover {
+  background-color: var(--sage);
+}
+:where(button, a, summary, [role='separator']):focus-visible {
+  outline: 3px solid #b14a26;
+  outline-offset: 3px;
+}
 button:disabled {
   cursor: not-allowed;
 }
@@ -311,5 +319,23 @@ main:focus {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+@media (forced-colors: active) {
+  button,
+  input,
+  select,
+  textarea,
+  .button,
+  .maker-card {
+    border: 1px solid ButtonText;
+  }
+  :focus-visible {
+    outline: 3px solid Highlight;
+  }
+  [aria-pressed='true'],
+  [aria-selected='true'] {
+    outline: 2px solid Highlight;
   }
 }

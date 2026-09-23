@@ -18,8 +18,8 @@ export function App() {
   return (
     <BrowserRouter>
       <DemoProvider>
-        <RouteEffects />
         <DataProvider>
+          <RouteEffects />
           <SessionApp />
         </DataProvider>
       </DemoProvider>

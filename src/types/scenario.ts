@@ -20,6 +20,7 @@ export interface ScenarioPreview {
   tip: string;
   role: string;
   art: ScenarioArt;
+  coverImage?: { src: string; alt: string };
   person: { name: string; initials: string; role: string; character: string; quote: string };
   dialogue: DemoDialogueNode[];
   example: {

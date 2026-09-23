@@ -66,7 +66,7 @@ function validateGraph(document: AuthoringDocument) {
 }
 async function ownedScenario(db: Database, id: string, ownerId: string, lock = false) {
   const row = await db.query(
-    `SELECT * FROM scenarios WHERE id = $1 AND owner_id = $2${lock ? ' FOR UPDATE' : ''}`,
+    `SELECT * FROM scenarios WHERE id = $1 AND owner_id = $2 AND deleted_at IS NULL${lock ? ' FOR UPDATE' : ''}`,
     [id, ownerId],
   );
   if (!row.rowCount)
@@ -202,7 +202,7 @@ export function createApp(pool: Pool) {
   app.get('/api/scenarios', async (_req, res) => {
     const rows =
       await pool.query(`SELECT v.preview, v.definition FROM scenarios s JOIN scenario_versions v
-      ON (v.scenario_id,v.version) = (s.id,s.published_version) WHERE s.archived_at IS NULL ORDER BY s.created_at, s.id`);
+      ON (v.scenario_id,v.version) = (s.id,s.published_version) WHERE s.archived_at IS NULL AND s.deleted_at IS NULL ORDER BY s.created_at, s.id`);
     res.json(
       rows.rows.map((doc: AuthoringDocument) => ({
         preview: doc.preview,
@@ -257,7 +257,7 @@ export function createApp(pool: Pool) {
       }
       const source = await client.query(
         `SELECT v.definition FROM scenarios s JOIN scenario_versions v
-        ON (v.scenario_id,v.version) = (s.id,s.published_version) WHERE s.id = $1 AND s.archived_at IS NULL`,
+        ON (v.scenario_id,v.version) = (s.id,s.published_version) WHERE s.id = $1 AND s.archived_at IS NULL AND s.deleted_at IS NULL`,
         [id],
       );
       if (!source.rowCount) throw new ApiError(404, 'Сценарий не найден');
@@ -367,8 +367,11 @@ export function createApp(pool: Pool) {
       `SELECT s.id, s.published_version AS "publishedVersion", s.archived_at AS "archivedAt",
       s.created_at AS "createdAt", s.updated_at AS "updatedAt", d.revision,
       coalesce(d.definition #>> '{metadata,title}', d.preview->>'title') AS title,
-      coalesce(jsonb_array_length(d.definition->'nodes'), 0)::int AS "questionCount"
-      FROM scenarios s JOIN scenario_drafts d ON d.scenario_id = s.id WHERE s.owner_id = $1 ORDER BY s.updated_at DESC`,
+      coalesce(jsonb_array_length(d.definition->'nodes'), 0)::int AS "questionCount",
+      (v.version IS NULL OR d.preview IS DISTINCT FROM v.preview OR d.definition IS DISTINCT FROM v.definition) AS "hasUnpublishedChanges"
+      FROM scenarios s JOIN scenario_drafts d ON d.scenario_id = s.id
+      LEFT JOIN scenario_versions v ON v.scenario_id = s.id AND v.version = s.published_version
+      WHERE s.owner_id = $1 AND s.deleted_at IS NULL ORDER BY s.updated_at DESC`,
       [admin(res).id],
     );
     res.json(result.rows);
@@ -387,7 +390,7 @@ export function createApp(pool: Pool) {
       if ('sourceId' in input) {
         const source = await client.query(
           `SELECT v.preview, v.definition FROM scenarios s JOIN scenario_versions v
-        ON (v.scenario_id,v.version) = (s.id,s.published_version) WHERE s.id = $1 AND s.archived_at IS NULL`,
+        ON (v.scenario_id,v.version) = (s.id,s.published_version) WHERE s.id = $1 AND s.archived_at IS NULL AND s.deleted_at IS NULL`,
           [input.sourceId],
         );
         if (!source.rowCount) throw new ApiError(404, 'Шаблон не найден');
@@ -418,10 +421,18 @@ export function createApp(pool: Pool) {
     const id = idSchema.parse(req.params.id);
     const scenario = await ownedScenario(pool, id, admin(res).id);
     const draft = await pool.query(
-      'SELECT preview, definition, editor, revision FROM scenario_drafts WHERE scenario_id = $1',
+      `SELECT d.preview, d.definition, d.editor, d.revision,
+       (v.version IS NULL OR d.preview IS DISTINCT FROM v.preview OR d.definition IS DISTINCT FROM v.definition) AS "hasUnpublishedChanges"
+       FROM scenario_drafts d JOIN scenarios s ON s.id = d.scenario_id
+       LEFT JOIN scenario_versions v ON v.scenario_id = s.id AND v.version = s.published_version
+       WHERE d.scenario_id = $1`,
       [id],
     );
-    res.json({ ...draft.rows[0], publishedVersion: scenario.published_version });
+    res.json({
+      ...draft.rows[0],
+      publishedVersion: scenario.published_version,
+      archivedAt: scenario.archived_at,
+    });
   });
   app.put('/api/editor/:id', async (req, res) => {
     const id = idSchema.parse(req.params.id);
@@ -448,7 +459,14 @@ export function createApp(pool: Pool) {
           'Черновик изменён в другой вкладке. Скопируйте изменения и обновите страницу.',
         );
       await client.query('UPDATE scenarios SET updated_at=now() WHERE id=$1', [id]);
-      return result.rows[0];
+      const status = await client.query(
+        `SELECT (v.version IS NULL OR d.preview IS DISTINCT FROM v.preview OR d.definition IS DISTINCT FROM v.definition) AS "hasUnpublishedChanges"
+         FROM scenario_drafts d JOIN scenarios s ON s.id = d.scenario_id
+         LEFT JOIN scenario_versions v ON v.scenario_id = s.id AND v.version = s.published_version
+         WHERE s.id = $1`,
+        [id],
+      );
+      return { ...result.rows[0], ...status.rows[0] };
     });
     res.json(saved);
   });
@@ -491,6 +509,18 @@ export function createApp(pool: Pool) {
     });
     res.json(saved);
   });
+  app.delete('/api/editor/:id', async (req, res) => {
+    const id = idSchema.parse(req.params.id);
+    const userId = admin(res).id;
+    await transaction(pool, async (client) => {
+      await ownedScenario(client, id, userId, true);
+      await client.query('UPDATE scenarios SET deleted_at=now(),updated_at=now() WHERE id=$1', [
+        id,
+      ]);
+    });
+    res.status(204).end();
+  });
+
   app.post('/api/editor/:id/archive', async (req, res) => {
     const id = idSchema.parse(req.params.id);
     const userId = admin(res).id;
@@ -509,7 +539,14 @@ export function createApp(pool: Pool) {
   const dist = fileURLToPath(new URL('../dist/', import.meta.url));
   if (existsSync(dist)) {
     app.use(express.static(dist));
-    app.get('/{*path}', (_req, res) => res.sendFile(`${dist}/index.html`));
+    app.get('/{*path}', (req, res) => {
+      if (
+        /^\/(admin|editor|profile|attempts|login|register)(?:\/|$)/.test(req.path) ||
+        /\/(play|result)$/.test(req.path)
+      )
+        res.set('X-Robots-Tag', 'noindex, nofollow');
+      res.sendFile(`${dist}/index.html`);
+    });
   }
   app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
     if (error instanceof ApiError)

@@ -33,7 +33,7 @@ export function ScenarioPage() {
           <ScenarioMeta scenario={scenario} />
         </div>
         <div className={`heading-art cover--${scenario.art}`}>
-          <ScenarioArt kind={scenario.art} />
+          <ScenarioArt kind={scenario.art} image={scenario.coverImage} />
         </div>
       </div>
       <div className="preview-grid">

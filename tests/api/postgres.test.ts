@@ -101,7 +101,7 @@ test('PostgreSQL API integration', { timeout: 120000 }, async (t) => {
       );
       assert.equal(
         (await pool.query('SELECT count(*)::int AS n FROM schema_migrations')).rows[0].n,
-        2,
+        3,
       );
     });
     await t.test('registration, normalized unique email and safe stored credentials', async () => {
@@ -310,16 +310,31 @@ test('PostgreSQL API integration', { timeout: 120000 }, async (t) => {
       'new publication preserves started version and published snapshots are immutable',
       async () => {
         draft = (await a.request(`/editor/${customId}`)).data;
+        assert.equal(draft.hasUnpublishedChanges, false);
         draft.definition!.nodes[0].text = 'Новая первая реплика';
         const saved = await a.request(`/editor/${customId}`, 'PUT', {
           preview: draft.preview,
           definition: draft.definition,
           revision: draft.revision,
         });
+        assert.equal(saved.data.hasUnpublishedChanges, true);
+        const unpublished = (await a.request(`/editor/${customId}`)).data;
+        assert.equal(unpublished.publishedVersion, 1);
+        assert.equal(unpublished.hasUnpublishedChanges, true);
+        const row = (await a.request('/editor')).data.find(
+          (item: { id: string }) => item.id === customId,
+        );
+        assert.equal(row.hasUnpublishedChanges, true);
+        const visible = (await guest.request('/scenarios')).data.find(
+          (item: { preview: { id: string } }) => item.preview.id === customId,
+        );
+        assert.equal(visible.definition.metadata.version, 1);
+        assert.notEqual(visible.definition.nodes[0].text, 'Новая первая реплика');
         const published = await a.request(`/editor/${customId}/publish`, 'POST', {
           revision: saved.data.revision,
         });
         assert.equal(published.data.version, 2);
+        assert.equal((await a.request(`/editor/${customId}`)).data.hasUnpublishedChanges, false);
         const previous = await a.request(`/attempts/${custom.attempt.id}`);
         assert.equal(previous.data.attempt.scenarioVersion, 1);
         assert.notEqual(previous.data.definition.nodes[0].text, 'Новая первая реплика');
@@ -422,6 +437,10 @@ test('PostgreSQL API integration', { timeout: 120000 }, async (t) => {
         assert.equal(blocked.status, 422);
         assert.ok(blocked.data.details.some((i: { code: string }) => i.code === 'endings'));
         assert.deepEqual((await a.request(`/editor/${id}`)).data.editor, maker.editor);
+        maker.preview.coverImage = {
+          src: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jSf8AAAAASUVORK5CYII=',
+          alt: 'Иллюстрация переговоров',
+        };
         maker.definition.metadata.description = 'Тренировка выбора реакции';
         maker.definition.nodes[0].text = 'Какую зарплату вы ожидаете?';
         maker.definition.nodes[0].reactions = [
@@ -449,6 +468,13 @@ test('PostgreSQL API integration', { timeout: 120000 }, async (t) => {
         );
         const roundtrip = (await a.request(`/editor/${id}`)).data as MakerDraft;
         assert.deepEqual(roundtrip.editor, maker.editor);
+        assert.deepEqual(roundtrip.preview.coverImage, maker.preview.coverImage);
+        assert.equal(roundtrip.hasUnpublishedChanges, false);
+        const publicDoc = (await guest.request('/scenarios')).data.find(
+          (item: { preview: { id: string } }) => item.preview.id === id,
+        );
+        assert.deepEqual(publicDoc.preview.coverImage, maker.preview.coverImage);
+        roundtrip.editor.positions.node_1.x += 25;
         assert.equal(roundtrip.definition.nodes[0].reactions[0].intent, 'salary_offer');
         assert.deepEqual(roundtrip.definition.nodes[0].reactions[0].examples, ['Хочу 200 тысяч']);
         assert.equal(
@@ -476,6 +502,40 @@ test('PostgreSQL API integration', { timeout: 120000 }, async (t) => {
           revision: roundtrip.revision,
         });
         assert.equal(afterPublish.status, 200);
+        assert.equal(afterPublish.data.hasUnpublishedChanges, false);
+      },
+    );
+    await t.test(
+      'deletion is owner-only, hides all entry points and preserves published attempts',
+      async () => {
+        assert.equal((await guest.request(`/editor/${customId}`, 'DELETE')).status, 401);
+        assert.equal((await b.request(`/editor/${customId}`, 'DELETE')).status, 403);
+        await pool.query(`UPDATE app_users SET role = 'admin' WHERE email <> $1`, [account.email]);
+        assert.equal((await b.request(`/editor/${customId}`, 'DELETE')).status, 404);
+        // Make the previously archived scenario public again to test both visibility paths.
+        await pool.query('UPDATE scenarios SET archived_at=NULL WHERE id=$1', [customId]);
+        assert.equal((await a.request(`/editor/${customId}`, 'DELETE')).status, 204);
+        assert.equal((await a.request(`/editor/${customId}`)).status, 404);
+        assert.equal(
+          (await a.request(`/editor/${customId}/publish`, 'POST', { revision: 1 })).status,
+          404,
+        );
+        assert.equal(
+          (await a.request('/editor')).data.some((item: { id: string }) => item.id === customId),
+          false,
+        );
+        assert.equal(
+          (await guest.request('/scenarios')).data.some(
+            (item: { preview: { id: string } }) => item.preview.id === customId,
+          ),
+          false,
+        );
+        assert.equal((await b.request(`/scenarios/${customId}/attempts`, 'POST')).status, 404);
+        assert.equal((await a.request('/editor', 'POST', { sourceId: customId })).status, 404);
+        assert.equal((await a.request(`/attempts/${custom.attempt.id}`)).status, 200);
+        const fresh = (await a.request('/editor', 'POST', { title: 'Удаляемый черновик' })).data.id;
+        assert.equal((await a.request(`/editor/${fresh}`, 'DELETE')).status, 204);
+        assert.equal((await a.request(`/editor/${fresh}`, 'DELETE')).status, 404);
       },
     );
     await t.test('logout revokes session and login restores persisted account data', async () => {

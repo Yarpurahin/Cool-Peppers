@@ -9,7 +9,7 @@ export function ScenarioCard({ scenario, index }: { scenario: ScenarioPreview; i
       <Link to={`/scenarios/${scenario.id}`} aria-label={`${scenario.title} — открыть сценарий`}>
         <div className={`scenario-cover cover--${scenario.art}`}>
           <span className="cover-label">ПРАКТИКА / {String(index + 1).padStart(2, '0')}</span>
-          <ScenarioArt kind={scenario.art} />
+          <ScenarioArt kind={scenario.art} image={scenario.coverImage} />
         </div>
         <div className="scenario-card-content">
           <div className="card-meta">

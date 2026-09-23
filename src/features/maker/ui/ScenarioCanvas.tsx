@@ -40,20 +40,47 @@ type CardData = {
   endingType?: string;
   error?: boolean;
   warning?: boolean;
-  reactions?: { id: string; label: string; linked: boolean; selected: boolean }[];
+  reactions?: {
+    id: string;
+    label: string;
+    linked: boolean;
+    selected: boolean;
+    targetId?: string;
+  }[];
   selectReaction?: (id: string) => void;
 };
 export type CardNode = Node<CardData>;
 
 function DialogueCard({ id, data }: NodeProps<CardNode>) {
   const update = useUpdateNodeInternals();
+  // Read live positions so the handle follows a target even while it is being dragged.
+  const sides = useStore((state) => {
+    const sourceX = state.nodeLookup.get(id)?.internals.positionAbsolute.x ?? 0;
+    return (
+      data.reactions
+        ?.map((reaction) => {
+          const targetX = reaction.targetId
+            ? state.nodeLookup.get(reaction.targetId)?.internals.positionAbsolute.x
+            : undefined;
+          return targetX !== undefined && targetX < sourceX ? 'L' : 'R';
+        })
+        .join('') ?? ''
+    );
+  });
   const signature = data.reactions?.map((r) => r.id).join(',');
   useEffect(() => {
     update(id);
-  }, [id, signature, update]);
+  }, [id, signature, sides, data.start, update]);
   return (
     <article className={`maker-card ${data.error ? 'has-error' : ''}`} data-testid={`block-${id}`}>
-      <Handle type="target" position={Position.Top} aria-label="Вход реплики" />
+      <Handle
+        type="target"
+        position={Position.Top}
+        aria-label="Вход реплики"
+        className={data.start ? 'maker-start-handle' : ''}
+        isConnectable={!data.start}
+        aria-hidden={data.start || undefined}
+      />
       <div className="maker-card-heading">
         <span className="maker-avatar">{data.initials || '—'}</span>
         <div>
@@ -68,8 +95,11 @@ function DialogueCard({ id, data }: NodeProps<CardNode>) {
         {data.start && <b>Старт</b>}
       </div>
       <div className="maker-card-reactions">
-        {data.reactions?.map((r) => (
-          <div className={`maker-card-reaction ${r.selected ? 'is-selected' : ''}`} key={r.id}>
+        {data.reactions?.map((r, index) => (
+          <div
+            className={`maker-card-reaction ${sides[index] === 'L' ? 'has-left-handle' : ''} ${r.selected ? 'is-selected' : ''}`}
+            key={r.id}
+          >
             <button
               type="button"
               className="nodrag nopan"
@@ -84,7 +114,7 @@ function DialogueCard({ id, data }: NodeProps<CardNode>) {
             <Handle
               id={r.id}
               type="source"
-              position={Position.Right}
+              position={sides[index] === 'L' ? Position.Left : Position.Right}
               className={r.linked ? '' : 'is-unlinked'}
               aria-label={`Переход: ${r.label}`}
               data-testid={`handle-${r.id}`}
@@ -125,17 +155,12 @@ function InitialViewport({ hasSavedViewport }: { hasSavedViewport: boolean }) {
   const width = useStore((state) => state.width);
   const height = useStore((state) => state.height);
   const applied = useRef(false);
-  const size = useRef({ width: 0, height: 0 });
   useEffect(() => {
     if (!initialized || !width || !height) return;
     if (!applied.current) {
       applied.current = true;
-      size.current = { width, height };
       if (!hasSavedViewport || window.innerWidth < 640)
         void flow.fitView({ padding: 0.15, maxZoom: 0.9 });
-    } else if (size.current.width !== width || size.current.height !== height) {
-      size.current = { width, height };
-      void flow.fitView({ padding: 0.15, maxZoom: 0.9 });
     }
   }, [initialized, hasSavedViewport, flow, width, height]);
   return null;
@@ -153,8 +178,6 @@ export function ScenarioCanvas({
   onRemove,
   onBranch,
   onReady,
-  onLayout,
-  onAdd,
   disabled,
 }: {
   doc: MakerDocument;
@@ -169,8 +192,6 @@ export function ScenarioCanvas({
   onRemove: (ids: string[]) => void;
   onBranch: (request: BranchRequest) => void;
   onReady: (flow: ReactFlowInstance<CardNode>) => void;
-  onLayout: () => void;
-  onAdd: (type: 'node' | 'ending') => void;
 }) {
   const flowRef = useRef<ReactFlowInstance<CardNode> | null>(null);
   const source = useRef<{ nodeId: string; reactionId: string } | null>(null);
@@ -191,6 +212,7 @@ export function ScenarioCanvas({
         return {
           id: node.id,
           type: 'dialogue',
+          ariaLabel: `Реплика: ${node.title || 'Без названия'}`,
           position: doc.editor.positions[node.id] ?? defaults[node.id],
           selected: current === node.id,
           data: {
@@ -205,6 +227,7 @@ export function ScenarioCanvas({
               id: r.id,
               label: r.label,
               linked: !!(r.nextNodeId || r.endingId),
+              targetId: r.nextNodeId || r.endingId,
               selected: selection.type === 'reaction' && selection.id === r.id,
             })),
             selectReaction: (id: string) => onSelect({ type: 'reaction', id, nodeId: node.id }),
@@ -214,6 +237,7 @@ export function ScenarioCanvas({
       ...def.endings.map((e) => ({
         id: e.id,
         type: 'ending',
+        ariaLabel: `Финал: ${e.title || 'Без названия'}`,
         position: doc.editor.positions[e.id] ?? defaults[e.id],
         selected: current === e.id,
         data: { title: e.title, text: e.description, endingType: e.type, ...flags(e.id) },
@@ -232,6 +256,7 @@ export function ScenarioCanvas({
               sourceHandle: r.id,
               target,
               type: 'bezier',
+              ariaLabel: `Переход: ${r.label || 'Без названия'}`,
               markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
               selected: selection.type === 'reaction' && selection.id === r.id,
               label: selection.type === 'reaction' && selection.id === r.id ? r.label : undefined,
@@ -254,10 +279,19 @@ export function ScenarioCanvas({
   return (
     <div className="maker-canvas" aria-label="Полотно сценария" data-testid="maker-canvas">
       <ReactFlow<CardNode>
+        aria-label="Полотно сценария"
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
-        onNodesChange={onNodesChange}
+        onNodesChange={(changes) => {
+          onNodesChange(changes);
+          const moved = changes.flatMap((change) =>
+            change.type === 'position' && change.position && change.dragging === false
+              ? [[change.id, change.position] as const]
+              : [],
+          );
+          if (moved.length && !disabled) onPositions(Object.fromEntries(moved));
+        }}
         onEdgesChange={onEdgesChange}
         onInit={(flow) => {
           flowRef.current = flow;
@@ -268,6 +302,20 @@ export function ScenarioCanvas({
         maxZoom={1.5}
         onMoveEnd={(event, viewport) => {
           if (event && !disabled) onViewport(viewport);
+        }}
+        onKeyDown={(event) => {
+          const element = event.target as HTMLElement;
+          if (!['Enter', ' '].includes(event.key)) return;
+          if (element.matches('.react-flow__node')) {
+            const node = nodes.find((n) => n.id === element.dataset.id);
+            if (node) {
+              event.preventDefault();
+              onSelect({ type: node.type === 'ending' ? 'ending' : 'node', id: node.id });
+            }
+          } else if (element.matches('.react-flow__edge')) {
+            const edge = edges.find((e) => e.id === element.dataset.id);
+            if (edge) onSelect({ type: 'reaction', nodeId: edge.source, id: edge.id });
+          }
         }}
         onNodeClick={(_, n) =>
           onSelect({ type: n.type === 'ending' ? 'ending' : 'node', id: n.id })
@@ -309,6 +357,9 @@ export function ScenarioCanvas({
         connectOnClick
         defaultEdgeOptions={{ style: { stroke: '#799383', strokeWidth: 2 } }}
         ariaLabelConfig={{
+          'node.a11yDescription.default':
+            'Enter — выбрать реплику. Стрелки — переместить. Delete — удалить. Связи можно настроить в панели свойств.',
+          'edge.a11yDescription.default': 'Enter — выбрать переход. Delete — удалить переход.',
           'controls.zoomIn.ariaLabel': 'Приблизить',
           'controls.zoomOut.ariaLabel': 'Отдалить',
           'controls.fitView.ariaLabel': 'Показать весь граф',
@@ -317,20 +368,6 @@ export function ScenarioCanvas({
       >
         <InitialViewport hasSavedViewport={!!doc.editor.viewport} />
         <Background color="#d8e0d6" gap={22} size={1.2} />
-        <Panel position="top-left" className="maker-canvas-tools">
-          <button type="button" onClick={onLayout} disabled={disabled}>
-            <Icon name="branch" size={15} />
-            Автораскладка
-          </button>
-          <button type="button" onClick={() => onAdd('node')} disabled={disabled}>
-            <Icon name="plus" size={15} />
-            Реплика
-          </button>
-          <button type="button" onClick={() => onAdd('ending')} disabled={disabled}>
-            <Icon name="flag" size={15} />
-            Финал
-          </button>
-        </Panel>
         <Controls showInteractive={false} />
         <MiniMap
           style={{ width: 145, height: 90 }}

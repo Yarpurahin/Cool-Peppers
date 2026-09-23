@@ -27,22 +27,35 @@ import { ScenarioCanvas } from './ScenarioCanvas.tsx';
 import type { BranchRequest, CardNode, Selection } from './ScenarioCanvas.tsx';
 import { Inspector } from './Inspector.tsx';
 import { TestScenarioDrawer } from './TestScenarioDrawer.tsx';
+import { ResizableInspector, useInspectorWidth } from './ResizableInspector.tsx';
+import {
+  fingerprint,
+  contentFingerprint,
+  recoverDraft,
+  serializeRecovery,
+} from '../model/draftRecovery.ts';
+import { DraftHistory } from '../model/history.ts';
+import { statusLabel, statusOf } from '../model/publication.ts';
 import '@xyflow/react/dist/style.css';
 import './maker.css';
-
-const fingerprint = (doc: MakerDocument) =>
-  JSON.stringify({ preview: doc.preview, definition: doc.definition, editor: doc.editor });
 
 export function ScenarioBuilderPage() {
   const { scenarioId } = useParams();
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const { refreshCatalog } = useCatalog();
+  const { refreshCatalog, user } = useCatalog();
+  const storageKey = `arena:maker:${user!.id}:${scenarioId}`;
+  const inspectorWidth = useInspectorWidth();
   const listPath = pathname.startsWith('/admin') ? '/admin/scenarios' : '/editor';
   const path = `/editor/${encodeURIComponent(scenarioId ?? '')}`;
   const [draft, setDraft] = useState<MakerDraft | null>(null);
   const current = useRef<MakerDraft | null>(null);
   const [saved, setSaved] = useState('');
+  const savedRef = useRef('');
+  const savedContent = useRef('');
+  const serverDraft = useRef<MakerDraft | null>(null);
+  const [storageError, setStorageError] = useState('');
+  const [conflict, setConflict] = useState(false);
   const [selection, setSelection] = useState<Selection>({ type: 'main' });
   const [inspectorOpen, setInspectorOpen] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -56,8 +69,7 @@ export function ScenarioBuilderPage() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [query, setQuery] = useState('');
-  const undo = useRef<MakerDocument[]>([]);
-  const redo = useRef<MakerDocument[]>([]);
+  const history = useRef(new DraftHistory<MakerDocument>());
   const flow = useRef<ReactFlowInstance<CardNode> | null>(null);
   const issues = useMemo(() => (draft ? validateMaker(draft.definition) : []), [draft?.definition]);
   const displayedIssues = useMemo(() => (checked ? issues : []), [checked, issues]);
@@ -68,6 +80,34 @@ export function ScenarioBuilderPage() {
     current.current = value;
     setDraft(value);
   }, []);
+  // Synchronous storage: even an immediate reload after a keystroke keeps that change.
+  // sessionStorage isolates drafts in different tabs while surviving reloads/navigation.
+  const persist = useCallback(
+    (value: MakerDraft) => {
+      try {
+        sessionStorage.setItem(storageKey, serializeRecovery(value, savedRef.current));
+        setStorageError('');
+      } catch {
+        setStorageError(
+          'Не удалось сохранить изменения в браузере. Сохраните черновик на сервер перед обновлением страницы.',
+        );
+      }
+    },
+    [storageKey],
+  );
+  const markSaved = (value: MakerDraft) => {
+    savedRef.current = fingerprint(value);
+    savedContent.current = contentFingerprint(value);
+    serverDraft.current = value;
+    setSaved(savedRef.current);
+    setConflict(false);
+    try {
+      sessionStorage.removeItem(storageKey);
+      setStorageError('');
+    } catch {
+      setStorageError('Черновик сохранён на сервере, но хранилище браузера недоступно.');
+    }
+  };
   useEffect(() => {
     const controller = new AbortController();
     current.current = null;
@@ -79,13 +119,30 @@ export function ScenarioBuilderPage() {
         if (controller.signal.aborted) return;
         const next = toMakerDraft(value);
         next.editor.positions = { ...layoutGraph(next.definition), ...next.editor.positions };
-        replace(next);
-        setSaved(fingerprint(next));
-        undo.current = [];
-        redo.current = [];
+        savedRef.current = fingerprint(next);
+        savedContent.current = contentFingerprint(next);
+        serverDraft.current = next;
+        setSaved(savedRef.current);
+        history.current.clear();
+        let restored = next;
+        setConflict(false);
+        setStorageError('');
+        try {
+          const recovery = recoverDraft(sessionStorage.getItem(storageKey), next);
+          restored = recovery.draft;
+          setConflict(recovery.conflict);
+          if (recovery.restored) setMessage('Изменения восстановлены после обновления страницы.');
+          else sessionStorage.removeItem(storageKey);
+        } catch {
+          setStorageError('Не удалось восстановить локальную копию. Открыт черновик с сервера.');
+        }
+        replace(restored);
         setSelection(
-          next.definition.nodes.length
-            ? { type: 'node', id: next.definition.startNodeId || next.definition.nodes[0].id }
+          restored.definition.nodes.length
+            ? {
+                type: 'node',
+                id: restored.definition.startNodeId || restored.definition.nodes[0].id,
+              }
             : { type: 'main' },
         );
       })
@@ -93,7 +150,7 @@ export function ScenarioBuilderPage() {
         if (!controller.signal.aborted) setError(errorMessage(e));
       });
     return () => controller.abort();
-  }, [path, replace]);
+  }, [path, replace, storageKey]);
   useEffect(() => {
     if (!dirty) return;
     const beforeUnload = (e: BeforeUnloadEvent) => {
@@ -114,20 +171,26 @@ export function ScenarioBuilderPage() {
 
   // Apply once outside a React updater; commands may return IDs for focus/selection.
   const change = useCallback(
-    (mutator: (doc: MakerDocument) => void) => {
+    (mutator: (doc: MakerDocument) => void, trackHistory = true) => {
       if (!current.current || busyRef.current) return;
       const previous = current.current;
       const next = structuredClone(previous);
       mutator(next);
       if (fingerprint(next) === fingerprint(previous)) return;
-      undo.current = [...undo.current.slice(-49), previous];
-      redo.current = [];
+      const active = document.activeElement;
+      const textField =
+        active instanceof HTMLTextAreaElement ||
+        (active instanceof HTMLInputElement &&
+          ['text', 'search', 'email', 'number', 'url'].includes(active.type));
+      if (trackHistory) history.current.record(previous, textField ? active : null);
       replace(next);
+      persist(next);
       setMessage('');
     },
-    [replace],
+    [replace, persist],
   );
   const select = useCallback((value: Selection) => {
+    history.current.breakGroup();
     setSelection(value);
     setInspectorOpen(true);
     setSidebarOpen(false);
@@ -150,17 +213,24 @@ export function ScenarioBuilderPage() {
   }
   function travel(direction: 'undo' | 'redo') {
     if (!current.current || busyRef.current) return;
-    const from = direction === 'undo' ? undo : redo;
-    const to = direction === 'undo' ? redo : undo;
-    const value = from.current.pop();
+    const value = history.current.travel(direction, current.current);
     if (!value) return;
-    to.current.push(current.current);
-    replace({
+    const next = {
       ...current.current,
       preview: value.preview,
       definition: value.definition,
-      editor: value.editor,
-    });
+      editor: { ...value.editor, viewport: current.current.editor.viewport },
+    };
+    replace(next);
+    persist(next);
+    // A removed selection must not leave an empty inspector after undo/redo.
+    if ('id' in selection) {
+      const id = selection.type === 'reaction' ? selection.nodeId : selection.id;
+      const node = next.definition.nodes.find((n) => n.id === id);
+      if (!node && !next.definition.endings.some((e) => e.id === id)) select({ type: 'main' });
+      else if (selection.type === 'reaction' && !node?.reactions.some((r) => r.id === selection.id))
+        select({ type: 'node', id });
+    }
     setMessage('');
     setBranch(null);
   }
@@ -287,7 +357,8 @@ export function ScenarioBuilderPage() {
   }
   async function save(publish: boolean) {
     const value = current.current;
-    if (!value || busyRef.current) return;
+    if (!value || busyRef.current || conflict) return;
+    history.current.breakGroup();
     if (publish && validateMaker(value.definition).some((i) => i.severity === 'error')) {
       check();
       return;
@@ -302,13 +373,13 @@ export function ScenarioBuilderPage() {
         definition: value.definition,
         editor: value.editor,
       });
-      const result = await api<{ revision: number }>(path, {
+      const result = await api<{ revision: number; hasUnpublishedChanges: boolean }>(path, {
         method: 'PUT',
         body: { ...document, revision: value.revision },
       });
-      const next = { ...value, revision: result.revision };
+      const next = { ...value, ...result };
       replace(next);
-      setSaved(fingerprint(next));
+      markSaved(next);
       if (publish) {
         const published = await api<{ version: number }>(`${path}/publish`, {
           method: 'POST',
@@ -316,9 +387,8 @@ export function ScenarioBuilderPage() {
         });
         const latest = toMakerDraft(await api<AuthoringDraft>(path));
         replace(latest);
-        setSaved(fingerprint(latest));
-        undo.current = [];
-        redo.current = [];
+        markSaved(latest);
+        history.current.clear();
         await refreshCatalog();
         setMessage(`Опубликована версия ${published.version}.`);
       } else setMessage('Черновик сохранён.');
@@ -331,7 +401,7 @@ export function ScenarioBuilderPage() {
   }
   if (!draft)
     return (
-      <main className="container page">
+      <main id="main-content" tabIndex={-1} className="container page">
         <h1>Конструктор сценария</h1>
         <p role={error ? 'alert' : 'status'}>{error || 'Загружаем сценарий…'}</p>
         <button className="button button--outline" onClick={() => navigate(listPath)}>
@@ -339,6 +409,11 @@ export function ScenarioBuilderPage() {
         </button>
       </main>
     );
+  const publication = {
+    ...draft,
+    hasUnpublishedChanges:
+      draft.hasUnpublishedChanges || contentFingerprint(draft) !== savedContent.current,
+  };
   const selectedId =
     selection.type === 'reaction' ? selection.nodeId : 'id' in selection ? selection.id : '';
   const filteredNodes = draft.definition.nodes.filter((n) =>
@@ -363,12 +438,29 @@ export function ScenarioBuilderPage() {
   return (
     <main
       id="main-content"
+      tabIndex={-1}
+      style={inspectorWidth.style}
+      onBlurCapture={() => history.current.breakGroup()}
+      onKeyDownCapture={(event) => {
+        if (testDefinition || branch || !(event.ctrlKey || event.metaKey) || event.altKey) return;
+        const key = event.key.toLowerCase();
+        if (key === 'z' || key === 'y') {
+          event.preventDefault();
+          travel(key === 'y' || event.shiftKey ? 'redo' : 'undo');
+        }
+      }}
       className={`maker-page ${inspectorOpen ? '' : 'is-inspector-closed'} ${sidebarOpen ? 'is-sidebar-open' : ''}`}
     >
+      {inspectorOpen && (
+        <a href="#maker-inspector" className="skip-link">
+          Перейти к свойствам сценария
+        </a>
+      )}
       <header className="maker-header">
         <button
           type="button"
           className="maker-back"
+          aria-label="К списку сценариев"
           onClick={() => {
             if (!dirty || window.confirm('Есть несохранённые изменения. Выйти из конструктора?'))
               navigate(listPath);
@@ -380,13 +472,17 @@ export function ScenarioBuilderPage() {
         <div className="maker-heading">
           <h1>{draft.definition.metadata.title || 'Новый сценарий'}</h1>
           <div>
-            <span className="maker-status">
-              {draft.publishedVersion
-                ? `Черновик · опубликована v${draft.publishedVersion}`
-                : 'Черновик'}
+            <span className={`maker-status maker-status--${statusOf(publication)}`}>
+              {statusLabel(publication)}
             </span>
             <span className="maker-save-status" role="status">
-              {busy ? 'Сохраняем…' : dirty ? 'Есть изменения' : 'Сохранено'}
+              {busy
+                ? 'Сохраняем…'
+                : dirty
+                  ? storageError
+                    ? 'Есть несохранённые изменения'
+                    : 'Сохранено в этой вкладке'
+                  : 'Сохранено на сервере'}
             </span>
           </div>
         </div>
@@ -394,7 +490,7 @@ export function ScenarioBuilderPage() {
           <button
             type="button"
             className="maker-icon-button"
-            disabled={busy || !undo.current.length}
+            disabled={busy || !history.current.past.length}
             onClick={() => travel('undo')}
             aria-label="Отменить"
           >
@@ -403,7 +499,7 @@ export function ScenarioBuilderPage() {
           <button
             type="button"
             className="maker-icon-button"
-            disabled={busy || !redo.current.length}
+            disabled={busy || !history.current.future.length}
             onClick={() => travel('redo')}
             aria-label="Повторить"
           >
@@ -415,7 +511,7 @@ export function ScenarioBuilderPage() {
             type="button"
             className="maker-secondary"
             onClick={() => void save(false)}
-            disabled={busy}
+            disabled={busy || conflict}
           >
             <Icon name="save" size={16} />
             Сохранить
@@ -431,12 +527,46 @@ export function ScenarioBuilderPage() {
             type="button"
             className="maker-primary"
             onClick={() => void save(true)}
-            disabled={busy}
+            disabled={busy || conflict}
           >
             Опубликовать
           </button>
         </div>
       </header>
+      {storageError && (
+        <p role="alert" className="maker-notice is-error">
+          {storageError}
+        </p>
+      )}
+      {conflict && (
+        <div className="maker-notice is-error" role="alert">
+          <span>
+            На сервере есть более новая редакция. Ваши изменения восстановлены отдельно. Скачайте их
+            перед загрузкой серверной версии.
+          </span>
+          <button type="button" className="maker-secondary" onClick={exportDocument}>
+            Скачать мои изменения
+          </button>
+          <button
+            type="button"
+            className="maker-secondary"
+            onClick={() => {
+              if (
+                !serverDraft.current ||
+                !window.confirm('Загрузить серверную версию вместо локальных изменений?')
+              )
+                return;
+              replace(serverDraft.current);
+              markSaved(serverDraft.current);
+              history.current.clear();
+              select({ type: 'main' });
+              setMessage('Загружена серверная версия.');
+            }}
+          >
+            Загрузить серверную версию
+          </button>
+        </div>
+      )}
       {(error || message) && (
         <div
           className={`maker-notice ${error ? 'is-error' : ''}`}
@@ -456,27 +586,38 @@ export function ScenarioBuilderPage() {
         </div>
       )}
       <div className="maker-mobile-tools">
-        <button type="button" onClick={() => setSidebarOpen((v) => !v)}>
+        <button
+          type="button"
+          aria-expanded={sidebarOpen}
+          aria-controls="maker-structure"
+          onClick={() => setSidebarOpen((v) => !v)}
+        >
           <Icon name="menu" size={15} />
           Структура
         </button>
-        <button type="button" onClick={() => setInspectorOpen((v) => !v)}>
+        <button
+          type="button"
+          aria-expanded={inspectorOpen}
+          aria-controls="maker-inspector"
+          onClick={() => setInspectorOpen((v) => !v)}
+        >
           <Icon name="edit" size={15} />
           Свойства
         </button>
       </div>
       <div className="maker-workspace">
-        <aside className="maker-sidebar" aria-label="Структура сценария">
+        <aside id="maker-structure" className="maker-sidebar" aria-label="Структура сценария">
           <p className="eyebrow">
             <span className="accent-dot" />
             Структура
           </p>
-          <nav>
+          <nav aria-label="Разделы сценария">
             {nav.map((item) => (
               <button
                 type="button"
                 key={item.type}
                 onClick={() => select({ type: item.type })}
+                aria-pressed={selection.type === item.type}
                 className={selection.type === item.type ? 'is-active' : ''}
               >
                 <Icon name={item.icon} size={16} />
@@ -503,6 +644,7 @@ export function ScenarioBuilderPage() {
               <button
                 type="button"
                 key={n.id}
+                aria-pressed={selectedId === n.id}
                 className={selectedId === n.id ? 'is-active' : ''}
                 onClick={() => selectAndFocus({ type: 'node', id: n.id })}
               >
@@ -530,6 +672,7 @@ export function ScenarioBuilderPage() {
               <button
                 type="button"
                 key={e.id}
+                aria-pressed={selectedId === e.id}
                 className={selectedId === e.id ? 'is-active' : ''}
                 onClick={() => selectAndFocus({ type: 'ending', id: e.id })}
               >
@@ -564,7 +707,7 @@ export function ScenarioBuilderPage() {
           onViewport={(viewport) =>
             change((d) => {
               d.editor.viewport = viewport;
-            })
+            }, false)
           }
           onConnect={connect}
           onDisconnect={disconnect}
@@ -573,29 +716,22 @@ export function ScenarioBuilderPage() {
           onReady={(instance) => {
             flow.current = instance;
           }}
-          onLayout={() => {
-            change((d) => {
-              d.editor.positions = layoutGraph(d.definition);
-            });
-            requestAnimationFrame(
-              () => void flow.current?.fitView({ padding: 0.2, duration: 300 }),
-            );
-          }}
-          onAdd={add}
         />
         {inspectorOpen && (
-          <Inspector
-            doc={draft}
-            selection={selection}
-            change={change}
-            onSelect={select}
-            onDelete={(id) => remove([id])}
-            onDuplicate={duplicate}
-            onClose={() => setInspectorOpen(false)}
-            onExport={exportDocument}
-            focusToken={focusToken}
-            disabled={busy}
-          />
+          <ResizableInspector {...inspectorWidth}>
+            <Inspector
+              doc={draft}
+              selection={selection}
+              change={change}
+              onSelect={select}
+              onDelete={(id) => remove([id])}
+              onDuplicate={duplicate}
+              onClose={() => setInspectorOpen(false)}
+              onExport={exportDocument}
+              focusToken={focusToken}
+              disabled={busy}
+            />
+          </ResizableInspector>
         )}
         {!inspectorOpen && (
           <button

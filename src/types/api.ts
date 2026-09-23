@@ -21,12 +21,14 @@ export interface ScenarioDocument {
 export interface ScenarioDraft extends ScenarioDocument {
   revision: number;
   publishedVersion: number | null;
+  hasUnpublishedChanges?: boolean;
 }
 export interface AdminScenarioSummary {
   id: string;
   title: string;
   revision: number;
   publishedVersion: number | null;
+  hasUnpublishedChanges?: boolean;
   archivedAt: string | null;
   questionCount: number;
   createdAt: string;

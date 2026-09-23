@@ -1,9 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import type { ReactNode } from 'react';
 import type { MakerDefinition, MakerDocument } from '../model/types.ts';
 import type { Selection } from './ScenarioCanvas.tsx';
 import { addReaction, cleanVariants, connectReaction, newId } from '../model/commands.ts';
 import { Icon } from '../../../components/ui/Icon.tsx';
+import { ScenarioCoverField } from './ScenarioCoverField.tsx';
 
 function Field({
   label,
@@ -22,12 +23,14 @@ function Field({
   hint?: string;
   focusRef?: React.RefObject<HTMLTextAreaElement | null>;
 }) {
+  const hintId = useId();
   return (
     <label className="field">
       {label}
       {multiline ? (
         <textarea
           aria-label={label}
+          aria-describedby={hint ? hintId : undefined}
           ref={focusRef}
           rows={4}
           value={value}
@@ -37,12 +40,13 @@ function Field({
       ) : (
         <input
           aria-label={label}
+          aria-describedby={hint ? hintId : undefined}
           value={value}
           maxLength={maxLength}
           onChange={(e) => onChange(e.target.value)}
         />
       )}
-      {hint && <small>{hint}</small>}
+      {hint && <small id={hintId}>{hint}</small>}
     </label>
   );
 }
@@ -133,12 +137,16 @@ export function Inspector({
       if (r) mutator(r);
     });
   return (
-    <aside className="maker-inspector" aria-label="Свойства выбранного элемента">
+    <aside
+      id="maker-inspector"
+      tabIndex={-1}
+      className="maker-inspector"
+      aria-label="Свойства выбранного элемента"
+    >
       <div className="maker-inspector-heading">
         <div>
           <p className="eyebrow">{title}</p>
           <h2>{reaction?.label || node?.title || ending?.title || title}</h2>
-          {blockId && <code>{blockId}</code>}
         </div>
         <button
           className="maker-icon-button"
@@ -150,6 +158,7 @@ export function Inspector({
         </button>
       </div>
       <fieldset disabled={disabled} className="maker-inspector-fields">
+        <legend className="sr-only">{title}: свойства</legend>
         {selection.type === 'node' && node && (
           <>
             <Field
@@ -283,10 +292,11 @@ export function Inspector({
           <>
             <button
               type="button"
-              className="maker-text-button"
+              className="maker-secondary maker-return-to-node"
               onClick={() => onSelect({ type: 'node', id: node.id })}
             >
-              <Icon name="back" size={15} />К реплике
+              <Icon name="back" size={15} />
+              <span>Вернуться к редактированию реплики</span>
             </button>
             <Field
               label="Название реакции"
@@ -395,7 +405,7 @@ export function Inspector({
               </optgroup>
             </Select>
             <p className="maker-hint">
-              Можно также перетащить точку справа от реакции к другой карточке или в пустое место.
+              Можно также перетащить точку у реакции к другой карточке или в пустое место.
             </p>
             {reaction.legacy && (
               <div className="maker-legacy">
@@ -405,6 +415,14 @@ export function Inspector({
                 </p>
               </div>
             )}
+            <button
+              type="button"
+              className="maker-primary maker-return-to-node"
+              onClick={() => onSelect({ type: 'node', id: node.id })}
+            >
+              <Icon name="back" size={16} />
+              <span>Готово — вернуться к реплике</span>
+            </button>
             <button
               type="button"
               className="maker-danger-button"
@@ -484,6 +502,15 @@ export function Inspector({
         )}
         {selection.type === 'main' && (
           <>
+            <ScenarioCoverField
+              value={doc.preview.coverImage}
+              onChange={(image) =>
+                change((d) => {
+                  if (image) d.preview.coverImage = image;
+                  else delete d.preview.coverImage;
+                })
+              }
+            />
             <Field
               label="Название сценария"
               maxLength={200}
@@ -601,7 +628,7 @@ export function Inspector({
                 />
                 <button
                   type="button"
-                  className="maker-text-button"
+                  className="maker-danger-button"
                   disabled={def.nodes.some((n) => n.characterId === c.id)}
                   onClick={() =>
                     update((d) => {
@@ -609,6 +636,7 @@ export function Inspector({
                     })
                   }
                 >
+                  <Icon name="trash" size={16} />
                   Удалить персонажа
                 </button>
                 {def.nodes.some((n) => n.characterId === c.id) && (

@@ -18,8 +18,15 @@ export function TestScenarioDrawer({
   const [error, setError] = useState('');
   const dialog = useRef<HTMLDialogElement>(null);
   const bottom = useRef<HTMLDivElement>(null);
+  const backdropPress = useRef(false);
   useEffect(() => {
-    dialog.current?.showModal();
+    const element = dialog.current;
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    element?.showModal();
+    return () => {
+      element?.close();
+      previous?.focus();
+    };
   }, []);
   useEffect(() => {
     bottom.current?.scrollIntoView({ block: 'nearest' });
@@ -43,6 +50,29 @@ export function TestScenarioDrawer({
       onCancel={(e) => {
         e.preventDefault();
         onClose();
+      }}
+      aria-modal="true"
+      onPointerDown={(event) => {
+        const bounds = event.currentTarget.getBoundingClientRect();
+        backdropPress.current =
+          event.target === event.currentTarget &&
+          (event.clientX < bounds.left ||
+            event.clientX > bounds.right ||
+            event.clientY < bounds.top ||
+            event.clientY > bounds.bottom);
+      }}
+      onClick={(event) => {
+        const bounds = event.currentTarget.getBoundingClientRect();
+        if (
+          backdropPress.current &&
+          event.target === event.currentTarget &&
+          (event.clientX < bounds.left ||
+            event.clientX > bounds.right ||
+            event.clientY < bounds.top ||
+            event.clientY > bounds.bottom)
+        )
+          onClose();
+        backdropPress.current = false;
       }}
       aria-labelledby="maker-test-title"
     >

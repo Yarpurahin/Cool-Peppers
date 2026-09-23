@@ -3,25 +3,7 @@ import { api, errorMessage } from '../api/client.ts';
 import type { AdminScenarioSummary } from '../types/api.ts';
 import { ButtonLink } from '../components/ui/Button.tsx';
 import { Icon } from '../components/ui/Icon.tsx';
-
-function statusOf(row: AdminScenarioSummary) {
-  if (row.archivedAt) return 'archived';
-  if (row.publishedVersion) return 'published';
-  return 'draft';
-}
-
-function statusLabel(row: AdminScenarioSummary) {
-  if (row.archivedAt) return 'Архив';
-  if (row.publishedVersion) return `Опубликован · v${row.publishedVersion}`;
-  return 'Черновик';
-}
-
-function statusClass(row: AdminScenarioSummary) {
-  const status = statusOf(row);
-  if (status === 'published') return 'badge badge--green';
-  if (status === 'draft') return 'badge badge--orange';
-  return 'badge badge--outline';
-}
+import { statusOf, statusLabel, statusClass } from '../features/maker/model/publication.ts';
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('ru-RU', {

@@ -134,6 +134,16 @@ export const previewSchema = z
     tip: required(),
     role: required(200),
     art: z.enum(['calendar', 'conversation', 'agreement']),
+    coverImage: z
+      .object({
+        src: z
+          .string()
+          .max(710000)
+          .regex(/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/),
+        alt: text(250),
+      })
+      .strict()
+      .optional(),
     person: z
       .object({
         name: required(100),

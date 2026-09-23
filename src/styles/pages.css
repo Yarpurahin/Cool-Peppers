@@ -1478,9 +1478,9 @@
 .admin-create-panel {
   max-width: none;
   display: grid;
-  grid-template-columns: minmax(0, 0.8fr) minmax(360px, 1.2fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 24px;
-  align-items: end;
+  align-items: start;
   margin-bottom: 22px;
   padding: 23px;
 }
@@ -1500,12 +1500,27 @@
 }
 .admin-create-controls {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
   align-items: end;
 }
+.admin-create-controls--blank {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.admin-create-controls .field {
+  min-width: 0;
+  align-content: start;
+}
 .admin-create-controls .button {
-  white-space: nowrap;
+  width: 100%;
+  min-width: 0;
+  white-space: normal;
+  height: auto;
+  padding-inline: 14px;
+}
+.admin-create-controls .button span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .admin-scenario-tools {
   display: flex;
@@ -1575,7 +1590,7 @@
 .admin-scenario-list-head,
 .admin-scenario-row {
   display: grid;
-  grid-template-columns: minmax(240px, 1.4fr) 70px 105px 130px minmax(145px, auto);
+  grid-template-columns: minmax(150px, 1.4fr) 55px 80px minmax(110px, 1fr) minmax(130px, 0.8fr);
   gap: 16px;
   align-items: center;
 }
@@ -1599,6 +1614,7 @@
 }
 .admin-scenario-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 6px;
 }
@@ -1626,4 +1642,26 @@
 }
 .admin-empty-state .button {
   margin-top: 6px;
+}
+
+.admin-scenario-row > .badge,
+.admin-recent-row > .badge {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+.admin-scenario-row .editor-list-title,
+.admin-scenario-row .editor-list-title > div {
+  min-width: 0;
+}
+.admin-scenario-row h2 {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 1100px) {
+  .admin-create-controls--blank {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .admin-create-controls--blank > .button {
+    grid-column: 1 / -1;
+  }
 }

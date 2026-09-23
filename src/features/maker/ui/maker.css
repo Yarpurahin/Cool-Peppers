@@ -118,7 +118,7 @@
 }
 .maker-workspace {
   display: grid;
-  grid-template-columns: 224px minmax(0, 1fr) 326px;
+  grid-template-columns: 224px minmax(0, 1fr) var(--inspector-width, 326px);
   min-height: 0;
   flex: 1;
   position: relative;
@@ -391,7 +391,7 @@
   position: absolute;
   inset: -7px;
 }
-.maker-card-reaction .react-flow__handle {
+.maker-card-reaction .react-flow__handle-right {
   right: 15px;
   transform: translateY(-50%);
 }
@@ -437,11 +437,6 @@
   border-color: #dbac95;
   color: #a54423;
 }
-.maker-canvas-tools {
-  display: flex;
-  gap: 7px;
-}
-.maker-canvas-tools button,
 .maker-open-inspector {
   padding: 9px 11px;
   display: inline-flex;
@@ -491,7 +486,38 @@
   font-size: 8px;
   opacity: 0.65;
 }
+.maker-inspector-panel {
+  position: relative;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  z-index: 5;
+}
+.maker-inspector-resize {
+  position: absolute;
+  left: -6px;
+  top: 0;
+  bottom: 0;
+  width: 12px;
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 7;
+}
+.maker-inspector-resize::after {
+  content: '';
+  position: absolute;
+  inset: 0 5px;
+  background: transparent;
+}
+.maker-inspector-resize:hover::after,
+.maker-inspector-resize:focus-visible::after {
+  background: var(--green);
+}
+.maker-inspector-resize:focus-visible {
+  outline-offset: -3px;
+}
 .maker-inspector {
+  width: 100%;
   background: white;
   border-left: 1px solid var(--line);
   min-width: 0;
@@ -518,11 +544,6 @@
 .maker-inspector-heading h2 {
   font-size: 16px;
   margin: 0 0 8px;
-  overflow-wrap: anywhere;
-}
-.maker-inspector-heading code {
-  font-size: 9px;
-  color: var(--muted);
   overflow-wrap: anywhere;
 }
 .maker-inspector-fields {
@@ -695,7 +716,7 @@
   position: absolute;
   bottom: 16px;
   left: 242px;
-  right: 342px;
+  right: calc(var(--inspector-width, 326px) + 16px);
   z-index: 6;
   background: white;
   border: 1px solid var(--line);
@@ -932,7 +953,7 @@
     padding: 12px 16px;
   }
   .maker-workspace {
-    grid-template-columns: 194px minmax(0, 1fr) 300px;
+    grid-template-columns: 194px minmax(0, 1fr) var(--inspector-width, 326px);
   }
   .is-inspector-closed .maker-workspace {
     grid-template-columns: 194px minmax(0, 1fr);
@@ -944,14 +965,14 @@
     font-size: 15px;
   }
   .maker-history-buttons {
-    display: none;
+    display: flex;
   }
   .maker-canvas-count {
     display: none;
   }
   .maker-validation {
     left: 208px;
-    right: 314px;
+    right: calc(var(--inspector-width, 326px) + 14px);
   }
 }
 @media (max-width: 1000px) {
@@ -962,12 +983,13 @@
     min-width: 180px;
   }
   .maker-header-actions {
+    flex-wrap: wrap;
     flex: 0 0 100%;
     justify-content: flex-end;
   }
   .maker-workspace,
   .is-inspector-closed .maker-workspace {
-    grid-template-columns: minmax(0, 1fr) 300px;
+    grid-template-columns: minmax(0, 1fr) var(--inspector-width, 326px);
   }
   .is-inspector-closed .maker-workspace {
     grid-template-columns: minmax(0, 1fr);
@@ -1001,7 +1023,7 @@
   }
   .maker-validation {
     left: 14px;
-    right: 314px;
+    right: calc(var(--inspector-width, 326px) + 14px);
   }
 }
 @media (max-width: 640px) {
@@ -1033,12 +1055,12 @@
   .maker-header-actions svg {
     display: none;
   }
-  .maker-inspector {
+  .maker-inspector-panel {
     position: absolute;
     right: 0;
     top: 0;
     bottom: 0;
-    width: min(320px, calc(100vw - 38px));
+    width: min(var(--inspector-width, 326px), calc(100vw - 38px));
     box-shadow: -8px 0 24px #26352f20;
     z-index: 8;
   }
@@ -1051,14 +1073,158 @@
   .maker-canvas .react-flow__minimap {
     display: none;
   }
-  .maker-canvas-tools {
-    gap: 4px;
+}
+
+.maker-search:focus-within {
+  border-color: var(--green);
+  outline: 3px solid #b14a26;
+  outline-offset: 3px;
+}
+.maker-search input:focus {
+  outline: none;
+  box-shadow: none;
+}
+.maker-search input {
+  min-height: 30px;
+}
+.maker-card .maker-start-handle {
+  opacity: 0;
+  pointer-events: none;
+}
+.maker-card-reaction .react-flow__handle-left {
+  left: 15px;
+  right: auto;
+  transform: translateY(-50%);
+}
+.maker-card-reaction.has-left-handle button {
+  padding-inline: 36px 17px;
+}
+.maker-sidebar nav button:hover:not(:disabled),
+.maker-node-list button:hover:not(:disabled),
+.maker-card-reaction button:hover:not(:disabled),
+.maker-dashed-button:hover:not(:disabled),
+.maker-reaction-list button:hover:not(:disabled),
+.maker-block-actions button:hover:not(:disabled),
+.maker-open-inspector:hover:not(:disabled),
+.maker-mobile-tools button:hover:not(:disabled),
+.maker-canvas .react-flow__controls-button:hover {
+  background: var(--sage);
+  color: var(--green);
+}
+.maker-back:hover:not(:disabled),
+.maker-text-button:hover:not(:disabled) {
+  color: var(--orange);
+  text-decoration: underline;
+}
+.maker-danger-button:hover:not(:disabled) {
+  background: #fcece6;
+  border-color: #b54228 !important;
+}
+.maker-page button:focus-visible,
+.maker-test-drawer button:focus-visible,
+.maker-legacy summary:focus-visible {
+  outline: 3px solid #b14a26;
+  outline-offset: 2px;
+}
+.maker-canvas .react-flow__controls-button:focus-visible,
+.maker-card-reaction button:focus-visible {
+  outline-offset: -3px;
+}
+.maker-card-reaction button:focus-visible {
+  background: var(--sage);
+}
+.maker-legacy summary {
+  cursor: pointer;
+}
+.maker-legacy summary:hover {
+  color: var(--orange);
+}
+.maker-primary:disabled:hover {
+  background: var(--orange);
+}
+.maker-secondary:disabled:hover,
+.maker-danger-button:disabled:hover {
+  background: white;
+}
+.maker-return-to-node {
+  white-space: normal;
+  width: 100%;
+  line-height: 1.5;
+}
+.maker-cover-field {
+  display: grid;
+  gap: 12px;
+}
+.maker-cover-field h3 {
+  font-size: 12px;
+}
+.maker-cover-preview {
+  width: 100%;
+  aspect-ratio: 36 / 17;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+}
+.maker-cover-field input[type='file'] {
+  padding: 8px;
+  white-space: normal;
+}
+.maker-cover-field input::file-selector-button {
+  font: inherit;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--green);
+  background: var(--sage);
+  cursor: pointer;
+}
+.maker-cover-field input::file-selector-button:hover {
+  background: #d8e5cf;
+}
+.maker-notice {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.maker-notice > span {
+  flex: 1 1 260px;
+}
+.maker-sidebar,
+.maker-inspector,
+.maker-test-conversation {
+  overscroll-behavior: contain;
+}
+.maker-icon-button,
+.maker-back,
+.maker-text-button {
+  min-height: 40px;
+}
+@media (max-width: 640px) {
+  .maker-heading {
+    flex-basis: calc(100% - 46px);
+    min-width: 0;
   }
-  .maker-canvas-tools button {
-    padding: 8px;
-    font-size: 9px !important;
+  .maker-history-buttons {
+    margin-right: auto;
   }
-  .maker-canvas-tools svg {
-    display: none;
+  .maker-header-actions {
+    flex: 1 1 230px;
   }
+  .maker-page .maker-header-actions button {
+    flex: 1 1 auto;
+    white-space: normal;
+  }
+}
+
+.maker-notice > button:hover:not(:disabled) {
+  background: var(--sage);
+  border-radius: 6px;
+}
+
+.maker-status--published {
+  background: var(--sage);
+  color: var(--green);
+}
+.maker-status--archived {
+  background: #eef0e9;
+  color: var(--muted);
 }

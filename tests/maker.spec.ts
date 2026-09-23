@@ -11,7 +11,7 @@ test('maker: create, connect, validate, test, save positions, publish and play',
   await page.goto('/admin/scenarios');
   await page.getByLabel('Основа сценария').selectOption('');
   await page.getByLabel('Название сценария', { exact: true }).fill('Переговоры о зарплате — maker');
-  await page.getByRole('button', { name: 'Создать и открыть maker' }).click();
+  await page.getByRole('button', { name: 'Создать и открыть конструктор' }).click();
   await expect(page.locator('.maker-card')).toBeVisible();
   const scenarioId = page.url().split('/').at(-1)!;
   await page.getByRole('button', { name: 'Основное', exact: true }).click();

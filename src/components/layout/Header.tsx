@@ -46,9 +46,31 @@ export function Header() {
             {user?.role === 'admin' && <NavLink to="/admin">Админ-панель</NavLink>}
           </div>
           <div className="nav-account">
-            <NavLink to="/profile" className="profile-link">
-              <Icon name="user" size={17} />
-              <span>Профиль</span>
+            <NavLink
+              to="/profile"
+              className={`profile-link ${user ? 'profile-link--account' : ''}`}
+              aria-label={
+                user
+                  ? `Профиль: ${user.name}, ${user.role === 'admin' ? 'администратор' : 'участник'}`
+                  : 'Профиль'
+              }
+            >
+              {user ? (
+                <>
+                  <span className="avatar" aria-hidden="true">
+                    {user.name.trim().charAt(0).toUpperCase() || 'У'}
+                  </span>
+                  <span className="profile-link-info">
+                    <strong>{user.name}</strong>
+                    <small>{user.role === 'admin' ? 'Администратор' : 'Участник'}</small>
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Icon name="user" size={17} />
+                  <span>Профиль</span>
+                </>
+              )}
             </NavLink>
             {!user && (
               <>
