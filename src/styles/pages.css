@@ -165,6 +165,14 @@
   background: #fafbf7;
   font-size: 12px;
 }
+.search-field:focus-within input {
+  border-color: #6f8f79;
+  box-shadow: 0 0 0 3px rgb(62 94 77 / 12%);
+  outline: none;
+}
+.search-field:focus-within > svg {
+  color: var(--green);
+}
 .filter-select select {
   font-size: 12px;
   background: #fafbf7;
@@ -723,7 +731,7 @@
   height: 1px;
 }
 .answer-option:focus-within {
-  outline: 3px solid #b14a26;
+  outline: 2px solid var(--focus);
   outline-offset: 3px;
 }
 .answer-option.is-selected {
@@ -1547,6 +1555,14 @@
   font-size: 11px;
   background: white;
 }
+.admin-search-field:focus-within input {
+  border-color: #6f8f79;
+  box-shadow: 0 0 0 3px rgb(62 94 77 / 12%);
+  outline: none;
+}
+.admin-search-field:focus-within > svg {
+  color: var(--green);
+}
 .admin-status-filters {
   display: flex;
   gap: 5px;
@@ -1664,4 +1680,39 @@
   .admin-create-controls--blank > .button {
     grid-column: 1 / -1;
   }
+}
+
+.password-change-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.security-panel .panel-heading p { margin-top: 4px; color: var(--muted); font-size: 10px; }
+
+@media (min-width: 1021px) {
+  .admin-scenario-list-head,
+  .admin-scenario-row {
+    grid-template-columns: minmax(220px, 1fr) 55px 82px minmax(125px, .65fr) minmax(276px, auto);
+  }
+  .admin-scenario-actions { flex-wrap: nowrap; white-space: nowrap; }
+  .admin-scenario-actions .button { flex: 0 0 auto; }
+}
+.admin-scenario-actions .button--ghost {
+  border: 1px solid #d6ddd4;
+  background: #fff;
+}
+.admin-scenario-actions .button--ghost:hover:not(:disabled) {
+  border-color: #9fb3a5;
+  background: var(--sage);
+}
+.admin-create-controls:not(.admin-create-controls--blank) {
+  grid-template-columns: minmax(0, 1fr) max-content;
+}
+.admin-create-controls:not(.admin-create-controls--blank) > .button {
+  width: auto;
+  min-width: 132px;
+  white-space: nowrap;
+}
+@media (max-width: 760px) {
+  .password-change-grid { grid-template-columns: 1fr; }
 }

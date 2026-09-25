@@ -93,7 +93,7 @@ button {
   background-color: var(--sage);
 }
 :where(button, a, summary, [role='separator']):focus-visible {
-  outline: 3px solid #b14a26;
+  outline: 2px solid var(--focus);
   outline-offset: 3px;
 }
 button:disabled {
@@ -135,7 +135,13 @@ textarea::placeholder {
 input:focus,
 textarea:focus,
 select:focus {
-  border-color: var(--green);
+  border-color: var(--focus);
+}
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 select {
   padding-right: 28px;
@@ -149,8 +155,8 @@ input[type='radio'] {
   cursor: pointer;
 }
 :focus-visible {
-  outline: 3px solid #b14a26;
-  outline-offset: 4px;
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
 }
 main:focus {
   outline: none;
@@ -338,4 +344,12 @@ main:focus {
   [aria-selected='true'] {
     outline: 2px solid Highlight;
   }
+}
+
+/* A text caret is visible only where text can actually be edited. */
+body {
+  caret-color: transparent;
+}
+:where(input, textarea, [contenteditable='true'], [role='textbox']) {
+  caret-color: var(--ink);
 }

@@ -76,7 +76,7 @@ export function ResultView({
                       <p>{item.question}</p>
                     </details>
                   )}
-                  <p>{item.text}</p>
+                  {item.text && <p>{item.text}</p>}
                   <blockquote>«{item.quote}»</blockquote>
                   {item.penalty > 0 && (
                     <p className="review-penalty">+{item.penalty} штрафной балл</p>

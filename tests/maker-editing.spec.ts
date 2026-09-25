@@ -19,6 +19,11 @@ test('unsaved work survives reload; editing a field is one undo step and panel w
   await page.goto(`/admin/scenarios/${id}`);
   const text = page.getByLabel('Реплика персонажа');
   await text.pressSequentially('Добрый день');
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await page.keyboard.press('Control+z');
+  await expect(text).toHaveValue('');
+  await page.keyboard.press('Control+y');
+  await expect(text).toHaveValue('Добрый день');
   await page.getByRole('button', { name: 'Отменить', exact: true }).click();
   await expect(text).toHaveValue('');
   await page.getByRole('button', { name: 'Повторить', exact: true }).click();
@@ -66,7 +71,7 @@ test('unsaved work survives reload; editing a field is one undo step and panel w
   await page.getByLabel('Поиск реплики').focus();
   await expect(page.locator('.maker-search')).toHaveCSS('outline-style', 'solid');
   await expect(page.getByLabel('Поиск реплики')).toHaveCSS('outline-style', 'none');
-  await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
+  await page.getByRole('button', { name: 'Сохранить черновик', exact: true }).click();
   await expect(page.locator('.maker-notice')).toHaveText('Черновик сохранён.');
   await page.reload();
   await expect(text).toHaveValue('Добрый день');
@@ -85,10 +90,45 @@ test('unsaved work survives reload; editing a field is one undo step and panel w
   });
   await page.reload();
   await expect(text).toHaveValue('Локальная версия во время конфликта');
-  await expect(page.getByRole('button', { name: 'Сохранить', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Сохранить черновик', exact: true })).toBeDisabled();
   await page.getByRole('button', { name: 'Загрузить серверную версию' }).click();
   await page.locator('.maker-node-list').first().getByRole('button').first().click();
   await expect(text).toHaveValue('Работа из другой вкладки');
+});
+
+test('maker sections stay selected and React Flow initializes before interaction', async ({ page }) => {
+  const flowWarnings: string[] = [];
+  page.on('console', (message) => {
+    if (message.type() === 'warning' && message.text().includes('[React Flow]'))
+      flowWarnings.push(message.text());
+  });
+  await page.setViewportSize({ width: 1180, height: 820 });
+  await loginAdmin(page);
+  const { id } = await (
+    await page.request.post('/api/editor', { headers, data: { title: 'Проверка полотна' } })
+  ).json();
+  await page.goto(`/admin/scenarios/${id}`);
+  await expect(page.getByTestId('maker-canvas')).toBeVisible();
+  await page.getByRole('button', { name: 'Подсказки по работе с полотном' }).click();
+  await expect(page.getByRole('dialog', { name: 'Подсказки по полотну' })).toContainText('Ctrl + Y');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Подсказки по полотну' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Настройки', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Настройки', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await page.waitForTimeout(150);
+  await expect(page.getByRole('button', { name: 'Настройки', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await page.getByRole('button', { name: 'Основное', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Основное', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  expect(flowWarnings.filter((text) => /error#(?:004|015)/.test(text))).toEqual([]);
 });
 
 test('public version stays v1 until republish; test dismisses on backdrop and deletion hides the scenario', async ({
@@ -105,7 +145,7 @@ test('public version stays v1 until republish; test dismisses on backdrop and de
   await expect(page.locator('.maker-status')).toHaveText('Опубликовано · v1');
   await page.getByLabel('Реплика персонажа').fill('Новая редакция, ещё не опубликованная');
   await expect(page.locator('.maker-status')).toHaveText('Черновик v2 · опубликовано v1');
-  await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
+  await page.getByRole('button', { name: 'Сохранить черновик', exact: true }).click();
   await expect(page.locator('.maker-notice')).toHaveText('Черновик сохранён.');
   await page.reload();
   await expect(page.locator('.maker-status')).toHaveText('Черновик v2 · опубликовано v1');
@@ -195,7 +235,10 @@ test('creation form recovers its fields and fits narrow screens; metadata and ac
     'Мобильный сценарий',
   );
   await expect(page.locator('.admin-sidebar-user')).toHaveCount(0);
-  await expect(page.getByRole('link', { name: /Профиль:.*администратор/ })).toBeVisible();
+  await expect(page.locator('summary.account-trigger')).toHaveAttribute('aria-label', /администратор/);
+  await page.locator('summary.account-trigger').click();
+  await expect(page.getByRole('link', { name: 'Профиль и безопасность' })).toBeVisible();
+  await page.locator('summary.account-trigger').click();
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex,nofollow');
   for (const width of [1440, 1024, 768, 390, 320]) {
     await page.setViewportSize({ width, height: 950 });

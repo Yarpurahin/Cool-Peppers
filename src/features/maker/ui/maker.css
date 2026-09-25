@@ -120,7 +120,8 @@
   display: grid;
   grid-template-columns: 224px minmax(0, 1fr) var(--inspector-width, 326px);
   min-height: 0;
-  flex: 1;
+  height: 100%;
+  flex: 1 1 0;
   position: relative;
 }
 .is-inspector-closed .maker-workspace {
@@ -264,7 +265,20 @@
 .maker-canvas {
   min-width: 0;
   min-height: 0;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
   background: #f7f8f3;
+}
+.maker-canvas-loading {
+  width: 100%;
+  height: 100%;
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 11px;
 }
 .maker-canvas .react-flow__node {
   border-radius: 15px;
@@ -1077,7 +1091,7 @@
 
 .maker-search:focus-within {
   border-color: var(--green);
-  outline: 3px solid #b14a26;
+  outline: 3px solid var(--focus);
   outline-offset: 3px;
 }
 .maker-search input:focus {
@@ -1123,7 +1137,7 @@
 .maker-page button:focus-visible,
 .maker-test-drawer button:focus-visible,
 .maker-legacy summary:focus-visible {
-  outline: 3px solid #b14a26;
+  outline: 3px solid var(--focus);
   outline-offset: 2px;
 }
 .maker-canvas .react-flow__controls-button:focus-visible,
@@ -1227,4 +1241,361 @@
 .maker-status--archived {
   background: #eef0e9;
   color: var(--muted);
+}
+
+/* Maker interaction polish: multi-selection, readable routes and stable controls. */
+.maker-search:focus-within {
+  border-color: var(--green);
+  outline: none;
+  outline-offset: 0;
+  box-shadow: 0 0 0 3px rgb(55 91 66 / 13%);
+}
+.maker-search:focus-within svg {
+  color: var(--green);
+}
+.maker-canvas .react-flow__selection,
+.maker-canvas .react-flow__nodesselection-rect {
+  border: 1px solid #527e61;
+  background: rgb(82 126 97 / 8%);
+  border-radius: 10px;
+}
+.maker-canvas .react-flow__edge-path {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.maker-canvas .react-flow__edge.selected .react-flow__edge-path {
+  filter: drop-shadow(0 1px 2px rgb(177 74 38 / 18%));
+}
+.maker-canvas .react-flow__edge-textbg {
+  fill: #fffdf8;
+  stroke: #e2ddd2;
+  stroke-width: 1;
+}
+.maker-canvas .react-flow__edge-text {
+  fill: var(--ink);
+  font-size: 10px;
+  font-weight: 700;
+}
+.maker-card-reaction .react-flow__handle-right {
+  right: -6px;
+}
+.maker-card > .react-flow__handle-left {
+  left: -6px;
+}
+.maker-card .maker-empty-target-handle {
+  border-style: dashed;
+  opacity: 0.72;
+}
+.maker-open-inspector {
+  z-index: 9;
+  isolation: isolate;
+  transition:
+    background-color 130ms ease,
+    border-color 130ms ease,
+    color 130ms ease,
+    box-shadow 130ms ease;
+}
+.maker-open-inspector:hover:not(:disabled) {
+  border-color: #b9c9b9;
+  background: var(--sage);
+  color: var(--green);
+  box-shadow: 0 5px 14px rgb(36 61 48 / 10%);
+}
+.maker-bulk-selection {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 15px;
+  border: 1px solid #cfdacb;
+  border-radius: 12px;
+  background: #f7faf4;
+}
+.maker-bulk-selection-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--sage);
+  color: var(--green);
+}
+.maker-bulk-selection strong {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 12px;
+}
+.maker-bulk-selection p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.6;
+}
+.maker-bulk-selection .maker-danger-button {
+  grid-column: 1 / -1;
+}
+.maker-entity-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.maker-entity-heading > strong {
+  font-size: 11px;
+  color: var(--ink);
+}
+/* Unified maker focus language. */
+.maker-search:focus-within {
+  border-color: #769483;
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+.maker-page button:focus-visible,
+.maker-test-drawer button:focus-visible,
+.maker-legacy summary:focus-visible,
+.maker-canvas .react-flow__controls-button:focus-visible,
+.maker-card-reaction button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.maker-cover-field { gap: 10px; }
+.maker-cover-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.maker-cover-heading h3 { margin: 0; font-size: 12px; }
+.maker-cover-heading p { margin: 4px 0 0; color: var(--muted); font-size: 9px; line-height: 1.5; }
+.maker-cover-remove,
+.maker-cover-replace {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--green);
+  font-size: 9px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.maker-cover-remove { color: #a94028; border-color: #ead0c5; }
+.maker-cover-preview-wrap { position: relative; overflow: hidden; border-radius: 11px; }
+.maker-cover-preview-wrap .maker-cover-preview { display: block; }
+.maker-cover-replace { position: absolute; right: 10px; bottom: 10px; box-shadow: 0 6px 18px rgb(25 45 35 / 16%); }
+.maker-cover-dropzone {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  width: 100%;
+  min-height: 155px;
+  padding: 22px 16px;
+  border: 1.5px dashed #afc1b4;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #fbfcf8, #f5f8f2);
+  color: var(--green);
+  text-align: center;
+  cursor: pointer;
+}
+.maker-cover-dropzone:hover,
+.maker-cover-dropzone.is-dragging { border-color: var(--green); background: var(--sage); }
+.maker-cover-dropzone-icon { display: inline-flex; padding: 9px; border-radius: 10px; background: #dfead9; }
+.maker-cover-dropzone strong { font-size: 11px; }
+.maker-cover-dropzone span:not(.maker-cover-dropzone-icon) { color: var(--muted); font-size: 9px; }
+.maker-cover-dropzone small { color: #849087; font-size: 8px; }
+.maker-cover-file-input { position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+.maker-cover-hint { margin-top: -2px; }
+
+/* v0.4.6 — bottom canvas tools and contextual help. */
+.maker-canvas-tools-panel {
+  margin-bottom: 14px !important;
+  z-index: 8 !important;
+}
+.maker-canvas-tools {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  pointer-events: auto;
+}
+.maker-canvas-dock {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px;
+  border: 1px solid #d4ded4;
+  border-radius: 12px;
+  background: rgb(255 255 252 / 96%);
+  box-shadow: 0 10px 28px rgb(36 61 48 / 10%);
+  backdrop-filter: blur(8px);
+}
+.maker-canvas-dock button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  color: var(--green);
+  font-size: 10px !important;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.maker-canvas-dock button:hover:not(:disabled),
+.maker-canvas-dock button[aria-expanded='true'] {
+  background: var(--sage);
+}
+.maker-canvas-dock-separator {
+  width: 1px;
+  height: 20px;
+  background: var(--line);
+}
+.maker-canvas-help {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  width: min(390px, calc(100vw - 40px));
+  padding: 15px;
+  border: 1px solid #d2ddd2;
+  border-radius: 14px;
+  background: #fffefb;
+  box-shadow: 0 18px 48px rgb(30 52 42 / 16%);
+  transform: translateX(-50%);
+  max-height: min(430px, calc(100vh - 170px));
+  overflow: auto;
+  color: var(--ink);
+  z-index: 20;
+}
+.maker-canvas-help::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  width: 11px;
+  height: 11px;
+  border-right: 1px solid #d2ddd2;
+  border-bottom: 1px solid #d2ddd2;
+  background: #fffefb;
+  transform: translateX(-50%) rotate(45deg);
+}
+.maker-canvas-help-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 11px;
+  border-bottom: 1px solid var(--line);
+}
+.maker-canvas-help-heading strong,
+.maker-canvas-help-heading span {
+  display: block;
+}
+.maker-canvas-help-heading strong {
+  font-size: 12px;
+}
+.maker-canvas-help-heading span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 9px;
+}
+.maker-canvas-help-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  color: var(--muted);
+}
+.maker-canvas-help-grid {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 8px 12px;
+  margin-top: 12px;
+  align-items: baseline;
+}
+.maker-canvas-help-grid > span {
+  padding: 3px 7px;
+  border: 1px solid #d8e1d7;
+  border-radius: 6px;
+  background: #f5f8f2;
+  color: var(--green);
+  font-size: 8px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+.maker-canvas-help-grid p {
+  color: #59665f;
+  font-size: 9px;
+  line-height: 1.45;
+}
+.maker-canvas-help-note {
+  margin-top: 12px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  background: #f5f8f2;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+/* Stage deletion uses the same full-width destructive action as reaction deletion. */
+.maker-entity-usage {
+  padding: 3px 6px;
+  border-radius: 6px;
+  background: #f1f4ed;
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 750;
+}
+.maker-stage-delete-action {
+  margin-top: 1px;
+}
+
+/* Cover preview mirrors the catalogue card crop without modifying the original file. */
+.maker-cover-preview-wrap {
+  aspect-ratio: 360 / 176;
+  background: #edf2ea;
+}
+.maker-cover-preview-wrap .maker-cover-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+.maker-cover-crop-label {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  z-index: 1;
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 90%);
+  color: #52625a;
+  font-size: 8px;
+  font-weight: 800;
+  box-shadow: 0 2px 8px rgb(35 57 47 / 8%);
+}
+.maker-cover-dropzone {
+  min-height: 150px;
+}
+
+@media (max-width: 620px) {
+  .maker-canvas-tools-panel {
+    margin-bottom: 9px !important;
+  }
+  .maker-canvas-help {
+    width: min(360px, calc(100vw - 24px));
+    padding: 13px;
+  }
+  .maker-canvas-help-grid {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .maker-canvas-help-grid p {
+    margin-bottom: 5px;
+  }
+  .maker-canvas-dock button {
+    padding-inline: 9px;
+  }
 }

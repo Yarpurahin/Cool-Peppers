@@ -23,12 +23,19 @@ export const registerSchema = profileSchema.extend({ password });
 export const loginSchema = z
   .object({ email: z.string().trim().toLowerCase().email().max(254), password })
   .strict();
+export const changePasswordSchema = z
+  .object({ currentPassword: password, newPassword: password })
+  .strict()
+  .refine((value) => value.currentPassword !== value.newPassword, {
+    message: 'Новый пароль должен отличаться от текущего',
+    path: ['newPassword'],
+  });
 const answer = z
   .object({
     id: idSchema,
     text: required(),
     penalty: z.number().int().min(0).max(10000),
-    feedback: required(),
+    feedback: text(),
     next: z.discriminatedUnion('type', [
       z.object({ type: z.literal('node'), nodeId: idSchema }).strict(),
       z.object({ type: z.literal('ending'), endingId: idSchema }).strict(),

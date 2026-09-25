@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Background,
   Controls,
@@ -15,21 +15,31 @@ import {
   useStore,
   useUpdateNodeInternals,
 } from '@xyflow/react';
-import type { Connection, Edge, Node, NodeProps, ReactFlowInstance } from '@xyflow/react';
+import type {
+  Connection,
+  Edge,
+  Node,
+  NodeProps,
+  ReactFlowInstance,
+  ReactFlowProps,
+} from '@xyflow/react';
 import type { GraphIssue, MakerDocument } from '../model/types.ts';
 import { layoutGraph } from '../model/commands.ts';
 import { Icon } from '../../../components/ui/Icon.tsx';
 
 export type Selection =
   | { type: 'node' | 'ending'; id: string }
+  | { type: 'blocks'; ids: string[] }
   | { type: 'reaction'; id: string; nodeId: string }
   | { type: 'main' | 'characters' | 'stages' | 'settings' };
+
 export interface BranchRequest {
   nodeId: string;
   reactionId: string;
   position: { x: number; y: number };
   screen: { x: number; y: number };
 }
+
 type CardData = {
   title: string;
   text: string;
@@ -40,47 +50,48 @@ type CardData = {
   endingType?: string;
   error?: boolean;
   warning?: boolean;
+  incomingIds: string[];
   reactions?: {
     id: string;
     label: string;
     linked: boolean;
     selected: boolean;
-    targetId?: string;
   }[];
   selectReaction?: (id: string) => void;
 };
 export type CardNode = Node<CardData>;
 
-function DialogueCard({ id, data }: NodeProps<CardNode>) {
+function IncomingHandles({ id, incomingIds }: { id: string; incomingIds: string[] }) {
   const update = useUpdateNodeInternals();
-  // Read live positions so the handle follows a target even while it is being dragged.
-  const sides = useStore((state) => {
-    const sourceX = state.nodeLookup.get(id)?.internals.positionAbsolute.x ?? 0;
-    return (
-      data.reactions
-        ?.map((reaction) => {
-          const targetX = reaction.targetId
-            ? state.nodeLookup.get(reaction.targetId)?.internals.positionAbsolute.x
-            : undefined;
-          return targetX !== undefined && targetX < sourceX ? 'L' : 'R';
-        })
-        .join('') ?? ''
-    );
-  });
-  const signature = data.reactions?.map((r) => r.id).join(',');
+  const signature = incomingIds.join(',');
   useEffect(() => {
     update(id);
-  }, [id, signature, sides, data.start, update]);
+  }, [id, signature, update]);
+
+  const handles = incomingIds.length ? incomingIds : ['available-target'];
+  return handles.map((incomingId, index) => (
+    <Handle
+      key={incomingId}
+      id={`in-${incomingId}`}
+      type="target"
+      position={Position.Left}
+      style={{ top: `${((index + 1) / (handles.length + 1)) * 100}%` }}
+      aria-label={incomingId === 'available-target' ? 'Вход блока' : 'Вход перехода'}
+      className={incomingId === 'available-target' ? 'maker-empty-target-handle' : ''}
+    />
+  ));
+}
+
+function DialogueCard({ id, data }: NodeProps<CardNode>) {
+  const update = useUpdateNodeInternals();
+  const reactionSignature = data.reactions?.map((r) => r.id).join(',');
+  useEffect(() => {
+    update(id);
+  }, [id, reactionSignature, data.start, update]);
+
   return (
     <article className={`maker-card ${data.error ? 'has-error' : ''}`} data-testid={`block-${id}`}>
-      <Handle
-        type="target"
-        position={Position.Top}
-        aria-label="Вход реплики"
-        className={data.start ? 'maker-start-handle' : ''}
-        isConnectable={!data.start}
-        aria-hidden={data.start || undefined}
-      />
+      <IncomingHandles id={id} incomingIds={data.incomingIds} />
       <div className="maker-card-heading">
         <span className="maker-avatar">{data.initials || '—'}</span>
         <div>
@@ -95,16 +106,13 @@ function DialogueCard({ id, data }: NodeProps<CardNode>) {
         {data.start && <b>Старт</b>}
       </div>
       <div className="maker-card-reactions">
-        {data.reactions?.map((r, index) => (
-          <div
-            className={`maker-card-reaction ${sides[index] === 'L' ? 'has-left-handle' : ''} ${r.selected ? 'is-selected' : ''}`}
-            key={r.id}
-          >
+        {data.reactions?.map((r) => (
+          <div className={`maker-card-reaction ${r.selected ? 'is-selected' : ''}`} key={r.id}>
             <button
               type="button"
               className="nodrag nopan"
-              onClick={(e) => {
-                e.stopPropagation();
+              onClick={(event) => {
+                event.stopPropagation();
                 data.selectReaction?.(r.id);
               }}
               title={r.label}
@@ -114,7 +122,7 @@ function DialogueCard({ id, data }: NodeProps<CardNode>) {
             <Handle
               id={r.id}
               type="source"
-              position={sides[index] === 'L' ? Position.Left : Position.Right}
+              position={Position.Right}
               className={r.linked ? '' : 'is-unlinked'}
               aria-label={`Переход: ${r.label}`}
               data-testid={`handle-${r.id}`}
@@ -126,12 +134,13 @@ function DialogueCard({ id, data }: NodeProps<CardNode>) {
     </article>
   );
 }
-function EndingCard({ data }: NodeProps<CardNode>) {
+
+function EndingCard({ id, data }: NodeProps<CardNode>) {
   return (
     <article
       className={`maker-card maker-ending maker-ending--${data.endingType} ${data.error ? 'has-error' : ''}`}
     >
-      <Handle type="target" position={Position.Top} aria-label="Вход финала" />
+      <IncomingHandles id={id} incomingIds={data.incomingIds} />
       <div className="maker-ending-title">
         <Icon name={data.endingType === 'success' ? 'check' : 'flag'} size={18} />
         <strong>{data.title || 'Новый финал'}</strong>
@@ -148,7 +157,27 @@ function EndingCard({ data }: NodeProps<CardNode>) {
     </article>
   );
 }
+
 const nodeTypes = { dialogue: DialogueCard, ending: EndingCard };
+const PAN_ON_DRAG = [1, 2];
+const MULTI_SELECTION_KEYS = ['Shift', 'Control', 'Meta'];
+const DEFAULT_EDGE_OPTIONS: NonNullable<ReactFlowProps<CardNode, Edge>['defaultEdgeOptions']> = {
+  type: 'smoothstep',
+  style: { stroke: '#799383', strokeWidth: 2 },
+};
+const ARIA_LABEL_CONFIG: NonNullable<ReactFlowProps<CardNode, Edge>['ariaLabelConfig']> = {
+  'node.a11yDescription.default':
+    'Enter — выбрать реплику. Shift или Ctrl — добавить или убрать блок из выделения. Delete — удалить выбранный блок или реакцию.',
+  'edge.a11yDescription.default': 'Enter — выбрать реакцию. Delete — удалить реакцию.',
+  'controls.zoomIn.ariaLabel': 'Приблизить',
+  'controls.zoomOut.ariaLabel': 'Отдалить',
+  'controls.fitView.ariaLabel': 'Показать весь граф',
+  'minimap.ariaLabel': 'Мини-карта',
+};
+const MINIMAP_STYLE = { width: 145, height: 90 };
+const minimapNodeColor = (node: Node) =>
+  node.type === 'ending' ? '#eed4c5' : '#d7e4d7';
+
 function InitialViewport({ hasSavedViewport }: { hasSavedViewport: boolean }) {
   const initialized = useNodesInitialized();
   const flow = useReactFlow();
@@ -166,17 +195,25 @@ function InitialViewport({ hasSavedViewport }: { hasSavedViewport: boolean }) {
   return null;
 }
 
+function NodeInitializationReporter({ onChange }: { onChange: (ready: boolean) => void }) {
+  const initialized = useNodesInitialized();
+  useEffect(() => onChange(initialized), [initialized, onChange]);
+  return null;
+}
+
 export function ScenarioCanvas({
   doc,
   selection,
   issues,
   onSelect,
+  onBlockSelection,
   onPositions,
   onViewport,
   onConnect,
   onDisconnect,
   onRemove,
   onBranch,
+  onArrange,
   onReady,
   disabled,
 }: {
@@ -185,27 +222,229 @@ export function ScenarioCanvas({
   issues: GraphIssue[];
   disabled: boolean;
   onSelect: (selection: Selection) => void;
+  onBlockSelection: (ids: string[]) => void;
   onPositions: (positions: Record<string, { x: number; y: number }>) => void;
   onViewport: (viewport: { x: number; y: number; zoom: number }) => void;
   onConnect: (connection: Connection) => void;
   onDisconnect: (edges: Edge[]) => void;
   onRemove: (ids: string[]) => void;
   onBranch: (request: BranchRequest) => void;
+  onArrange: () => void;
   onReady: (flow: ReactFlowInstance<CardNode>) => void;
 }) {
   const flowRef = useRef<ReactFlowInstance<CardNode> | null>(null);
   const source = useRef<{ nodeId: string; reactionId: string } | null>(null);
+  const container = useRef<HTMLDivElement | null>(null);
+  const [containerReady, setContainerReady] = useState(false);
+  const [nodesReady, setNodesReady] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const help = useRef<HTMLDivElement | null>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState<CardNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const defaults = useMemo(() => layoutGraph(doc.definition), [doc.definition]);
+  const selectionRef = useRef(selection);
+  selectionRef.current = selection;
+  const initialViewport = useRef(doc.editor.viewport).current;
+
+  useEffect(() => {
+    const element = container.current;
+    if (!element || containerReady) return;
+    const checkSize = () => {
+      const rect = element.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) setContainerReady(true);
+    };
+    checkSize();
+    if (typeof ResizeObserver === 'undefined') {
+      const frame = requestAnimationFrame(checkSize);
+      return () => cancelAnimationFrame(frame);
+    }
+    const observer = new ResizeObserver(checkSize);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [containerReady]);
+
+  useEffect(() => {
+    if (!helpOpen) return;
+    const closeHelp = (event: PointerEvent) => {
+      if (!(event.target instanceof Element) || !help.current?.contains(event.target))
+        setHelpOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setHelpOpen(false);
+    };
+    document.addEventListener('pointerdown', closeHelp);
+    window.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeHelp);
+      window.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [helpOpen]);
+
+  // React Flow stores event handlers/options in its internal Zustand store.
+  // Keep every handler passed to <ReactFlow> referentially stable: recreating them
+  // on each render can make StoreUpdater continuously write back into the store.
+  const runtime = useRef({
+    disabled,
+    onSelect,
+    onBlockSelection,
+    onPositions,
+    onViewport,
+    onConnect,
+    onDisconnect,
+    onRemove,
+    onBranch,
+    onReady,
+  });
+  runtime.current = {
+    disabled,
+    onSelect,
+    onBlockSelection,
+    onPositions,
+    onViewport,
+    onConnect,
+    onDisconnect,
+    onRemove,
+    onBranch,
+    onReady,
+  };
+  const rendered = useRef({ nodes, edges, onNodesChange, onEdgesChange });
+  rendered.current = { nodes, edges, onNodesChange, onEdgesChange };
+
+  type FlowProps = ReactFlowProps<CardNode, Edge>;
+
+  const handleNodesChange = useCallback<NonNullable<FlowProps['onNodesChange']>>((changes) => {
+    rendered.current.onNodesChange(changes);
+    const moved = changes.flatMap((change) =>
+      change.type === 'position' && change.position && change.dragging === false
+        ? [[change.id, change.position] as const]
+        : [],
+    );
+    if (moved.length && !runtime.current.disabled)
+      runtime.current.onPositions(Object.fromEntries(moved));
+  }, []);
+
+  const handleEdgesChange = useCallback<NonNullable<FlowProps['onEdgesChange']>>((changes) => {
+    rendered.current.onEdgesChange(changes);
+  }, []);
+
+  const handleInit = useCallback<NonNullable<FlowProps['onInit']>>((flow) => {
+    flowRef.current = flow;
+    runtime.current.onReady(flow);
+  }, []);
+
+  const handleMoveEnd = useCallback<NonNullable<FlowProps['onMoveEnd']>>((event, viewport) => {
+    if (event && !runtime.current.disabled) runtime.current.onViewport(viewport);
+  }, []);
+
+  const handleKeyDown = useCallback<NonNullable<FlowProps['onKeyDown']>>((event) => {
+    const element = event.target as HTMLElement;
+    if (!['Enter', ' '].includes(event.key)) return;
+    if (element.matches('.react-flow__node')) {
+      const node = rendered.current.nodes.find((item) => item.id === element.dataset.id);
+      if (node) {
+        event.preventDefault();
+        runtime.current.onSelect({ type: node.type === 'ending' ? 'ending' : 'node', id: node.id });
+      }
+    } else if (element.matches('.react-flow__edge')) {
+      const edge = rendered.current.edges.find((item) => item.id === element.dataset.id);
+      if (edge) runtime.current.onSelect({ type: 'reaction', nodeId: edge.source, id: edge.id });
+    }
+  }, []);
+
+  const handleSelectionChange = useCallback<NonNullable<FlowProps['onSelectionChange']>>(
+    ({ nodes: selectedNodes, edges: selectedEdges }) => {
+      if (selectedEdges.length === 1 && selectedNodes.length === 0) {
+        const edge = selectedEdges[0];
+        runtime.current.onSelect({ type: 'reaction', nodeId: edge.source, id: edge.id });
+        return;
+      }
+      if (selectedNodes.length) {
+        runtime.current.onBlockSelection(selectedNodes.map((node) => node.id));
+        return;
+      }
+      // React Flow emits an empty selection not only after a pane click, but also when
+      // controlled `selected` flags are cleared from outside the canvas (for example
+      // when opening "Основное" or "Настройки"). Do not translate that store update
+      // into another inspector selection. A real canvas deselection is handled by
+      // handlePaneClick below.
+    },
+    [],
+  );
+
+  const handlePaneClick = useCallback<NonNullable<FlowProps['onPaneClick']>>(() => {
+    runtime.current.onBlockSelection([]);
+  }, []);
+
+  const handleEdgeClick = useCallback<NonNullable<FlowProps['onEdgeClick']>>((_, edge) => {
+    runtime.current.onSelect({ type: 'reaction', nodeId: edge.source, id: edge.id });
+  }, []);
+
+  const handleNodesDelete = useCallback<NonNullable<FlowProps['onNodesDelete']>>((deleted) => {
+    runtime.current.onRemove(deleted.map((node) => node.id));
+  }, []);
+
+  const handleEdgesDelete = useCallback<NonNullable<FlowProps['onEdgesDelete']>>((deleted) => {
+    runtime.current.onDisconnect(deleted);
+  }, []);
+
+  const handleConnect = useCallback<NonNullable<FlowProps['onConnect']>>((connection) => {
+    runtime.current.onConnect(connection);
+  }, []);
+
+  const handleConnectStart = useCallback<NonNullable<FlowProps['onConnectStart']>>((_, params) => {
+    source.current =
+      params.handleType === 'source' && params.nodeId && params.handleId
+        ? { nodeId: params.nodeId, reactionId: params.handleId }
+        : null;
+  }, []);
+
+  const handleConnectEnd = useCallback<NonNullable<FlowProps['onConnectEnd']>>((event, state) => {
+    const from = source.current;
+    source.current = null;
+    if (
+      runtime.current.disabled ||
+      state.isValid ||
+      !from ||
+      !(event.target instanceof Element) ||
+      !event.target.closest('.react-flow__pane') ||
+      !flowRef.current
+    )
+      return;
+    const point = 'changedTouches' in event ? event.changedTouches[0] : event;
+    const screen = { x: point.clientX, y: point.clientY };
+    runtime.current.onBranch({
+      ...from,
+      position: flowRef.current.screenToFlowPosition(screen),
+      screen,
+    });
+  }, []);
+
+  const handleNodesInitialized = useCallback((ready: boolean) => {
+    setNodesReady((currentReady) => (currentReady === ready ? currentReady : ready));
+  }, []);
+
   useEffect(() => {
     const def = doc.definition;
+    const activeSelection = selectionRef.current;
     const flags = (id: string) => ({
       error: issues.some((i) => i.nodeId === id && i.severity === 'error'),
       warning: issues.some((i) => i.nodeId === id && i.severity === 'warning'),
     });
-    // Selecting a reaction selects its edge, not the source node: Delete disconnects only that edge.
-    const current = selection.type === 'node' || selection.type === 'ending' ? selection.id : '';
+    const selectedIds = new Set(
+      activeSelection.type === 'blocks'
+        ? activeSelection.ids
+        : activeSelection.type === 'node' || activeSelection.type === 'ending'
+          ? [activeSelection.id]
+          : [],
+    );
+    const incomingByTarget = new Map<string, string[]>();
+    for (const node of def.nodes)
+      for (const reaction of node.reactions) {
+        const target = reaction.nextNodeId || reaction.endingId;
+        if (!target) continue;
+        incomingByTarget.set(target, [...(incomingByTarget.get(target) ?? []), reaction.id]);
+      }
+
     const cards: CardNode[] = [
       ...def.nodes.map((node) => {
         const character = def.characters.find((c) => c.id === node.characterId);
@@ -214,7 +453,7 @@ export function ScenarioCanvas({
           type: 'dialogue',
           ariaLabel: `Реплика: ${node.title || 'Без названия'}`,
           position: doc.editor.positions[node.id] ?? defaults[node.id],
-          selected: current === node.id,
+          selected: selectedIds.has(node.id),
           data: {
             title: node.title,
             text: node.text,
@@ -222,44 +461,58 @@ export function ScenarioCanvas({
             initials: character?.initials,
             stage: def.stages.find((s) => s.id === node.stageId)?.title,
             start: def.startNodeId === node.id,
+            incomingIds: incomingByTarget.get(node.id) ?? [],
             ...flags(node.id),
-            reactions: node.reactions.map((r) => ({
-              id: r.id,
-              label: r.label,
-              linked: !!(r.nextNodeId || r.endingId),
-              targetId: r.nextNodeId || r.endingId,
-              selected: selection.type === 'reaction' && selection.id === r.id,
+            reactions: node.reactions.map((reaction) => ({
+              id: reaction.id,
+              label: reaction.label,
+              linked: !!(reaction.nextNodeId || reaction.endingId),
+              selected: activeSelection.type === 'reaction' && activeSelection.id === reaction.id,
             })),
-            selectReaction: (id: string) => onSelect({ type: 'reaction', id, nodeId: node.id }),
+            selectReaction: (id: string) =>
+              runtime.current.onSelect({ type: 'reaction', id, nodeId: node.id }),
           },
-        };
+        } satisfies CardNode;
       }),
-      ...def.endings.map((e) => ({
-        id: e.id,
-        type: 'ending',
-        ariaLabel: `Финал: ${e.title || 'Без названия'}`,
-        position: doc.editor.positions[e.id] ?? defaults[e.id],
-        selected: current === e.id,
-        data: { title: e.title, text: e.description, endingType: e.type, ...flags(e.id) },
-      })),
+      ...def.endings.map(
+        (ending) =>
+          ({
+            id: ending.id,
+            type: 'ending',
+            ariaLabel: `Финал: ${ending.title || 'Без названия'}`,
+            position: doc.editor.positions[ending.id] ?? defaults[ending.id],
+            selected: selectedIds.has(ending.id),
+            data: {
+              title: ending.title,
+              text: ending.description,
+              endingType: ending.type,
+              incomingIds: incomingByTarget.get(ending.id) ?? [],
+              ...flags(ending.id),
+            },
+          }) satisfies CardNode,
+      ),
     ];
+
     setNodes(cards);
     setEdges(
       def.nodes.flatMap((node) =>
-        node.reactions.flatMap((r): Edge[] => {
-          const target = r.nextNodeId || r.endingId;
-          if (!target || !cards.some((c) => c.id === target)) return [];
+        node.reactions.flatMap((reaction): Edge[] => {
+          const target = reaction.nextNodeId || reaction.endingId;
+          if (!target || !cards.some((card) => card.id === target)) return [];
+          const selected = activeSelection.type === 'reaction' && activeSelection.id === reaction.id;
           return [
             {
-              id: r.id,
+              id: reaction.id,
               source: node.id,
-              sourceHandle: r.id,
+              sourceHandle: reaction.id,
               target,
-              type: 'bezier',
-              ariaLabel: `Переход: ${r.label || 'Без названия'}`,
+              targetHandle: `in-${reaction.id}`,
+              type: 'smoothstep',
+              ariaLabel: `Переход: ${reaction.label || 'Без названия'}`,
               markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
-              selected: selection.type === 'reaction' && selection.id === r.id,
-              label: selection.type === 'reaction' && selection.id === r.id ? r.label : undefined,
+              selected,
+              zIndex: selected ? 4 : 1,
+              label: selected ? reaction.label : undefined,
             },
           ];
         }),
@@ -269,117 +522,180 @@ export function ScenarioCanvas({
     doc.definition,
     doc.editor.positions,
     defaults,
-    selection,
     issues,
-    onSelect,
     setNodes,
     setEdges,
   ]);
 
+  useEffect(() => {
+    const selectedIds = new Set(
+      selection.type === 'blocks'
+        ? selection.ids
+        : selection.type === 'node' || selection.type === 'ending'
+          ? [selection.id]
+          : [],
+    );
+    const selectedReaction = selection.type === 'reaction' ? selection.id : '';
+    const reactionLabels = new Map(
+      doc.definition.nodes.flatMap((node) =>
+        node.reactions.map((reaction) => [reaction.id, reaction.label] as const),
+      ),
+    );
+
+    setNodes((currentNodes) => {
+      let changed = false;
+      const nextNodes = currentNodes.map((node) => {
+        const selected = selectedIds.has(node.id);
+        let data = node.data;
+        if (data.reactions) {
+          let reactionsChanged = false;
+          const reactions = data.reactions.map((reaction) => {
+            const reactionSelected = reaction.id === selectedReaction;
+            if (reaction.selected === reactionSelected) return reaction;
+            reactionsChanged = true;
+            return { ...reaction, selected: reactionSelected };
+          });
+          if (reactionsChanged) data = { ...data, reactions };
+        }
+        if (node.selected === selected && data === node.data) return node;
+        changed = true;
+        return { ...node, selected, data };
+      });
+      return changed ? nextNodes : currentNodes;
+    });
+
+    setEdges((currentEdges) => {
+      let changed = false;
+      const nextEdges = currentEdges.map((edge) => {
+        const selected = edge.id === selectedReaction;
+        const label = selected ? reactionLabels.get(edge.id) : undefined;
+        const zIndex = selected ? 4 : 1;
+        if (edge.selected === selected && edge.label === label && edge.zIndex === zIndex) return edge;
+        changed = true;
+        return { ...edge, selected, label, zIndex };
+      });
+      return changed ? nextEdges : currentEdges;
+    });
+  }, [doc.definition, selection, setEdges, setNodes]);
+
   return (
-    <div className="maker-canvas" aria-label="Полотно сценария" data-testid="maker-canvas">
-      <ReactFlow<CardNode>
-        aria-label="Полотно сценария"
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={nodeTypes}
-        onNodesChange={(changes) => {
-          onNodesChange(changes);
-          const moved = changes.flatMap((change) =>
-            change.type === 'position' && change.position && change.dragging === false
-              ? [[change.id, change.position] as const]
-              : [],
-          );
-          if (moved.length && !disabled) onPositions(Object.fromEntries(moved));
-        }}
-        onEdgesChange={onEdgesChange}
-        onInit={(flow) => {
-          flowRef.current = flow;
-          onReady(flow);
-        }}
-        defaultViewport={doc.editor.viewport}
-        minZoom={0.08}
-        maxZoom={1.5}
-        onMoveEnd={(event, viewport) => {
-          if (event && !disabled) onViewport(viewport);
-        }}
-        onKeyDown={(event) => {
-          const element = event.target as HTMLElement;
-          if (!['Enter', ' '].includes(event.key)) return;
-          if (element.matches('.react-flow__node')) {
-            const node = nodes.find((n) => n.id === element.dataset.id);
-            if (node) {
-              event.preventDefault();
-              onSelect({ type: node.type === 'ending' ? 'ending' : 'node', id: node.id });
-            }
-          } else if (element.matches('.react-flow__edge')) {
-            const edge = edges.find((e) => e.id === element.dataset.id);
-            if (edge) onSelect({ type: 'reaction', nodeId: edge.source, id: edge.id });
-          }
-        }}
-        onNodeClick={(_, n) =>
-          onSelect({ type: n.type === 'ending' ? 'ending' : 'node', id: n.id })
-        }
-        onEdgeClick={(_, edge) => onSelect({ type: 'reaction', nodeId: edge.source, id: edge.id })}
-        onNodeDragStop={(_, node, moved) =>
-          onPositions(
-            Object.fromEntries((moved.length ? moved : [node]).map((n) => [n.id, n.position])),
-          )
-        }
-        onNodesDelete={(deleted) => onRemove(deleted.map((n) => n.id))}
-        onEdgesDelete={onDisconnect}
-        onConnect={onConnect}
-        onConnectStart={(_, params) => {
-          source.current =
-            params.handleType === 'source' && params.nodeId && params.handleId
-              ? { nodeId: params.nodeId, reactionId: params.handleId }
-              : null;
-        }}
-        onConnectEnd={(event, state) => {
-          const from = source.current;
-          source.current = null;
-          if (
-            disabled ||
-            state.isValid ||
-            !from ||
-            !(event.target instanceof Element) ||
-            !event.target.closest('.react-flow__pane')
-          )
-            return;
-          const point = 'changedTouches' in event ? event.changedTouches[0] : event;
-          const screen = { x: point.clientX, y: point.clientY };
-          onBranch({ ...from, position: flowRef.current!.screenToFlowPosition(screen), screen });
-        }}
-        nodesDraggable={!disabled}
-        nodesConnectable={!disabled}
-        edgesReconnectable={false}
-        deleteKeyCode={disabled ? null : ['Backspace', 'Delete']}
-        connectOnClick
-        defaultEdgeOptions={{ style: { stroke: '#799383', strokeWidth: 2 } }}
-        ariaLabelConfig={{
-          'node.a11yDescription.default':
-            'Enter — выбрать реплику. Стрелки — переместить. Delete — удалить. Связи можно настроить в панели свойств.',
-          'edge.a11yDescription.default': 'Enter — выбрать переход. Delete — удалить переход.',
-          'controls.zoomIn.ariaLabel': 'Приблизить',
-          'controls.zoomOut.ariaLabel': 'Отдалить',
-          'controls.fitView.ariaLabel': 'Показать весь граф',
-          'minimap.ariaLabel': 'Мини-карта',
-        }}
-      >
-        <InitialViewport hasSavedViewport={!!doc.editor.viewport} />
-        <Background color="#d8e0d6" gap={22} size={1.2} />
-        <Controls showInteractive={false} />
-        <MiniMap
-          style={{ width: 145, height: 90 }}
-          pannable
-          zoomable
-          nodeColor={(n) => (n.type === 'ending' ? '#eed4c5' : '#d7e4d7')}
-          maskColor="rgba(247,247,242,.6)"
-        />
-        <Panel position="top-right" className="maker-canvas-count">
-          {doc.definition.nodes.length} реплик · {doc.definition.endings.length} финалов
-        </Panel>
-      </ReactFlow>
+    <div
+      ref={container}
+      className="maker-canvas"
+      aria-label="Полотно сценария"
+      data-testid="maker-canvas"
+    >
+      {containerReady ? (
+        <ReactFlow<CardNode>
+          aria-label="Полотно сценария"
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          onNodesChange={handleNodesChange}
+          onEdgesChange={handleEdgesChange}
+          onInit={handleInit}
+          defaultViewport={initialViewport}
+          minZoom={0.08}
+          maxZoom={1.5}
+          onMoveEnd={handleMoveEnd}
+          onKeyDown={handleKeyDown}
+          onSelectionChange={handleSelectionChange}
+          onPaneClick={handlePaneClick}
+          onEdgeClick={handleEdgeClick}
+          onNodesDelete={handleNodesDelete}
+          onEdgesDelete={handleEdgesDelete}
+          onConnect={handleConnect}
+          onConnectStart={handleConnectStart}
+          onConnectEnd={handleConnectEnd}
+          nodesDraggable={nodesReady && !disabled}
+          nodesConnectable={nodesReady && !disabled}
+          edgesReconnectable={false}
+          selectionOnDrag={nodesReady && !disabled}
+          panOnDrag={PAN_ON_DRAG}
+          multiSelectionKeyCode={MULTI_SELECTION_KEYS}
+          deleteKeyCode={null}
+          connectOnClick
+          elevateEdgesOnSelect
+          defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
+          ariaLabelConfig={ARIA_LABEL_CONFIG}
+        >
+          <NodeInitializationReporter onChange={handleNodesInitialized} />
+          <InitialViewport hasSavedViewport={!!doc.editor.viewport} />
+          <Background color="#d8e0d6" gap={22} size={1.2} />
+          <Controls showInteractive={false} />
+          <MiniMap
+            style={MINIMAP_STYLE}
+            pannable
+            zoomable
+            nodeColor={minimapNodeColor}
+            maskColor="rgba(247,247,242,.6)"
+          />
+          <Panel position="bottom-center" className="maker-canvas-tools-panel">
+            <div className="maker-canvas-tools" ref={help}>
+              {helpOpen && (
+                <section className="maker-canvas-help" role="dialog" aria-label="Подсказки по полотну">
+                  <div className="maker-canvas-help-heading">
+                    <div>
+                      <strong>Работа с полотном</strong>
+                      <span>Основные действия и горячие клавиши</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="maker-canvas-help-close"
+                      onClick={() => setHelpOpen(false)}
+                      aria-label="Закрыть подсказки"
+                    >
+                      <Icon name="close" size={15} />
+                    </button>
+                  </div>
+                  <div className="maker-canvas-help-grid">
+                    <span>Рамка</span>
+                    <p>Выделить несколько блоков.</p>
+                    <span>Shift / Ctrl</span>
+                    <p>Добавить или убрать блок из выделения.</p>
+                    <span>Delete</span>
+                    <p>Удалить выбранный блок или реакцию.</p>
+                    <span>Ctrl + Z</span>
+                    <p>Отменить последнее изменение.</p>
+                    <span>Ctrl + Y</span>
+                    <p>Вернуть отменённое изменение.</p>
+                    <span>Ctrl + Shift + Z</span>
+                    <p>Альтернативный повтор действия.</p>
+                  </div>
+                  <p className="maker-canvas-help-note">
+                    Потяните точку справа от реакции к карточке или в пустое место, чтобы
+                    продолжить ветку.
+                  </p>
+                </section>
+              )}
+              <div className="maker-canvas-dock">
+                <button type="button" onClick={onArrange} disabled={disabled}>
+                  <Icon name="branch" size={15} />
+                  Упорядочить
+                </button>
+                <span className="maker-canvas-dock-separator" aria-hidden="true" />
+                <button
+                  type="button"
+                  className="maker-canvas-help-trigger"
+                  aria-expanded={helpOpen}
+                  aria-label="Подсказки по работе с полотном"
+                  onClick={() => setHelpOpen((value) => !value)}
+                >
+                  <Icon name="info" size={16} />
+                  Подсказки
+                </button>
+              </div>
+            </div>
+          </Panel>
+          <Panel position="top-right" className="maker-canvas-count">
+            {doc.definition.nodes.length} реплик · {doc.definition.endings.length} финалов
+          </Panel>
+        </ReactFlow>
+      ) : (
+        <div className="maker-canvas-loading" role="status">
+          Подготавливаем полотно…
+        </div>
+      )}
     </div>
   );
 }

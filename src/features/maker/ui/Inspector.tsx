@@ -2,7 +2,7 @@ import { useEffect, useId, useRef } from 'react';
 import type { ReactNode } from 'react';
 import type { MakerDefinition, MakerDocument } from '../model/types.ts';
 import type { Selection } from './ScenarioCanvas.tsx';
-import { addReaction, cleanVariants, connectReaction, newId } from '../model/commands.ts';
+import { addReaction, connectReaction, newId } from '../model/commands.ts';
 import { Icon } from '../../../components/ui/Icon.tsx';
 import { ScenarioCoverField } from './ScenarioCoverField.tsx';
 
@@ -71,12 +71,30 @@ function Select({
   );
 }
 
+const INTENT_OPTIONS = [
+  ['greet', 'Поздороваться'],
+  ['acknowledge_position', 'Признать позицию собеседника'],
+  ['continue_discussion', 'Продолжить обсуждение'],
+  ['ask_clarification', 'Уточнить'],
+  ['provide_information', 'Дать информацию'],
+  ['introduce_counter_offer', 'Предложить встречный вариант'],
+  ['accept_offer', 'Принять предложение'],
+  ['reject_offer', 'Отклонить предложение'],
+  ['acknowledge_agreement', 'Подтвердить договорённость'],
+  ['close_agreement', 'Завершить договорённость'],
+  ['answer_side_question', 'Ответить на побочный вопрос'],
+] as const;
+
+const DURATION_OPTIONS = ['3–5 минут', '5–10 минут', '10–15 минут', '15–20 минут', '20+ минут'];
+
 export function Inspector({
   doc,
   selection,
   change,
   onSelect,
   onDelete,
+  onDeleteMany,
+  onDeleteReaction,
   onDuplicate,
   onClose,
   onExport,
@@ -88,6 +106,8 @@ export function Inspector({
   change: (mutator: (doc: MakerDocument) => void) => void;
   onSelect: (selection: Selection) => void;
   onDelete: (id: string) => void;
+  onDeleteMany: (ids: string[]) => void;
+  onDeleteReaction: (nodeId: string, reactionId: string) => void;
   onDuplicate: (id: string) => void;
   onClose: () => void;
   focusToken: number;
@@ -116,15 +136,17 @@ export function Inspector({
       ? 'Реплика'
       : selection.type === 'reaction'
         ? 'Реакция'
-        : selection.type === 'ending'
-          ? 'Финал'
-          : selection.type === 'main'
-            ? 'Основное'
-            : selection.type === 'characters'
-              ? 'Персонажи'
-              : selection.type === 'stages'
-                ? 'Этапы'
-                : 'Настройки';
+        : selection.type === 'blocks'
+          ? `Выбрано блоков: ${selection.ids.length}`
+          : selection.type === 'ending'
+            ? 'Финал'
+            : selection.type === 'main'
+              ? 'Основное'
+              : selection.type === 'characters'
+                ? 'Персонажи'
+                : selection.type === 'stages'
+                  ? 'Этапы'
+                  : 'Настройки';
   const blockId = 'id' in selection ? selection.id : '';
   const mutateNode = (mutator: (n: NonNullable<typeof node>) => void) =>
     update((d) => {
@@ -159,6 +181,28 @@ export function Inspector({
       </div>
       <fieldset disabled={disabled} className="maker-inspector-fields">
         <legend className="sr-only">{title}: свойства</legend>
+        {selection.type === 'blocks' && (
+          <section className="maker-bulk-selection">
+            <div className="maker-bulk-selection-icon">
+              <Icon name="branch" size={20} />
+            </div>
+            <div>
+              <strong>Выбрано блоков: {selection.ids.length}</strong>
+              <p>
+                Перетаскивайте любой выбранный блок — группа переместится вместе. Shift или Ctrl
+                добавляет блок в выделение и убирает его повторным нажатием.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="maker-danger-button"
+              onClick={() => onDeleteMany(selection.ids)}
+            >
+              <Icon name="trash" size={16} />
+              Удалить выбранные блоки
+            </button>
+          </section>
+        )}
         {selection.type === 'node' && node && (
           <>
             <Field
@@ -296,7 +340,7 @@ export function Inspector({
               onClick={() => onSelect({ type: 'node', id: node.id })}
             >
               <Icon name="back" size={15} />
-              <span>Вернуться к редактированию реплики</span>
+              <span>К реплике</span>
             </button>
             <Field
               label="Название реакции"
@@ -310,17 +354,42 @@ export function Inspector({
               }
               hint="Этот текст участник увидит на кнопке."
             />
-            <Field
-              label="Intent"
-              value={reaction.intent}
-              maxLength={100}
-              onChange={(v) =>
+            <Select
+              label="Смысл реакции (intent)"
+              value={
+                INTENT_OPTIONS.some(([value]) => value === reaction.intent)
+                  ? reaction.intent
+                  : '__custom__'
+              }
+              onChange={(value) =>
                 mutateReaction((r) => {
-                  r.intent = v;
+                  if (value === '__custom__') {
+                    if (INTENT_OPTIONS.some(([preset]) => preset === r.intent))
+                      r.intent = newId('intent');
+                  } else r.intent = value;
                 })
               }
-              hint="Устойчивый смысл реакции, например salary_offer. Не меняется при переименовании кнопки."
-            />
+            >
+              {INTENT_OPTIONS.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label} · {value}
+                </option>
+              ))}
+              <option value="__custom__">Свой вариант</option>
+            </Select>
+            {!INTENT_OPTIONS.some(([value]) => value === reaction.intent) && (
+              <Field
+                label="Свой intent"
+                value={reaction.intent}
+                maxLength={100}
+                onChange={(v) =>
+                  mutateReaction((r) => {
+                    r.intent = v;
+                  })
+                }
+                hint="Латинские буквы, цифры и _. Intent должен быть уникальным внутри одной реплики."
+              />
+            )}
             <div className="maker-section-heading">
               <h3>Примеры фраз</h3>
               <span>{reaction.examples.length}</span>
@@ -420,20 +489,13 @@ export function Inspector({
               className="maker-primary maker-return-to-node"
               onClick={() => onSelect({ type: 'node', id: node.id })}
             >
-              <Icon name="back" size={16} />
-              <span>Готово — вернуться к реплике</span>
+              <Icon name="check" size={16} />
+              <span>Готово</span>
             </button>
             <button
               type="button"
               className="maker-danger-button"
-              onClick={() => {
-                update((d) => {
-                  const n = d.nodes.find((n) => n.id === node.id)!;
-                  n.reactions = n.reactions.filter((r) => r.id !== reaction.id);
-                  cleanVariants(d);
-                });
-                onSelect({ type: 'node', id: node.id });
-              }}
+              onClick={() => onDeleteReaction(node.id, reaction.id)}
             >
               <Icon name="trash" size={16} />
               Удалить реакцию
@@ -554,31 +616,74 @@ export function Inspector({
               <option value="medium">Средний</option>
               <option value="hard">Продвинутый</option>
             </Select>
-            {(
-              [
-                ['context', 'Контекст'],
-                ['goal', 'Цель участника'],
-                ['playerRole', 'Роль участника'],
-                ['skill', 'Навык'],
-                ['duration', 'Длительность'],
-                ['tip', 'Совет участнику'],
-              ] as const
-            ).map(([key, label]) => (
-              <Field
-                key={key}
-                label={label}
-                value={def.metadata[key]}
-                multiline={['context', 'goal', 'tip'].includes(key)}
-                maxLength={
-                  key === 'duration' ? 100 : ['playerRole', 'skill'].includes(key) ? 200 : 10000
-                }
-                onChange={(v) =>
-                  update((d) => {
-                    d.metadata[key] = v;
-                  })
-                }
-              />
-            ))}
+            <Field
+              label="Контекст"
+              multiline
+              value={def.metadata.context}
+              onChange={(v) =>
+                update((d) => {
+                  d.metadata.context = v;
+                })
+              }
+            />
+            <Field
+              label="Цель участника"
+              multiline
+              value={def.metadata.goal}
+              onChange={(v) =>
+                update((d) => {
+                  d.metadata.goal = v;
+                })
+              }
+            />
+            <Field
+              label="Роль участника"
+              maxLength={200}
+              value={def.metadata.playerRole}
+              onChange={(v) =>
+                update((d) => {
+                  d.metadata.playerRole = v;
+                })
+              }
+            />
+            <Field
+              label="Навык"
+              maxLength={200}
+              value={def.metadata.skill}
+              onChange={(v) =>
+                update((d) => {
+                  d.metadata.skill = v;
+                })
+              }
+            />
+            <Select
+              label="Длительность"
+              value={def.metadata.duration}
+              onChange={(v) =>
+                update((d) => {
+                  d.metadata.duration = v;
+                })
+              }
+            >
+              {!DURATION_OPTIONS.includes(def.metadata.duration) && (
+                <option value={def.metadata.duration}>{def.metadata.duration}</option>
+              )}
+              {DURATION_OPTIONS.map((duration) => (
+                <option key={duration} value={duration}>
+                  {duration}
+                </option>
+              ))}
+            </Select>
+            <Field
+              label="Совет участнику"
+              multiline
+              value={def.metadata.tip}
+              onChange={(v) =>
+                update((d) => {
+                  d.metadata.tip = v;
+                })
+              }
+            />
           </>
         )}
         {selection.type === 'characters' && (
@@ -670,32 +775,51 @@ export function Inspector({
               Этапы помогают ориентироваться в разговоре. Они не ограничивают переходы между
               репликами.
             </p>
-            {def.stages.map((s, i) => (
-              <section key={s.id} className="maker-entity-fields">
-                <Field
-                  label={`Этап ${i + 1}`}
-                  value={s.title}
-                  maxLength={200}
-                  onChange={(v) =>
-                    update((d) => {
-                      d.stages.find((x) => x.id === s.id)!.title = v;
-                    })
-                  }
-                />
-                <button
-                  type="button"
-                  className="maker-text-button"
-                  onClick={() =>
-                    update((d) => {
-                      d.stages = d.stages.filter((x) => x.id !== s.id);
-                      for (const n of d.nodes) if (n.stageId === s.id) delete n.stageId;
-                    })
-                  }
-                >
-                  Удалить этап
-                </button>
-              </section>
-            ))}
+            {def.stages.map((s, i) => {
+              const assignedCount = def.nodes.filter((node) => node.stageId === s.id).length;
+              return (
+                <section key={s.id} className="maker-entity-fields">
+                  <div className="maker-entity-heading">
+                    <strong>Этап {i + 1}</strong>
+                    {assignedCount > 0 && (
+                      <span className="maker-entity-usage">{assignedCount} репл.</span>
+                    )}
+                  </div>
+                  <Field
+                    label="Название"
+                    value={s.title}
+                    maxLength={200}
+                    onChange={(v) =>
+                      update((d) => {
+                        d.stages.find((x) => x.id === s.id)!.title = v;
+                      })
+                    }
+                  />
+                  <button
+                    type="button"
+                    className="maker-danger-button maker-stage-delete-action"
+                    onClick={() => {
+                      if (
+                        assignedCount > 0 &&
+                        !window.confirm(
+                          `Этап используется в ${assignedCount} реплик${
+                            assignedCount === 1 ? 'е' : 'ах'
+                          }. Удалить этап и оставить эти реплики без этапа?`,
+                        )
+                      )
+                        return;
+                      update((d) => {
+                        d.stages = d.stages.filter((x) => x.id !== s.id);
+                        for (const n of d.nodes) if (n.stageId === s.id) delete n.stageId;
+                      });
+                    }}
+                  >
+                    <Icon name="trash" size={16} />
+                    Удалить этап
+                  </button>
+                </section>
+              );
+            })}
             <button
               type="button"
               className="maker-dashed-button"

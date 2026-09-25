@@ -14,7 +14,7 @@ export function ScenarioArt({
         src={image.src}
         alt={image.alt}
         width={360}
-        height={170}
+        height={176}
         loading="lazy"
         decoding="async"
       />
@@ -22,7 +22,7 @@ export function ScenarioArt({
   return (
     <svg
       className={`scenario-art scenario-art--${kind}`}
-      viewBox="0 0 360 170"
+      viewBox="0 0 360 176"
       fill="none"
       aria-hidden="true"
     >

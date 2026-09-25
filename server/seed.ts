@@ -2,6 +2,7 @@ import { pathToFileURL } from 'node:url';
 import type { Pool, PoolClient } from 'pg';
 import { scenarios } from '../src/data/scenarios.ts';
 import { employmentScenario } from '../src/features/negotiation/data/employment.ts';
+import { fromPreview } from '../src/features/maker/model/adapter.ts';
 import { registerSchema } from '../src/types/validation.ts';
 import { hashPassword, randomUUID } from './auth.ts';
 import { config } from './config.ts';
@@ -44,22 +45,23 @@ export async function seed(pool: Pool) {
       const doc = normalizeDocument(
         documentSchema.parse({
           preview,
-          definition: preview.id === employmentScenario.metadata.id ? employmentScenario : null,
+          definition:
+            preview.id === employmentScenario.metadata.id
+              ? employmentScenario
+              : fromPreview(preview),
         }),
       );
       const inserted = await client.query(
         'INSERT INTO scenarios(id) VALUES ($1) ON CONFLICT DO NOTHING RETURNING id',
         [preview.id],
       );
-      // Rerunning seeds must not overwrite editorial work or existing versions.
+      // Published versions are immutable. Existing installations can keep their old
+      // preview-only snapshots: the read/copy/play paths synthesize an executable graph
+      // at runtime. Fresh installations store that graph immediately.
       if (!inserted.rowCount) continue;
       await client.query(
         'INSERT INTO scenario_versions(scenario_id, version, preview, definition) VALUES ($1, 1, $2, $3)',
-        [
-          preview.id,
-          JSON.stringify(doc.preview),
-          doc.definition ? JSON.stringify(doc.definition) : null,
-        ],
+        [preview.id, JSON.stringify(doc.preview), JSON.stringify(doc.definition)],
       );
       await client.query('UPDATE scenarios SET published_version = 1 WHERE id = $1', [preview.id]);
     }

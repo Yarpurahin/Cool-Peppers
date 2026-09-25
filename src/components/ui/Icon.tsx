@@ -28,6 +28,7 @@ const paths = {
   message: 'M21 4H3v13h5l4 4v-4h9zM7 9h10M7 13h6',
   book: 'M12 5c-3-2-6-2-10-1v15c4-1 7-1 10 1m0-15c3-2 6-2 10-1v15c-4-1-7-1-10 1z',
   flag: 'M5 22V3m0 1c5-4 9 4 15 0v10c-6 4-10-4-15 0',
+  shield: 'M12 3 20 6v6c0 5-3.3 8.2-8 10-4.7-1.8-8-5-8-10V6l8-3m-3 9 2 2 4-5',
 } as const;
 
 export type IconName = keyof typeof paths;

@@ -22,6 +22,7 @@ export function PasswordField({
           type={visible ? 'text' : 'password'}
           required
           minLength={newPassword ? 8 : undefined}
+          maxLength={128}
           autoComplete={newPassword ? 'new-password' : 'current-password'}
           placeholder={newPassword ? 'Не менее 8 символов' : 'Введите пароль'}
         />

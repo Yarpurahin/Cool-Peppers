@@ -46,7 +46,7 @@ test('maker: create, connect, validate, test, save positions, publish and play',
   await page.getByLabel('Описание финала').fill('Стороны согласовали предложение.');
   await expect(page.locator('.react-flow__edge')).toHaveCount(1);
   // Saving an end position must not change the graph.
-  await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
+  await page.getByRole('button', { name: 'Сохранить черновик', exact: true }).click();
   await expect(page.locator('.maker-notice')).toHaveText('Черновик сохранён.');
   const initial = await (await page.request.get(`/api/editor/${scenarioId}`)).json();
   const endId = initial.definition.endings[0].id;
@@ -56,7 +56,7 @@ test('maker: create, connect, validate, test, save positions, publish and play',
   await page.mouse.down();
   await page.mouse.move(rect.x + rect.width / 2 + 60, rect.y + 65, { steps: 12 });
   await page.mouse.up();
-  await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
+  await page.getByRole('button', { name: 'Сохранить черновик', exact: true }).click();
   await expect(page.locator('.maker-notice')).toHaveText('Черновик сохранён.');
   const moved = await (await page.request.get(`/api/editor/${scenarioId}`)).json();
   expect(moved.definition).toEqual(initial.definition);
@@ -116,12 +116,13 @@ test('maker: duplicate, delete, undo and reaction editing preserve IDs', async (
   await page.locator('.maker-node-list').first().getByRole('button').first().click();
   await page.locator('.maker-reaction-list').getByRole('button').first().click();
   await expect(page.locator('.react-flow__edge.selected')).toHaveCount(1);
+  const reactionCount = await page.locator('.maker-card-reaction').count();
   await page.keyboard.press('Delete');
-  await expect(page.getByLabel('Переход', { exact: true })).toHaveValue('');
+  await expect(page.locator('.maker-card-reaction')).toHaveCount(reactionCount - 1);
   await expect(page.locator('.maker-card')).toHaveCount(14);
   await page.getByRole('button', { name: 'Отменить', exact: true }).click();
-  await expect(page.getByLabel('Переход', { exact: true })).not.toHaveValue('');
-  await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
+  await expect(page.locator('.maker-card-reaction')).toHaveCount(reactionCount);
+  await page.getByRole('button', { name: 'Сохранить черновик', exact: true }).click();
   await expect(page.locator('.maker-notice')).toHaveText('Черновик сохранён.');
   const saved = await (await page.request.get(`/api/editor/${id}`)).json();
   expect(saved.definition.schemaVersion).toBe(2);

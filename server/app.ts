@@ -30,6 +30,7 @@ import {
 } from './store.ts';
 import {
   answerSchema,
+  changePasswordSchema,
   documentSchema,
   feedbackSchema,
   idSchema,
@@ -48,7 +49,11 @@ import {
   startAttempt,
 } from '../src/features/negotiation/model/engine.ts';
 import type { AuthoringDocument } from '../src/features/maker/model/types.ts';
-import { createBlankDefinition, isMakerDefinition } from '../src/features/maker/model/adapter.ts';
+import {
+  createBlankDefinition,
+  fromPreview,
+  isMakerDefinition,
+} from '../src/features/maker/model/adapter.ts';
 import { validateMaker } from '../src/features/maker/model/validation.ts';
 import { scenarios as initialScenarios } from '../src/data/scenarios.ts';
 
@@ -152,6 +157,27 @@ export function createApp(pool: Pool) {
     );
     res.json(publicUser(updated.rows[0]));
   });
+  app.post('/api/me/password', async (req, res) => {
+    const id = user(res).id;
+    const input = changePasswordSchema.parse(req.body);
+    const found = await pool.query('SELECT password_hash FROM app_users WHERE id = $1', [id]);
+    if (!found.rowCount || !(await checkPassword(input.currentPassword, found.rows[0].password_hash)))
+      throw new ApiError(401, 'Текущий пароль указан неверно');
+    const passwordHash = await hashPassword(input.newPassword);
+    const token = sessionToken(req);
+    await transaction(pool, async (client) => {
+      await client.query('UPDATE app_users SET password_hash = $1, updated_at = now() WHERE id = $2', [
+        passwordHash,
+        id,
+      ]);
+      if (token)
+        await client.query('DELETE FROM auth_sessions WHERE user_id = $1 AND token_hash <> $2', [
+          id,
+          hashToken(token),
+        ]);
+    });
+    res.status(204).end();
+  });
   app.get('/api/me/history', async (req, res) => {
     const id = user(res).id;
     const offset = z.coerce
@@ -204,10 +230,10 @@ export function createApp(pool: Pool) {
       await pool.query(`SELECT v.preview, v.definition FROM scenarios s JOIN scenario_versions v
       ON (v.scenario_id,v.version) = (s.id,s.published_version) WHERE s.archived_at IS NULL AND s.deleted_at IS NULL ORDER BY s.created_at, s.id`);
     res.json(
-      rows.rows.map((doc: AuthoringDocument) => ({
-        preview: doc.preview,
-        definition: doc.definition ? compileScenario(doc.definition).definition : null,
-      })),
+      rows.rows.map((doc: AuthoringDocument) => {
+        const definition = doc.definition ?? fromPreview(doc.preview);
+        return { preview: doc.preview, definition: compileScenario(definition).definition };
+      }),
     );
   });
 
@@ -256,14 +282,13 @@ export function createApp(pool: Pool) {
           throw new ApiError(409, 'Повторное прохождение отключено');
       }
       const source = await client.query(
-        `SELECT v.definition FROM scenarios s JOIN scenario_versions v
+        `SELECT v.preview, v.definition FROM scenarios s JOIN scenario_versions v
         ON (v.scenario_id,v.version) = (s.id,s.published_version) WHERE s.id = $1 AND s.archived_at IS NULL AND s.deleted_at IS NULL`,
         [id],
       );
       if (!source.rowCount) throw new ApiError(404, 'Сценарий не найден');
-      if (!source.rows[0].definition)
-        throw new ApiError(409, 'Это демонстрационный сценарий, оценка прохождения ещё не задана');
-      const scenario = compileScenario(source.rows[0].definition);
+      const definition = source.rows[0].definition ?? fromPreview(source.rows[0].preview);
+      const scenario = compileScenario(definition);
       const next = startAttempt(scenario, randomUUID(), new Date().toISOString());
       if (current.rowCount)
         await client.query(
@@ -394,14 +419,17 @@ export function createApp(pool: Pool) {
           [input.sourceId],
         );
         if (!source.rowCount) throw new ApiError(404, 'Шаблон не найден');
-        doc = source.rows[0];
+        const sourceDoc = source.rows[0] as AuthoringDocument;
+        const sourceDefinition = sourceDoc.definition ?? fromPreview(sourceDoc.preview);
+        doc = {
+          preview: structuredClone(sourceDoc.preview),
+          definition: structuredClone(sourceDefinition),
+        };
         doc.preview.id = id;
         doc.preview.title += ' — копия';
-        if (doc.definition) {
-          doc.definition.metadata.id = id;
-          doc.definition.metadata.version = 1;
-          doc.definition.metadata.title += ' — копия';
-        }
+        doc.definition!.metadata.id = id;
+        doc.definition!.metadata.version = 1;
+        doc.definition!.metadata.title += ' — копия';
       } else {
         doc = {
           preview: { ...structuredClone(initialScenarios[0]), id, title: input.title },

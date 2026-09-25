@@ -5,6 +5,7 @@ import { useCatalog } from '../app/DataProvider.tsx';
 import type { HistoryRow, User } from '../types/api.ts';
 import { Button } from '../components/ui/Button.tsx';
 import { Icon } from '../components/ui/Icon.tsx';
+import { PasswordField } from '../components/ui/PasswordField.tsx';
 
 interface History {
   total: number;
@@ -20,6 +21,9 @@ export function ProfilePage() {
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
   const [historyError, setHistoryError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordNotice, setPasswordNotice] = useState('');
+  const [passwordBusy, setPasswordBusy] = useState(false);
   const [retry, setRetry] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
@@ -64,7 +68,7 @@ export function ProfilePage() {
           <span className="avatar avatar--large">{initials}</span>
           <div>
             <h2>{user.name}</h2>
-            <p>Участник Арены</p>
+            <p>{user.role === 'admin' ? 'Администратор Арены' : 'Участник Арены'}</p>
           </div>
         </div>
         <div className="stat stat--dark">
@@ -143,6 +147,63 @@ export function ProfilePage() {
           {error && (
             <p className="field-error" role="alert">
               {error}
+            </p>
+          )}
+        </form>
+      </section>
+      <section className="panel personal-panel security-panel">
+        <div className="panel-heading">
+          <div>
+            <h2>Безопасность</h2>
+            <p>Смените пароль аккаунта. После сохранения остальные активные сессии будут завершены.</p>
+          </div>
+          <Icon name="lock" />
+        </div>
+        <form
+          onSubmit={async (event) => {
+            event.preventDefault();
+            if (passwordBusy) return;
+            const form = event.currentTarget;
+            const data = new FormData(form);
+            const currentPassword = String(data.get('currentPassword') ?? '');
+            const newPassword = String(data.get('newPassword') ?? '');
+            const repeatPassword = String(data.get('repeatPassword') ?? '');
+            setPasswordError('');
+            setPasswordNotice('');
+            if (newPassword !== repeatPassword) {
+              setPasswordError('Новые пароли не совпадают.');
+              return;
+            }
+            setPasswordBusy(true);
+            try {
+              await api('/me/password', {
+                method: 'POST',
+                body: { currentPassword, newPassword },
+              });
+              form.reset();
+              setPasswordNotice('Пароль изменён. Остальные активные сессии завершены.');
+            } catch (cause) {
+              setPasswordError(errorMessage(cause));
+            } finally {
+              setPasswordBusy(false);
+            }
+          }}
+        >
+          <div className="password-change-grid">
+            <PasswordField label="Текущий пароль" name="currentPassword" />
+            <PasswordField label="Новый пароль" name="newPassword" newPassword />
+            <PasswordField label="Повторите новый пароль" name="repeatPassword" newPassword />
+          </div>
+          <div className="form-bottom">
+            <Button type="submit" disabled={passwordBusy} variant="secondary">
+              <Icon name="lock" size={17} />
+              {passwordBusy ? 'Сохраняем…' : 'Изменить пароль'}
+            </Button>
+            {passwordNotice && <p role="status">{passwordNotice}</p>}
+          </div>
+          {passwordError && (
+            <p className="field-error" role="alert">
+              {passwordError}
             </p>
           )}
         </form>

@@ -73,6 +73,8 @@ test('PostgreSQL API integration', { timeout: 120000 }, async (t) => {
     const a = actor();
     const b = actor();
     const guest = actor();
+    const otherSession = actor();
+    const passwordCheck = actor();
     const password = 'Test-password-2026';
     const account = {
       name: 'Тестовый пользователь',
@@ -135,7 +137,45 @@ test('PostgreSQL API integration', { timeout: 120000 }, async (t) => {
         'Новое имя',
       );
     });
-    await t.test('CSRF, invalid JSON shapes and unavailable demo attempts', async () => {
+    await t.test('password change verifies current password and revokes other sessions', async () => {
+      assert.equal(
+        (await otherSession.request('/auth/login', 'POST', { email: account.email, password })).status,
+        200,
+      );
+      assert.equal(
+        (
+          await a.request('/me/password', 'POST', {
+            currentPassword: 'wrong-password',
+            newPassword: 'Updated-password-2026',
+          })
+        ).status,
+        401,
+      );
+      assert.equal(
+        (
+          await a.request('/me/password', 'POST', {
+            currentPassword: password,
+            newPassword: 'Updated-password-2026',
+          })
+        ).status,
+        204,
+      );
+      assert.equal((await otherSession.request('/auth/me')).data, null);
+      assert.equal(
+        (await passwordCheck.request('/auth/login', 'POST', { email: account.email, password })).status,
+        401,
+      );
+      assert.equal(
+        (
+          await passwordCheck.request('/auth/login', 'POST', {
+            email: account.email,
+            password: 'Updated-password-2026',
+          })
+        ).status,
+        200,
+      );
+    });
+    await t.test('CSRF, invalid JSON shapes and playable built-in templates', async () => {
       assert.equal(
         (await a.request('/scenarios/terms/attempts', 'POST', {}, { 'X-Arena-Request': '' }))
           .status,
@@ -152,7 +192,9 @@ test('PostgreSQL API integration', { timeout: 120000 }, async (t) => {
         ).status,
         403,
       );
-      assert.equal((await a.request('/scenarios/new-deadline/attempts', 'POST')).status, 409);
+      const templateAttempt = await a.request('/scenarios/new-deadline/attempts', 'POST');
+      assert.equal(templateAttempt.status, 200);
+      assert.equal(templateAttempt.data.definition.metadata.id, 'new-deadline');
       assert.equal((await a.request('/attempts/not-a-uuid')).status, 422);
       assert.equal(
         (await a.request('/scenarios/terms/attempts', 'POST', { penalties: 0 })).status,
@@ -282,6 +324,12 @@ test('PostgreSQL API integration', { timeout: 120000 }, async (t) => {
         assert.equal((await a.request('/editor')).status, 403);
         await pool.query(`UPDATE app_users SET role = 'admin' WHERE email = $1`, [account.email]);
         assert.equal((await a.request('/auth/me')).data.role, 'admin');
+        const templateCopy = (
+          await a.request('/editor', 'POST', { sourceId: 'new-deadline' })
+        ).data.id;
+        const templateDraft = (await a.request(`/editor/${templateCopy}`)).data;
+        assert.ok(templateDraft.definition);
+        assert.equal(templateDraft.definition.metadata.id, templateCopy);
         customId = (await a.request('/editor', 'POST', { sourceId: 'terms' })).data.id;
         assert.equal((await b.request(`/editor/${customId}`)).status, 403);
         draft = (await a.request(`/editor/${customId}`)).data;

@@ -14,6 +14,7 @@ import {
   layoutGraph,
   newId,
   removeBlocks,
+  removeReaction,
 } from '../model/commands.ts';
 import type {
   AuthoringDraft,
@@ -38,6 +39,29 @@ import { DraftHistory } from '../model/history.ts';
 import { statusLabel, statusOf } from '../model/publication.ts';
 import '@xyflow/react/dist/style.css';
 import './maker.css';
+
+function sameSelection(a: Selection, b: Selection) {
+  if (a.type !== b.type) return false;
+  if (a.type === 'blocks' && b.type === 'blocks') {
+    if (a.ids.length !== b.ids.length) return false;
+    const selected = new Set(a.ids);
+    return b.ids.every((id) => selected.has(id));
+  }
+  if (a.type === 'reaction' && b.type === 'reaction')
+    return a.id === b.id && a.nodeId === b.nodeId;
+  if ((a.type === 'node' || a.type === 'ending') && (b.type === 'node' || b.type === 'ending'))
+    return a.id === b.id;
+  return true;
+}
+
+function isEditableTarget(target: EventTarget | null) {
+  const element = target instanceof HTMLElement ? target : null;
+  if (!element) return false;
+  return (
+    element.isContentEditable ||
+    !!element.closest('input, textarea, select, [contenteditable="true"], [role="textbox"]')
+  );
+}
 
 export function ScenarioBuilderPage() {
   const { scenarioId } = useParams();
@@ -191,11 +215,30 @@ export function ScenarioBuilderPage() {
   );
   const select = useCallback((value: Selection) => {
     history.current.breakGroup();
-    setSelection(value);
+    setSelection((currentSelection) =>
+      sameSelection(currentSelection, value) ? currentSelection : value,
+    );
     setInspectorOpen(true);
     setSidebarOpen(false);
     setBranch(null);
   }, []);
+  const selectBlocks = useCallback(
+    (ids: string[]) => {
+      const unique = [...new Set(ids)];
+      if (!unique.length) {
+        select({ type: 'main' });
+        return;
+      }
+      if (unique.length === 1) {
+        const id = unique[0];
+        const ending = current.current?.definition.endings.some((item) => item.id === id);
+        select({ type: ending ? 'ending' : 'node', id });
+        return;
+      }
+      select({ type: 'blocks', ids: unique });
+    },
+    [select],
+  );
   function focus(id: string) {
     requestAnimationFrame(() => {
       void flow.current?.fitView({
@@ -211,29 +254,43 @@ export function ScenarioBuilderPage() {
     select(value);
     if ('id' in value) focus(value.type === 'reaction' ? value.nodeId : value.id);
   }
-  function travel(direction: 'undo' | 'redo') {
-    if (!current.current || busyRef.current) return;
-    const value = history.current.travel(direction, current.current);
-    if (!value) return;
-    const next = {
-      ...current.current,
-      preview: value.preview,
-      definition: value.definition,
-      editor: { ...value.editor, viewport: current.current.editor.viewport },
-    };
-    replace(next);
-    persist(next);
-    // A removed selection must not leave an empty inspector after undo/redo.
-    if ('id' in selection) {
-      const id = selection.type === 'reaction' ? selection.nodeId : selection.id;
-      const node = next.definition.nodes.find((n) => n.id === id);
-      if (!node && !next.definition.endings.some((e) => e.id === id)) select({ type: 'main' });
-      else if (selection.type === 'reaction' && !node?.reactions.some((r) => r.id === selection.id))
-        select({ type: 'node', id });
-    }
-    setMessage('');
-    setBranch(null);
-  }
+  const travel = useCallback(
+    (direction: 'undo' | 'redo') => {
+      if (!current.current || busyRef.current) return;
+      const value = history.current.travel(direction, current.current);
+      if (!value) return;
+      const next = {
+        ...current.current,
+        preview: value.preview,
+        definition: value.definition,
+        editor: { ...value.editor, viewport: current.current.editor.viewport },
+      };
+      replace(next);
+      persist(next);
+      // A removed selection must not leave an empty inspector after undo/redo.
+      if (selection.type === 'blocks') {
+        const available = new Set([
+          ...next.definition.nodes.map((node) => node.id),
+          ...next.definition.endings.map((ending) => ending.id),
+        ]);
+        const ids = selection.ids.filter((id) => available.has(id));
+        if (ids.length !== selection.ids.length) selectBlocks(ids);
+      } else if ('id' in selection) {
+        const id = selection.type === 'reaction' ? selection.nodeId : selection.id;
+        const node = next.definition.nodes.find((n) => n.id === id);
+        if (!node && !next.definition.endings.some((e) => e.id === id))
+          select({ type: 'main' });
+        else if (
+          selection.type === 'reaction' &&
+          !node?.reactions.some((r) => r.id === selection.id)
+        )
+          select({ type: 'node', id });
+      }
+      setMessage('');
+      setBranch(null);
+    },
+    [persist, replace, select, selectBlocks, selection],
+  );
   function add(type: 'node' | 'ending', request?: BranchRequest) {
     const value = current.current;
     if (
@@ -263,11 +320,74 @@ export function ScenarioBuilderPage() {
   }
   function remove(ids: string[]) {
     change((d) => removeBlocks(d, ids));
-    if (
+    if (selection.type === 'blocks' && selection.ids.some((id) => ids.includes(id)))
+      select({ type: 'main' });
+    else if (
       'id' in selection &&
       ids.includes(selection.type === 'reaction' ? selection.nodeId : selection.id)
     )
       select({ type: 'main' });
+  }
+  function removeSelectedReaction(nodeId: string, reactionId: string) {
+    change((doc) => {
+      removeReaction(doc.definition, nodeId, reactionId);
+    });
+    select({ type: 'node', id: nodeId });
+  }
+
+  useEffect(() => {
+    const handleKeyboard = (event: KeyboardEvent) => {
+      if (testDefinition || branch || busy || isEditableTarget(event.target)) return;
+
+      if (
+        (event.key === 'Delete' || event.key === 'Backspace') &&
+        !event.altKey &&
+        !event.ctrlKey &&
+        !event.metaKey
+      ) {
+        if (selection.type === 'reaction') {
+          event.preventDefault();
+          removeSelectedReaction(selection.nodeId, selection.id);
+          return;
+        }
+        if (selection.type === 'blocks') {
+          event.preventDefault();
+          remove(selection.ids);
+          return;
+        }
+        if (selection.type === 'node' || selection.type === 'ending') {
+          event.preventDefault();
+          remove([selection.id]);
+          return;
+        }
+      }
+
+      if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+      // Use physical key codes as the primary signal so shortcuts also work
+      // with Cyrillic and other keyboard layouts (KeyZ may otherwise report "я").
+      const key = event.key.toLowerCase();
+      const undoKey = event.code === 'KeyZ' || key === 'z';
+      const redoKey = event.code === 'KeyY' || key === 'y';
+      if (undoKey) {
+        event.preventDefault();
+        travel(event.shiftKey ? 'redo' : 'undo');
+      } else if (redoKey && !event.shiftKey) {
+        event.preventDefault();
+        travel('redo');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyboard, { capture: true });
+    return () => window.removeEventListener('keydown', handleKeyboard, { capture: true });
+  }, [branch, busy, selection, testDefinition, travel]);
+
+  function arrange() {
+    change((d) => {
+      d.editor.positions = layoutGraph(d.definition);
+    });
+    requestAnimationFrame(() => {
+      void flow.current?.fitView({ padding: 0.16, maxZoom: 0.95, duration: 280 });
+    });
   }
   function duplicate(id: string) {
     const type = current.current?.definition.nodes.some((n) => n.id === id) ? 'node' : 'ending';
@@ -401,7 +521,7 @@ export function ScenarioBuilderPage() {
   }
   if (!draft)
     return (
-      <main id="main-content" tabIndex={-1} className="container page">
+      <main id="main-content" className="container page">
         <h1>Конструктор сценария</h1>
         <p role={error ? 'alert' : 'status'}>{error || 'Загружаем сценарий…'}</p>
         <button className="button button--outline" onClick={() => navigate(listPath)}>
@@ -438,17 +558,8 @@ export function ScenarioBuilderPage() {
   return (
     <main
       id="main-content"
-      tabIndex={-1}
       style={inspectorWidth.style}
       onBlurCapture={() => history.current.breakGroup()}
-      onKeyDownCapture={(event) => {
-        if (testDefinition || branch || !(event.ctrlKey || event.metaKey) || event.altKey) return;
-        const key = event.key.toLowerCase();
-        if (key === 'z' || key === 'y') {
-          event.preventDefault();
-          travel(key === 'y' || event.shiftKey ? 'redo' : 'undo');
-        }
-      }}
       className={`maker-page ${inspectorOpen ? '' : 'is-inspector-closed'} ${sidebarOpen ? 'is-sidebar-open' : ''}`}
     >
       {inspectorOpen && (
@@ -493,6 +604,8 @@ export function ScenarioBuilderPage() {
             disabled={busy || !history.current.past.length}
             onClick={() => travel('undo')}
             aria-label="Отменить"
+            aria-keyshortcuts="Control+Z Meta+Z"
+            title="Отменить (Ctrl+Z)"
           >
             <Icon name="reset" size={18} />
           </button>
@@ -502,6 +615,8 @@ export function ScenarioBuilderPage() {
             disabled={busy || !history.current.future.length}
             onClick={() => travel('redo')}
             aria-label="Повторить"
+            aria-keyshortcuts="Control+Y Control+Shift+Z Meta+Shift+Z"
+            title="Повторить (Ctrl+Y / Ctrl+Shift+Z)"
           >
             <Icon name="reset" size={18} style={{ transform: 'scaleX(-1)' }} />
           </button>
@@ -514,13 +629,14 @@ export function ScenarioBuilderPage() {
             disabled={busy || conflict}
           >
             <Icon name="save" size={16} />
-            Сохранить
+            Сохранить черновик
           </button>
           <button type="button" className="maker-secondary" onClick={test} disabled={busy}>
             <Icon name="message" size={16} />
             Тестировать
           </button>
           <button type="button" className="maker-secondary" onClick={check} disabled={busy}>
+            <Icon name="check" size={16} />
             Проверить
           </button>
           <button
@@ -529,6 +645,7 @@ export function ScenarioBuilderPage() {
             onClick={() => void save(true)}
             disabled={busy || conflict}
           >
+            <Icon name="upRight" size={16} />
             Опубликовать
           </button>
         </div>
@@ -699,6 +816,7 @@ export function ScenarioBuilderPage() {
           issues={displayedIssues}
           disabled={busy}
           onSelect={select}
+          onBlockSelection={selectBlocks}
           onPositions={(positions) =>
             change((d) => {
               Object.assign(d.editor.positions, positions);
@@ -713,6 +831,7 @@ export function ScenarioBuilderPage() {
           onDisconnect={disconnect}
           onRemove={remove}
           onBranch={setBranch}
+          onArrange={arrange}
           onReady={(instance) => {
             flow.current = instance;
           }}
@@ -725,6 +844,8 @@ export function ScenarioBuilderPage() {
               change={change}
               onSelect={select}
               onDelete={(id) => remove([id])}
+              onDeleteMany={remove}
+              onDeleteReaction={removeSelectedReaction}
               onDuplicate={duplicate}
               onClose={() => setInspectorOpen(false)}
               onExport={exportDocument}

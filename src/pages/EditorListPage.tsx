@@ -96,7 +96,7 @@ export function EditorListPage() {
       <section className="panel admin-create-panel" aria-labelledby="create-scenario-title">
         <div className="admin-create-copy">
           <span className="icon-tile">
-            <Icon name="plus" />
+            <Icon name="edit" />
           </span>
           <div>
             <h2 id="create-scenario-title">Новый сценарий</h2>
@@ -146,8 +146,8 @@ export function EditorListPage() {
               }
             }}
           >
-            <Icon name="plus" />
-            <span>{sourceId ? 'Создать копию' : 'Создать и открыть конструктор'}</span>
+            <Icon name="arrow" />
+            <span>{sourceId ? 'Создать' : 'Создать сценарий'}</span>
           </Button>
         </div>
       </section>

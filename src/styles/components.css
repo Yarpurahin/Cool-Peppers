@@ -608,3 +608,288 @@
 .heading-art {
   overflow: hidden;
 }
+
+/* Compact signed-in account menu. Guests only see registration/login actions. */
+.account-menu {
+  position: relative;
+  min-width: 0;
+}
+.account-menu > summary {
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+.account-menu > summary::-webkit-details-marker {
+  display: none;
+}
+.account-menu > summary.profile-link--account {
+  min-width: 190px;
+}
+.account-menu-chevron {
+  flex: 0 0 auto;
+  transition: transform 140ms ease;
+}
+.account-menu[open] .account-menu-chevron {
+  transform: rotate(90deg);
+}
+.account-menu-popover {
+  position: absolute;
+  top: calc(100% + 9px);
+  right: 0;
+  z-index: 40;
+  width: 210px;
+  padding: 7px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 16px 36px rgb(33 57 46 / 14%);
+}
+.account-menu-popover a,
+.account-menu-popover button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 40px;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.account-menu-popover a:hover,
+.account-menu-popover button:hover,
+.account-menu-popover a.active {
+  background: var(--sage);
+  color: var(--green);
+}
+.account-menu-popover button:last-child {
+  margin-top: 4px;
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 8px 8px;
+  color: #a53621;
+}
+
+/* Account control: compact identity chip + account-only actions. */
+.account-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 210px;
+  padding: 6px 8px 6px 6px;
+  border: 1px solid #dbe4dc;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 5px 18px rgb(33 57 46 / 5%);
+  transition: border-color 140ms ease, box-shadow 140ms ease, background 140ms ease;
+}
+.account-trigger:hover,
+.account-menu[open] .account-trigger {
+  border-color: #afc1b4;
+  background: #fbfcf8;
+  box-shadow: 0 8px 22px rgb(33 57 46 / 9%);
+}
+.account-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: 11px;
+  background: linear-gradient(145deg, var(--green), #557767);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .02em;
+}
+.account-avatar--large { width: 42px; height: 42px; flex-basis: 42px; border-radius: 13px; }
+.account-trigger-copy { min-width: 0; flex: 1; }
+.account-trigger-copy strong,
+.account-trigger-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account-trigger-copy strong { font-size: 11px; }
+.account-trigger-copy small { margin-top: 2px; color: var(--muted); font-size: 9px; font-weight: 650; }
+.account-trigger-chevron {
+  display: inline-flex;
+  padding: 5px;
+  border-radius: 7px;
+  color: var(--muted);
+  transition: transform 140ms ease, background 140ms ease;
+}
+.account-menu[open] .account-trigger-chevron { transform: rotate(90deg); background: var(--sage); color: var(--green); }
+.account-menu-popover { width: 270px; padding: 9px; border-radius: 15px; }
+.account-menu-head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-bottom: 7px;
+  padding: 9px;
+  border-bottom: 1px solid var(--line);
+}
+.account-menu-head > div { min-width: 0; }
+.account-menu-head strong,
+.account-menu-head span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account-menu-head strong { font-size: 11px; }
+.account-menu-head span { margin-top: 3px; color: var(--muted); font-size: 9px; }
+.account-menu-popover button:last-child { margin-top: 5px; padding-top: 10px; border-top: 1px solid var(--line); border-radius: 8px; }
+
+/* v0.4.6 account: lightweight identity trigger + focused profile card. */
+.account-trigger {
+  min-width: 0;
+  gap: 9px;
+  padding: 4px 3px 4px 8px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+}
+.account-trigger:hover,
+.account-menu[open] .account-trigger {
+  border-color: transparent;
+  background: #edf3e9;
+  box-shadow: none;
+}
+.account-trigger-name {
+  display: block;
+  max-width: 160px;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 760;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-avatar {
+  position: relative;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #274f40, #65816f);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 18%);
+}
+.account-avatar--trigger {
+  width: 38px;
+  height: 38px;
+  flex-basis: 38px;
+}
+.account-admin-mark {
+  position: absolute;
+  right: -3px;
+  bottom: -2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  border: 2px solid var(--bg);
+  border-radius: 50%;
+  background: #f3b86b;
+  color: #244a3c;
+  box-shadow: 0 2px 5px rgb(27 51 39 / 16%);
+}
+.account-admin-mark--large {
+  right: -2px;
+  bottom: 0;
+  width: 19px;
+  height: 19px;
+  border-color: #eef4ea;
+}
+.account-menu-popover {
+  top: calc(100% + 12px);
+  width: 300px;
+  padding: 9px;
+  border-color: #d6dfd5;
+  border-radius: 16px;
+  background: #fffefb;
+  box-shadow: 0 20px 52px rgb(31 52 42 / 16%);
+}
+.account-profile-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 13px;
+  border: 1px solid #dbe4d8;
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 100% 0%, rgb(255 255 255 / 85%), transparent 46%),
+    linear-gradient(135deg, #eef4e9, #f7f8f1);
+}
+.account-avatar--large {
+  width: 48px;
+  height: 48px;
+  flex-basis: 48px;
+  border-radius: 50%;
+  font-size: 12px;
+}
+.account-profile-copy {
+  min-width: 0;
+}
+.account-profile-copy > strong,
+.account-profile-copy > span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-profile-copy > strong {
+  font-size: 12px;
+}
+.account-profile-copy > span {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 9px;
+}
+.account-role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  margin-top: 7px;
+  padding: 4px 7px;
+  border: 1px solid #c9d8c8;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 72%);
+  color: var(--green);
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 800;
+}
+.account-menu-actions {
+  display: grid;
+  gap: 3px;
+  margin-top: 7px;
+}
+.account-menu-popover .account-menu-actions a,
+.account-menu-popover .account-menu-actions button {
+  min-height: 42px;
+  padding: 9px 10px;
+  border-radius: 9px;
+}
+.account-menu-popover .account-menu-actions button:last-child {
+  margin-top: 2px;
+  padding-top: 9px;
+  border-top: 1px solid var(--line);
+  border-radius: 9px;
+}
+
+/* Scenario cards always reserve the same media ratio; custom images are centre-cropped. */
+.scenario-cover {
+  aspect-ratio: 360 / 176;
+}
+.scenario-cover .scenario-art {
+  width: 100%;
+  height: 100%;
+}
+.scenario-art.scenario-art--image {
+  object-fit: cover;
+  object-position: center;
+}
+.account-menu[open] .account-avatar--trigger {
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 18%),
+    0 0 0 3px var(--focus-ring);
+}

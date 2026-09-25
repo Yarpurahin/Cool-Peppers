@@ -22,7 +22,7 @@ export function RouteEffects() {
   useEffect(() => {
     const moved = previous.current !== pathname;
     previous.current = pathname;
-    let focused = !moved;
+    let scrolled = !moved;
     const scenario = scenarios.find((item) => pathname === `/scenarios/${item.id}`);
     const isPublic = pathname === '/' || pathname === '/scenarios' || !!scenario;
     const pageDescription =
@@ -55,13 +55,9 @@ export function RouteEffects() {
         }
         canonical.href = url;
       } else canonical?.remove();
-      if (!focused) {
-        const main = document.querySelector<HTMLElement>('#main-content');
-        if (main) {
-          focused = true;
-          window.scrollTo({ top: 0, behavior: 'instant' });
-          main.focus({ preventScroll: true });
-        }
+      if (!scrolled) {
+        scrolled = true;
+        window.scrollTo({ top: 0, behavior: 'instant' });
       }
     };
     update();

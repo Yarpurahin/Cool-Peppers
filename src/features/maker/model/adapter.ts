@@ -179,8 +179,7 @@ export function toRuntimeDefinition(def: MakerDefinition): ScenarioDefinition {
         id: reaction.id,
         text: reaction.label,
         penalty: reaction.legacy?.penalty ?? 0,
-        feedback:
-          reaction.legacy?.feedback || 'Выбранная реакция определила следующий шаг разговора.',
+        feedback: reaction.legacy?.feedback ?? '',
         next: reaction.nextNodeId
           ? { type: 'node', nodeId: reaction.nextNodeId }
           : { type: 'ending', endingId: reaction.endingId ?? '' },

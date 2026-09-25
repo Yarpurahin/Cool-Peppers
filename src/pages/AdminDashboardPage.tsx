@@ -52,7 +52,7 @@ export function AdminDashboardPage() {
           <p>Создавайте, публикуйте и поддерживайте учебные сценарии переговоров.</p>
         </div>
         <ButtonLink to="/admin/scenarios" className="admin-heading-action">
-          <Icon name="plus" size={18} />
+          <Icon name="book" size={18} />
           Управлять сценариями
         </ButtonLink>
       </div>
@@ -149,12 +149,9 @@ export function AdminDashboardPage() {
         </section>
 
         <aside className="panel admin-roadmap-panel">
-          <p className="eyebrow">Следующий этап</p>
-          <h2>Конструктор сценариев</h2>
-          <p>
-            Базовая работа с черновиками уже есть. Дальше редактор будет разбит на понятные шаги
-            вместо одной большой формы.
-          </p>
+          <p className="eyebrow">Конструктор</p>
+          <h2>Что уже доступно</h2>
+          <p>Основные настройки сценария собраны в одном визуальном редакторе.</p>
           <div className="admin-roadmap-list">
             <div>
               <span>1</span>
@@ -174,14 +171,14 @@ export function AdminDashboardPage() {
               <span>3</span>
               <p>
                 <strong>Диалог</strong>
-                Реплики, ответы и переходы
+                Реплики, реакции, переходы и мультивыделение
               </p>
             </div>
             <div>
               <span>4</span>
               <p>
                 <strong>Проверка и публикация</strong>
-                Валидация графа перед запуском
+                Тестовый проход и валидация графа перед запуском
               </p>
             </div>
           </div>

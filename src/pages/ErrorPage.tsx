@@ -8,7 +8,7 @@ export function ErrorPage({ code = 404 }: { code?: 404 | 500 }) {
       <header className="container error-header">
         <Logo />
       </header>
-      <main className="error-page container" id="main-content" tabIndex={-1}>
+      <main className="error-page container" id="main-content">
         <span className="eyebrow">
           {code === 404 ? 'Страница не найдена' : 'Техническая пауза'}
         </span>

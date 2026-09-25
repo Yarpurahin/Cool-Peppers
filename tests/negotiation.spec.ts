@@ -56,12 +56,12 @@ test('failed save does not advance question and retry persists once', async ({ p
   await expect(page.locator('.dialogue-header .badge')).toHaveText('Шаг 2');
 });
 
-test('guest can browse but must sign in to save an actual attempt', async ({ page }) => {
-  await page.goto('/scenarios/terms/play');
-  await expect(page).toHaveURL(/\/login\?next=/);
-  await expect(page.locator('h1')).toHaveText('Рады видеть вас');
-  await page.goto('/scenarios/new-deadline/play');
-  await expect(page.locator('.demo-notice')).toContainText('Демонстрация');
+test('all playable built-in scenarios require sign-in', async ({ page }) => {
+  for (const id of ['terms', 'new-deadline', 'feedback']) {
+    await page.goto(`/scenarios/${id}/play`);
+    await expect(page).toHaveURL(/\/login\?next=/);
+    await expect(page.locator('h1')).toHaveText('Рады видеть вас');
+  }
 });
 
 test('long dialogue fits a mobile viewport', async ({ page }) => {
