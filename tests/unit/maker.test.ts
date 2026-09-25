@@ -26,7 +26,11 @@ import {
 } from '../../src/features/maker/model/commands.ts';
 import { scenarios } from '../../src/data/scenarios.ts';
 import { documentSchema, normalizeDocument } from '../../src/types/validation.ts';
-import type { MakerDocument } from '../../src/features/maker/model/types.ts';
+import type { MakerDocument, MakerDraft } from '../../src/features/maker/model/types.ts';
+import {
+  createScenarioFile,
+  parseScenarioFile,
+} from '../../src/features/maker/model/scenarioFile.ts';
 const now = '2026-09-21T10:00:00.000Z';
 function fixture(): MakerDocument {
   const definition = createBlankDefinition('test_maker', 'Тест');
@@ -247,4 +251,73 @@ test('new maker reactions do not invent explanatory feedback for the result scre
   const doc = fixture();
   const runtime = toRuntimeDefinition(doc.definition);
   assert.equal(runtime.nodes[0].answers[0].feedback, '');
+});
+
+
+test('portable Arena JSON imports content but preserves the current scenario identity', () => {
+  const source = fixture();
+  source.definition.metadata.id = 'source_scenario';
+  source.definition.metadata.title = 'Импортированный сценарий';
+  source.editor.positions = { node_1: { x: 321, y: 123 } };
+  const file = createScenarioFile(source);
+
+  const currentDocument = fixture();
+  currentDocument.definition.metadata.id = 'current_scenario';
+  currentDocument.definition.metadata.version = 7;
+  currentDocument.preview.id = 'current_scenario';
+  const current: MakerDraft = {
+    ...currentDocument,
+    revision: 4,
+    publishedVersion: 6,
+  };
+
+  const imported = parseScenarioFile(file, current);
+  assert.equal(imported.source, 'arena-scenario');
+  assert.equal(imported.document.definition.metadata.id, 'current_scenario');
+  assert.equal(imported.document.definition.metadata.version, 7);
+  assert.equal(imported.document.preview.id, 'current_scenario');
+  assert.equal(imported.document.definition.metadata.title, 'Импортированный сценарий');
+  assert.deepEqual(imported.document.editor.positions.node_1, { x: 321, y: 123 });
+});
+
+test('scenario JSON importer also accepts a raw schemaVersion 2 definition', () => {
+  const currentDocument = fixture();
+  const current: MakerDraft = {
+    ...currentDocument,
+    revision: 1,
+    publishedVersion: null,
+  };
+  const definition = structuredClone(sourceDefinitionForImport());
+  const imported = parseScenarioFile(definition, current);
+  assert.equal(imported.source, 'definition');
+  assert.equal(imported.document.definition.metadata.id, current.definition.metadata.id);
+  assert.equal(imported.document.definition.metadata.title, definition.metadata.title);
+});
+
+function sourceDefinitionForImport() {
+  const definition = fixture().definition;
+  definition.metadata.id = 'external_id';
+  definition.metadata.title = 'Definition без оболочки';
+  return definition;
+}
+
+test('scenario JSON importer stays compatible with the previous full draft export', () => {
+  const source = fixture();
+  source.definition.metadata.id = 'old_export';
+  source.preview.id = 'old_export';
+  const currentDocument = fixture();
+  currentDocument.definition.metadata.id = 'current_for_old_export';
+  currentDocument.preview.id = 'current_for_old_export';
+  const current: MakerDraft = {
+    ...currentDocument,
+    revision: 2,
+    publishedVersion: null,
+  };
+  const imported = parseScenarioFile(
+    { preview: source.preview, definition: source.definition, editor: source.editor },
+    current,
+  );
+  assert.equal(imported.source, 'exported-draft');
+  assert.equal(imported.document.definition.metadata.id, 'current_for_old_export');
+  assert.equal(imported.document.preview.id, 'current_for_old_export');
 });

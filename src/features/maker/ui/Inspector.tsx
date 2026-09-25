@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { MakerDefinition, MakerDocument } from '../model/types.ts';
 import type { Selection } from './ScenarioCanvas.tsx';
@@ -87,6 +87,82 @@ const INTENT_OPTIONS = [
 
 const DURATION_OPTIONS = ['3–5 минут', '5–10 минут', '10–15 минут', '15–20 минут', '20+ минут'];
 
+function ScenarioJsonTools({
+  onExport,
+  onImport,
+}: {
+  onExport: () => void;
+  onImport: (file: File) => Promise<void>;
+}) {
+  const input = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+  const [error, setError] = useState('');
+
+  async function importFile(file: File) {
+    setError('');
+    setImporting(true);
+    try {
+      await onImport(file);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Не удалось импортировать JSON.');
+    } finally {
+      setImporting(false);
+      if (input.current) input.current.value = '';
+    }
+  }
+
+  return (
+    <section className="maker-json-tools" aria-labelledby="maker-json-tools-title">
+      <div className="maker-json-tools-heading">
+        <span className="maker-json-tools-icon">
+          <Icon name="upload" size={17} />
+        </span>
+        <div>
+          <strong id="maker-json-tools-title">JSON сценария</strong>
+          <p>Загрузите готовую структуру или сохраните текущую для переноса и редактирования.</p>
+        </div>
+      </div>
+      <div className="maker-json-tools-actions">
+        <button
+          type="button"
+          className="maker-secondary"
+          disabled={importing}
+          onClick={() => input.current?.click()}
+        >
+          <Icon name="upload" size={15} />
+          {importing ? 'Импортируем…' : 'Импортировать JSON'}
+        </button>
+        <button type="button" className="maker-text-button" onClick={onExport}>
+          <Icon name="save" size={14} />
+          Скачать JSON
+        </button>
+      </div>
+      <input
+        ref={input}
+        className="maker-json-file-input"
+        type="file"
+        accept=".json,application/json"
+        aria-label="Выбрать JSON-файл сценария"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) void importFile(file);
+        }}
+      />
+      <small>
+        Поддерживаются Arena JSON v1, JSON из предыдущего экспорта и чистая definition со
+        schemaVersion 2. ID текущего сценария при импорте не меняется.
+      </small>
+      {error && (
+        <p className="maker-json-import-error" role="alert">
+          {error.split('\n').map((line, index) => (
+            <span key={`${line}-${index}`}>{line}</span>
+          ))}
+        </p>
+      )}
+    </section>
+  );
+}
+
 export function Inspector({
   doc,
   selection,
@@ -98,6 +174,7 @@ export function Inspector({
   onDuplicate,
   onClose,
   onExport,
+  onImport,
   focusToken,
   disabled,
 }: {
@@ -113,6 +190,7 @@ export function Inspector({
   focusToken: number;
   disabled: boolean;
   onExport: () => void;
+  onImport: (file: File) => Promise<void>;
 }) {
   const textRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
@@ -836,10 +914,7 @@ export function Inspector({
         )}
         {selection.type === 'settings' && (
           <>
-            <button type="button" className="maker-dashed-button" onClick={onExport}>
-              <Icon name="save" size={15} />
-              Скачать JSON черновика
-            </button>
+            <ScenarioJsonTools onExport={onExport} onImport={onImport} />
             <label className="checkbox-field">
               <input
                 type="checkbox"

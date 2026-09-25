@@ -110,9 +110,9 @@ test('maker sections stay selected and React Flow initializes before interaction
   await page.goto(`/admin/scenarios/${id}`);
   await expect(page.getByTestId('maker-canvas')).toBeVisible();
   await page.getByRole('button', { name: 'Подсказки по работе с полотном' }).click();
-  await expect(page.getByRole('dialog', { name: 'Подсказки по полотну' })).toContainText('Ctrl + Y');
+  await expect(page.getByRole('dialog', { name: 'Справка по полотну' })).toContainText('Ctrl + Y');
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('dialog', { name: 'Подсказки по полотну' })).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: 'Справка по полотну' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Настройки', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Настройки', exact: true })).toHaveAttribute(
     'aria-pressed',
@@ -257,4 +257,59 @@ test('creation form recovers its fields and fits narrow screens; metadata and ac
     'href',
     /\/scenarios\/terms$/,
   );
+});
+
+test('maker imports Arena JSON from settings and keeps the database scenario id', async ({ page }) => {
+  page.on('dialog', (dialog) => void dialog.accept());
+  await page.setViewportSize({ width: 1280, height: 860 });
+  await loginAdmin(page);
+  const { id } = await (
+    await page.request.post('/api/editor', { headers, data: { title: 'До импорта' } })
+  ).json();
+  const draft = await (await page.request.get(`/api/editor/${id}`)).json();
+  draft.definition.metadata.id = 'external_scenario_id';
+  draft.definition.metadata.title = 'Сценарий из JSON';
+  draft.definition.metadata.description = 'Импортированная структура';
+  draft.definition.nodes[0].text = 'Реплика из JSON';
+  draft.definition.nodes[0].reactions = [
+    {
+      id: 'json_reaction',
+      intent: 'continue_discussion',
+      label: 'Продолжить',
+      examples: ['Продолжим'],
+      endingId: 'json_ending',
+    },
+  ];
+  draft.definition.endings = [
+    {
+      id: 'json_ending',
+      title: 'JSON-финал',
+      description: 'Финал импортированного сценария',
+      type: 'success',
+      nextStep: 'Сохранить результат',
+    },
+  ];
+  const file = {
+    format: 'arena-scenario',
+    formatVersion: 1,
+    definition: draft.definition,
+  };
+
+  await page.goto(`/admin/scenarios/${id}`);
+  await page.getByRole('button', { name: 'Настройки', exact: true }).click();
+  await page
+    .getByLabel('Выбрать JSON-файл сценария')
+    .setInputFiles({
+      name: 'scenario.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(file)),
+    });
+
+  await expect(page.locator('.maker-heading h1')).toHaveText('Сценарий из JSON');
+  await expect(page.locator('.maker-notice')).toContainText('JSON импортирован');
+  await page.getByRole('button', { name: 'Сохранить черновик', exact: true }).click();
+  const saved = await (await page.request.get(`/api/editor/${id}`)).json();
+  expect(saved.definition.metadata.id).toBe(id);
+  expect(saved.definition.metadata.title).toBe('Сценарий из JSON');
+  expect(saved.definition.nodes[0].text).toBe('Реплика из JSON');
 });

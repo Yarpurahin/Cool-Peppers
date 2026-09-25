@@ -24,6 +24,7 @@ const paths = {
   plus: 'M12 5v14M5 12h14',
   edit: 'm15 4 5 5M4 16 16 4a3 3 0 0 1 4 4L8 20H4z',
   save: 'M4 3h13l4 4v14H3V3h1m3 0v6h10V3M7 21v-8h10v8',
+  upload: 'M12 16V4m-5 5 5-5 5 5M5 20h14',
   trash: 'M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7',
   message: 'M21 4H3v13h5l4 4v-4h9zM7 9h10M7 13h6',
   book: 'M12 5c-3-2-6-2-10-1v15c4-1 7-1 10 1m0-15c3-2 6-2 10-1v15c-4-1-7-1-10 1z',

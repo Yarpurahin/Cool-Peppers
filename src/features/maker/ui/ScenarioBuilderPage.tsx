@@ -36,6 +36,7 @@ import {
   serializeRecovery,
 } from '../model/draftRecovery.ts';
 import { DraftHistory } from '../model/history.ts';
+import { createScenarioFile, parseScenarioFile } from '../model/scenarioFile.ts';
 import { statusLabel, statusOf } from '../model/publication.ts';
 import '@xyflow/react/dist/style.css';
 import './maker.css';
@@ -423,23 +424,66 @@ export function ScenarioBuilderPage() {
   function exportDocument() {
     const doc = current.current;
     if (!doc) return;
+    const file = createScenarioFile(doc);
     const url = URL.createObjectURL(
-      new Blob(
-        [
-          JSON.stringify(
-            { preview: doc.preview, definition: doc.definition, editor: doc.editor },
-            null,
-            2,
-          ),
-        ],
-        { type: 'application/json' },
-      ),
+      new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' }),
     );
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${doc.definition.metadata.id}.json`;
+    link.download = `${doc.definition.metadata.id}.arena.json`;
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  async function importDocument(file: File) {
+    if (!current.current) return;
+    if (file.size > 1536 * 1024)
+      throw new Error('JSON-файл слишком большой. Максимальный размер — 1,5 МБ.');
+    if (!file.name.toLocaleLowerCase().endsWith('.json'))
+      throw new Error('Выберите файл в формате .json.');
+
+    let raw: unknown;
+    try {
+      raw = JSON.parse(await file.text()) as unknown;
+    } catch {
+      throw new Error('Не удалось прочитать JSON. Проверьте запятые, кавычки и скобки.');
+    }
+
+    const imported = parseScenarioFile(raw, current.current);
+    const logicalIssues = validateMaker(imported.document.definition);
+    const errors = logicalIssues.filter((issue) => issue.severity === 'error').length;
+    const warnings = logicalIssues.filter((issue) => issue.severity === 'warning').length;
+    const sourceLabel =
+      imported.source === 'arena-scenario'
+        ? 'Arena JSON'
+        : imported.source === 'exported-draft'
+          ? 'старый экспорт черновика'
+          : 'описание schemaVersion 2';
+
+    if (
+      !window.confirm(
+        `Импортировать «${file.name}» (${sourceLabel})? Текущая структура сценария будет заменена. Отменить импорт после этого можно через Ctrl+Z.`,
+      )
+    )
+      return;
+
+    change((doc) => {
+      doc.preview = structuredClone(imported.document.preview);
+      doc.definition = structuredClone(imported.document.definition);
+      doc.editor = structuredClone(imported.document.editor);
+    });
+    select({ type: 'main' });
+    setChecked(errors > 0 || warnings > 0);
+    setValidationOpen(errors > 0);
+    setBranch(null);
+    setMessage(
+      errors || warnings
+        ? `JSON импортирован. Проверка: ${errors} ошибок, ${warnings} предупреждений. Исправьте их и сохраните черновик.`
+        : 'JSON импортирован. Структура сценария прошла проверку. Сохраните черновик, чтобы записать изменения на сервер.',
+    );
+    requestAnimationFrame(() => {
+      void flow.current?.fitView({ padding: 0.16, maxZoom: 0.95, duration: 280 });
+    });
   }
   function showIssue(issue: GraphIssue) {
     if (issue.code === 'legacy-failure' || issue.code === 'start') {
@@ -849,6 +893,7 @@ export function ScenarioBuilderPage() {
               onDuplicate={duplicate}
               onClose={() => setInspectorOpen(false)}
               onExport={exportDocument}
+              onImport={importDocument}
               focusToken={focusToken}
               disabled={busy}
             />

@@ -1454,14 +1454,14 @@
   position: absolute;
   left: 50%;
   bottom: calc(100% + 10px);
-  width: min(390px, calc(100vw - 40px));
-  padding: 15px;
-  border: 1px solid #d2ddd2;
-  border-radius: 14px;
-  background: #fffefb;
-  box-shadow: 0 18px 48px rgb(30 52 42 / 16%);
+  width: min(470px, calc(100vw - 40px));
+  padding: 16px;
+  border: 1px solid #dfe3dc;
+  border-radius: 16px;
+  background: #fffefa;
+  box-shadow: 0 18px 48px rgb(30 52 42 / 15%);
   transform: translateX(-50%);
-  max-height: min(430px, calc(100vh - 170px));
+  max-height: min(560px, calc(100vh - 170px));
   overflow: auto;
   color: var(--ink);
   z-index: 20;
@@ -1473,9 +1473,9 @@
   bottom: -6px;
   width: 11px;
   height: 11px;
-  border-right: 1px solid #d2ddd2;
-  border-bottom: 1px solid #d2ddd2;
-  background: #fffefb;
+  border-right: 1px solid #dfe3dc;
+  border-bottom: 1px solid #dfe3dc;
+  background: #fffefa;
   transform: translateX(-50%) rotate(45deg);
 }
 .maker-canvas-help-heading {
@@ -1483,8 +1483,25 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  padding-bottom: 11px;
+  padding-bottom: 12px;
   border-bottom: 1px solid var(--line);
+}
+.maker-canvas-help-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.maker-canvas-help-title-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  border: 1px solid #dfe3dc;
+  border-radius: 9px;
+  background: #f5f5f1;
+  color: #56625c;
 }
 .maker-canvas-help-heading strong,
 .maker-canvas-help-heading span {
@@ -1493,7 +1510,7 @@
 .maker-canvas-help-heading strong {
   font-size: 12px;
 }
-.maker-canvas-help-heading span {
+.maker-canvas-help-heading .maker-canvas-help-title > div > span {
   margin-top: 3px;
   color: var(--muted);
   font-size: 9px;
@@ -1507,21 +1524,53 @@
   border-radius: 8px;
   color: var(--muted);
 }
+.maker-canvas-help-close:hover {
+  background: #f1f2ee;
+  color: var(--ink);
+}
+.maker-canvas-help-intro {
+  margin-top: 12px;
+  color: #59645e;
+  font-size: 9px;
+  line-height: 1.55;
+}
+.maker-canvas-help-sections {
+  display: grid;
+  gap: 13px;
+  margin-top: 14px;
+}
+.maker-canvas-help-sections > section + section {
+  padding-top: 12px;
+  border-top: 1px solid #eceee9;
+}
+.maker-canvas-help-sections h3 {
+  margin: 0 0 8px;
+  color: #3f4b45;
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
 .maker-canvas-help-grid {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
   gap: 8px 12px;
-  margin-top: 12px;
-  align-items: baseline;
+  align-items: start;
 }
-.maker-canvas-help-grid > span {
-  padding: 3px 7px;
-  border: 1px solid #d8e1d7;
+.maker-canvas-help-grid kbd {
+  min-width: 60px;
+  padding: 4px 7px;
+  border: 1px solid #d8ddd7;
+  border-bottom-color: #c7cdc7;
   border-radius: 6px;
-  background: #f5f8f2;
-  color: var(--green);
+  background: #f4f4f0;
+  box-shadow: 0 1px 0 #d8ddd7;
+  color: #465149;
+  font-family: inherit;
   font-size: 8px;
-  font-weight: 850;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: center;
   white-space: nowrap;
 }
 .maker-canvas-help-grid p {
@@ -1530,13 +1579,21 @@
   line-height: 1.45;
 }
 .maker-canvas-help-note {
-  margin-top: 12px;
+  margin-top: 13px;
   padding: 9px 10px;
-  border-radius: 8px;
-  background: #f5f8f2;
-  color: var(--muted);
+  border: 1px solid #e2e5df;
+  border-radius: 9px;
+  background: #f7f7f3;
+  color: #59645e;
   font-size: 9px;
   line-height: 1.5;
+}
+.maker-canvas-dock button:hover:not(:disabled) {
+  background: #f4f5f1;
+}
+.maker-canvas-dock button[aria-expanded='true'] {
+  background: #eef0ec;
+  color: var(--ink);
 }
 
 /* Stage deletion uses the same full-width destructive action as reaction deletion. */
@@ -1580,6 +1637,81 @@
   min-height: 150px;
 }
 
+
+/* Portable scenario JSON import/export in scenario settings. */
+.maker-json-tools {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #dde3dc;
+  border-radius: 12px;
+  background: #fbfcf8;
+}
+.maker-json-tools-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+}
+.maker-json-tools-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 31px;
+  height: 31px;
+  flex: 0 0 31px;
+  border: 1px solid #dce1da;
+  border-radius: 8px;
+  background: #f1f3ee;
+  color: #536159;
+}
+.maker-json-tools-heading strong {
+  display: block;
+  font-size: 10px;
+}
+.maker-json-tools-heading p,
+.maker-json-tools > small {
+  color: var(--muted);
+  font-size: 8.5px;
+  line-height: 1.5;
+}
+.maker-json-tools-heading p {
+  margin-top: 2px;
+}
+.maker-json-tools-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.maker-json-tools-actions button {
+  min-height: 32px;
+}
+.maker-json-tools-actions .maker-text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-inline: 9px;
+}
+.maker-json-file-input {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.maker-json-import-error {
+  display: grid;
+  gap: 3px;
+  padding: 8px 9px;
+  border: 1px solid #e6c6bb;
+  border-radius: 8px;
+  background: #fff5f1;
+  color: #8f3e28;
+  font-size: 8.5px;
+  line-height: 1.45;
+}
+
 @media (max-width: 620px) {
   .maker-canvas-tools-panel {
     margin-bottom: 9px !important;
@@ -1590,7 +1722,7 @@
   }
   .maker-canvas-help-grid {
     grid-template-columns: 1fr;
-    gap: 4px;
+    gap: 5px;
   }
   .maker-canvas-help-grid p {
     margin-bottom: 5px;

@@ -633,38 +633,70 @@ export function ScenarioCanvas({
           <Panel position="bottom-center" className="maker-canvas-tools-panel">
             <div className="maker-canvas-tools" ref={help}>
               {helpOpen && (
-                <section className="maker-canvas-help" role="dialog" aria-label="Подсказки по полотну">
+                <section className="maker-canvas-help" role="dialog" aria-label="Справка по полотну">
                   <div className="maker-canvas-help-heading">
-                    <div>
-                      <strong>Работа с полотном</strong>
-                      <span>Основные действия и горячие клавиши</span>
+                    <div className="maker-canvas-help-title">
+                      <span className="maker-canvas-help-title-icon">
+                        <Icon name="info" size={16} />
+                      </span>
+                      <div>
+                        <strong>Справка по конструктору</strong>
+                        <span>Полотно, связи, выделение и история изменений</span>
+                      </div>
                     </div>
                     <button
                       type="button"
                       className="maker-canvas-help-close"
                       onClick={() => setHelpOpen(false)}
-                      aria-label="Закрыть подсказки"
+                      aria-label="Закрыть справку"
                     >
                       <Icon name="close" size={15} />
                     </button>
                   </div>
-                  <div className="maker-canvas-help-grid">
-                    <span>Рамка</span>
-                    <p>Выделить несколько блоков.</p>
-                    <span>Shift / Ctrl</span>
-                    <p>Добавить или убрать блок из выделения.</p>
-                    <span>Delete</span>
-                    <p>Удалить выбранный блок или реакцию.</p>
-                    <span>Ctrl + Z</span>
-                    <p>Отменить последнее изменение.</p>
-                    <span>Ctrl + Y</span>
-                    <p>Вернуть отменённое изменение.</p>
-                    <span>Ctrl + Shift + Z</span>
-                    <p>Альтернативный повтор действия.</p>
+                  <p className="maker-canvas-help-intro">
+                    Реплики и финалы образуют граф разговора. Реакция пользователя задаёт переход
+                    к следующему блоку.
+                  </p>
+                  <div className="maker-canvas-help-sections">
+                    <section>
+                      <h3>Полотно</h3>
+                      <div className="maker-canvas-help-grid">
+                        <kbd>Рамка</kbd>
+                        <p>Потяните по пустому месту левой кнопкой, чтобы выделить несколько блоков.</p>
+                        <kbd>Shift / Ctrl</kbd>
+                        <p>Добавляет блок в текущее выделение или снимает его повторным кликом.</p>
+                        <kbd>Колесо</kbd>
+                        <p>Масштабирует схему. Средняя или правая кнопка мыши перемещает полотно.</p>
+                      </div>
+                    </section>
+                    <section>
+                      <h3>Связи и редактирование</h3>
+                      <div className="maker-canvas-help-grid">
+                        <kbd>Клик по реакции</kbd>
+                        <p>Выбирает реакцию и открывает её параметры в панели свойств.</p>
+                        <kbd>Точка реакции</kbd>
+                        <p>Потяните её к карточке, чтобы связать реакцию с существующим блоком.</p>
+                        <kbd>В пустое место</kbd>
+                        <p>Завершите перетаскивание на свободном месте — можно создать новую реплику или финал.</p>
+                        <kbd>Delete</kbd>
+                        <p>Удаляет выбранный блок. Если выбрана реакция — удаляется реакция и её связь.</p>
+                      </div>
+                    </section>
+                    <section>
+                      <h3>История изменений</h3>
+                      <div className="maker-canvas-help-grid">
+                        <kbd>Ctrl + Z</kbd>
+                        <p>Отменить последнее изменение конструктора.</p>
+                        <kbd>Ctrl + Y</kbd>
+                        <p>Вернуть отменённое изменение.</p>
+                        <kbd>Ctrl + Shift + Z</kbd>
+                        <p>Альтернативная команда повтора. В полях ввода работает обычная история текста.</p>
+                      </div>
+                    </section>
                   </div>
                   <p className="maker-canvas-help-note">
-                    Потяните точку справа от реакции к карточке или в пустое место, чтобы
-                    продолжить ветку.
+                    «Упорядочить» перестраивает граф автоматически. Ручное расположение блоков можно
+                    вернуть через Ctrl + Z.
                   </p>
                 </section>
               )}
