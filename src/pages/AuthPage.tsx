@@ -4,7 +4,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '../components/ui/Button.tsx';
 import { Icon } from '../components/ui/Icon.tsx';
 import { PasswordField } from '../components/ui/PasswordField.tsx';
-import { api, errorMessage } from '../api/client.ts';
+import { api, actionErrorMessage } from '../api/client.ts';
 import { useCatalog } from '../app/DataProvider.tsx';
 import type { User } from '../types/api.ts';
 
@@ -46,7 +46,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
       setUser(account);
       navigate(destination, { replace: true });
     } catch (cause) {
-      setError(errorMessage(cause));
+      setError(actionErrorMessage(cause));
     } finally {
       setBusy(false);
     }

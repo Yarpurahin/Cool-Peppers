@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
+import { ThemeToggle } from '../../app/ThemeProvider.tsx';
+import { Avatar } from '../ui/Avatar.tsx';
 import { Logo } from './Logo.tsx';
 import { useCatalog } from '../../app/DataProvider.tsx';
 import { Icon } from '../ui/Icon.tsx';
@@ -14,15 +16,6 @@ export function Header() {
     setOpen(false);
     account.current?.removeAttribute('open');
   };
-  const initials =
-    user?.name
-      .trim()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((part) => part[0])
-      .join('')
-      .toUpperCase() || 'У';
-
   useEffect(() => {
     const closeAccount = (event: PointerEvent) => {
       if (account.current?.open && !account.current.contains(event.target as Node))
@@ -46,6 +39,7 @@ export function Header() {
         <div onClick={closeMenus}>
           <Logo />
         </div>
+        <ThemeToggle />
         <button
           ref={toggle}
           type="button"
@@ -77,25 +71,19 @@ export function Header() {
                   aria-label={`Аккаунт: ${user.name}, ${user.role === 'admin' ? 'администратор' : 'участник'}`}
                 >
                   <span className="account-trigger-name">{user.name}</span>
-                  <span className="account-avatar account-avatar--trigger" aria-hidden="true">
-                    {initials}
-                    {user.role === 'admin' && (
-                      <span className="account-admin-mark">
-                        <Icon name="shield" size={11} />
-                      </span>
-                    )}
-                  </span>
+                  <Avatar
+                    name={user.name}
+                    image={user.avatar}
+                    className="account-avatar account-avatar--trigger"
+                  />
                 </summary>
                 <div className="account-menu-popover">
                   <div className="account-profile-card">
-                    <span className="account-avatar account-avatar--large" aria-hidden="true">
-                      {initials}
-                      {user.role === 'admin' && (
-                        <span className="account-admin-mark account-admin-mark--large">
-                          <Icon name="shield" size={12} />
-                        </span>
-                      )}
-                    </span>
+                    <Avatar
+                      name={user.name}
+                      image={user.avatar}
+                      className="account-avatar account-avatar--large"
+                    />
                     <div className="account-profile-copy">
                       <strong>{user.name}</strong>
                       <span>{user.email}</span>
@@ -114,7 +102,9 @@ export function Header() {
                       type="button"
                       onClick={() => {
                         closeMenus();
-                        void logout();
+                        void logout().catch(() => {
+                          /* The API client displays service errors. */
+                        });
                       }}
                     >
                       <Icon name="back" size={16} />

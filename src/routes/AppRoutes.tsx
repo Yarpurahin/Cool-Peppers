@@ -14,15 +14,25 @@ import { EditorListPage } from '../pages/EditorListPage.tsx';
 const EditorPage = lazy(() =>
   import('../pages/EditorPage.tsx').then((module) => ({ default: module.EditorPage })),
 );
+import { RequestFailure } from '../components/ui/RequestFailure.tsx';
+import { AdminAccountsPage } from '../pages/AdminAccountsPage.tsx';
 import { ErrorPage } from '../pages/ErrorPage.tsx';
 import { RequireAdmin, RequireAuth, useCatalog } from '../app/DataProvider.tsx';
 import { AttemptPage } from '../pages/AttemptPage.tsx';
 
 // Unknown scenario IDs receive a genuine not-found screen, never another scenario.
 function ValidScenario() {
-  const { findScenario } = useCatalog();
+  const { findScenario, catalogStatus, catalogError } = useCatalog();
   const { scenarioId } = useParams();
-  return findScenario(scenarioId) ? <Outlet /> : <ErrorPage />;
+  if (findScenario(scenarioId)) return <Outlet />;
+  if (catalogStatus === 'loading')
+    return (
+      <main className="container page" role="status">
+        Загружаем сценарий…
+      </main>
+    );
+  if (catalogStatus === 'error') return <RequestFailure error={catalogError} />;
+  return <ErrorPage />;
 }
 
 export function AppRoutes() {
@@ -66,6 +76,7 @@ export function AppRoutes() {
             }
           >
             <Route index element={<AdminDashboardPage />} />
+            <Route path="accounts" element={<AdminAccountsPage />} />
             <Route path="scenarios" element={<EditorListPage />} />
           </Route>
 

@@ -71,20 +71,6 @@ function Select({
   );
 }
 
-const INTENT_OPTIONS = [
-  ['greet', 'Поздороваться'],
-  ['acknowledge_position', 'Признать позицию собеседника'],
-  ['continue_discussion', 'Продолжить обсуждение'],
-  ['ask_clarification', 'Уточнить'],
-  ['provide_information', 'Дать информацию'],
-  ['introduce_counter_offer', 'Предложить встречный вариант'],
-  ['accept_offer', 'Принять предложение'],
-  ['reject_offer', 'Отклонить предложение'],
-  ['acknowledge_agreement', 'Подтвердить договорённость'],
-  ['close_agreement', 'Завершить договорённость'],
-  ['answer_side_question', 'Ответить на побочный вопрос'],
-] as const;
-
 const DURATION_OPTIONS = ['3–5 минут', '5–10 минут', '10–15 минут', '15–20 минут', '20+ минут'];
 
 function ScenarioJsonTools({
@@ -222,9 +208,7 @@ export function Inspector({
               ? 'Основное'
               : selection.type === 'characters'
                 ? 'Персонажи'
-                : selection.type === 'stages'
-                  ? 'Этапы'
-                  : 'Настройки';
+                : 'Настройки';
   const blockId = 'id' in selection ? selection.id : '';
   const mutateNode = (mutator: (n: NonNullable<typeof node>) => void) =>
     update((d) => {
@@ -320,22 +304,6 @@ export function Inspector({
                 })
               }
             />
-            <Select
-              label="Этап"
-              value={node.stageId ?? ''}
-              onChange={(v) =>
-                mutateNode((n) => {
-                  n.stageId = v || undefined;
-                })
-              }
-            >
-              <option value="">Без этапа</option>
-              {def.stages.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.title}
-                </option>
-              ))}
-            </Select>
             <label className="checkbox-field">
               <input
                 type="checkbox"
@@ -432,42 +400,6 @@ export function Inspector({
               }
               hint="Этот текст участник увидит на кнопке."
             />
-            <Select
-              label="Смысл реакции (intent)"
-              value={
-                INTENT_OPTIONS.some(([value]) => value === reaction.intent)
-                  ? reaction.intent
-                  : '__custom__'
-              }
-              onChange={(value) =>
-                mutateReaction((r) => {
-                  if (value === '__custom__') {
-                    if (INTENT_OPTIONS.some(([preset]) => preset === r.intent))
-                      r.intent = newId('intent');
-                  } else r.intent = value;
-                })
-              }
-            >
-              {INTENT_OPTIONS.map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label} · {value}
-                </option>
-              ))}
-              <option value="__custom__">Свой вариант</option>
-            </Select>
-            {!INTENT_OPTIONS.some(([value]) => value === reaction.intent) && (
-              <Field
-                label="Свой intent"
-                value={reaction.intent}
-                maxLength={100}
-                onChange={(v) =>
-                  mutateReaction((r) => {
-                    r.intent = v;
-                  })
-                }
-                hint="Латинские буквы, цифры и _. Intent должен быть уникальным внутри одной реплики."
-              />
-            )}
             <div className="maker-section-heading">
               <h3>Примеры фраз</h3>
               <span>{reaction.examples.length}</span>
@@ -844,71 +776,6 @@ export function Inspector({
               }
             >
               + Добавить персонажа
-            </button>
-          </>
-        )}
-        {selection.type === 'stages' && (
-          <>
-            <p className="maker-hint">
-              Этапы помогают ориентироваться в разговоре. Они не ограничивают переходы между
-              репликами.
-            </p>
-            {def.stages.map((s, i) => {
-              const assignedCount = def.nodes.filter((node) => node.stageId === s.id).length;
-              return (
-                <section key={s.id} className="maker-entity-fields">
-                  <div className="maker-entity-heading">
-                    <strong>Этап {i + 1}</strong>
-                    {assignedCount > 0 && (
-                      <span className="maker-entity-usage">{assignedCount} репл.</span>
-                    )}
-                  </div>
-                  <Field
-                    label="Название"
-                    value={s.title}
-                    maxLength={200}
-                    onChange={(v) =>
-                      update((d) => {
-                        d.stages.find((x) => x.id === s.id)!.title = v;
-                      })
-                    }
-                  />
-                  <button
-                    type="button"
-                    className="maker-danger-button maker-stage-delete-action"
-                    onClick={() => {
-                      if (
-                        assignedCount > 0 &&
-                        !window.confirm(
-                          `Этап используется в ${assignedCount} реплик${
-                            assignedCount === 1 ? 'е' : 'ах'
-                          }. Удалить этап и оставить эти реплики без этапа?`,
-                        )
-                      )
-                        return;
-                      update((d) => {
-                        d.stages = d.stages.filter((x) => x.id !== s.id);
-                        for (const n of d.nodes) if (n.stageId === s.id) delete n.stageId;
-                      });
-                    }}
-                  >
-                    <Icon name="trash" size={16} />
-                    Удалить этап
-                  </button>
-                </section>
-              );
-            })}
-            <button
-              type="button"
-              className="maker-dashed-button"
-              disabled={def.stages.length >= 100}
-              onClick={() =>
-                update((d) => {
-                  d.stages.push({ id: newId('stage'), title: 'Новый этап' });
-                })
-              }
-            >
-              + Добавить этап
             </button>
           </>
         )}

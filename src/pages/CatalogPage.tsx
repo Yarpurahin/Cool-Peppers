@@ -1,3 +1,4 @@
+import { RequestFailure } from '../components/ui/RequestFailure.tsx';
 import { useSearchParams } from 'react-router-dom';
 import { useCatalog } from '../app/DataProvider.tsx';
 import { ScenarioCard } from '../components/scenarios/ScenarioCard.tsx';
@@ -5,7 +6,7 @@ import { Button } from '../components/ui/Button.tsx';
 import { Icon } from '../components/ui/Icon.tsx';
 
 export function CatalogPage() {
-  const { scenarios } = useCatalog();
+  const { scenarios, catalogStatus, catalogError } = useCatalog();
   const [params, setParams] = useSearchParams();
   const query = params.get('q') ?? '';
   const category = params.get('category') ?? '';
@@ -33,6 +34,14 @@ export function CatalogPage() {
         .includes(normalized),
   );
 
+  if (catalogStatus === 'error' && !scenarios.length)
+    return <RequestFailure error={catalogError} />;
+  if (catalogStatus === 'loading')
+    return (
+      <div className="container page" role="status">
+        Загружаем сценарии…
+      </div>
+    );
   return (
     <div className="container page catalog-page">
       <div className="page-heading">
