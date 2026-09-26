@@ -1,7 +1,9 @@
 import { NavLink, Outlet } from 'react-router-dom';
+import { useCatalog } from '../../app/DataProvider.tsx';
 import { Icon } from '../ui/Icon.tsx';
 
 export function AdminLayout() {
+  const { user } = useCatalog();
   return (
     <div className="container admin-shell">
       <aside className="admin-sidebar" aria-label="Навигация администратора">
@@ -24,6 +26,12 @@ export function AdminLayout() {
             <Icon name="book" size={18} />
             <span>Сценарии</span>
           </NavLink>
+          {user?.isSuperAdmin && (
+            <NavLink to="/admin/accounts">
+              <Icon name="shield" size={18} />
+              <span>Администраторы</span>
+            </NavLink>
+          )}
         </nav>
       </aside>
 
