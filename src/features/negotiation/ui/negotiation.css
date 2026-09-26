@@ -9,7 +9,7 @@
 .negotiation-play .dialogue-message {
   margin: 0;
   border-radius: 0;
-  background: var(--tone-soft, #f9fbf8);
+  background: #f9fbf8;
   padding: 24px;
 }
 .negotiation-play .dialogue-message > p {
@@ -81,7 +81,7 @@
 }
 .negotiation-stages .stage--current > span {
   background: var(--green);
-  color: var(--on-accent);
+  color: white;
 }
 .negotiation-stages .stage--past > span {
   background: var(--sage);
@@ -98,7 +98,7 @@
 }
 .negotiation-tip > svg {
   flex-shrink: 0;
-  color: var(--tone-orange, #887344);
+  color: #887344;
 }
 .negotiation-tip h3 {
   font-size: 15px;
@@ -156,7 +156,7 @@
 }
 .result-hero--failure,
 .result-hero--failure .score-circle > div {
-  background: var(--tone-warm, #793f32);
+  background: #793f32;
 }
 .result-grid--single {
   grid-template-columns: minmax(0, 1fr);
@@ -208,18 +208,6 @@
   }
 }
 
-.editor-fields {
-  border: 0;
-  padding: 0;
-  margin: 0;
-  min-width: 0;
-}
-.json-editor {
-  font-family: ui-monospace, Consolas, monospace;
-  font-size: 13px;
-  line-height: 1.6;
-  tab-size: 2;
-}
-.editor-page .field-error {
-  overflow-wrap: anywhere;
-}
+.editor-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
+.json-editor { font-family: ui-monospace, Consolas, monospace; font-size: 13px; line-height: 1.6; tab-size: 2; }
+.editor-page .field-error { overflow-wrap: anywhere; }

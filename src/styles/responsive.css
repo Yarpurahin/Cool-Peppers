@@ -335,7 +335,7 @@
     left: 18px;
     right: 18px;
     padding: 17px;
-    background: var(--surface);
+    background: white;
     border: 1px solid var(--line);
     border-radius: 0 0 14px 14px;
     box-shadow: var(--shadow);
@@ -385,7 +385,7 @@
     width: 100%;
     margin-top: 5px;
     box-shadow: none;
-    background: var(--tone-soft, #f8faf4);
+    background: #f8faf4;
   }
   .profile-link > svg,
   .profile-link small {
@@ -1168,12 +1168,8 @@
 
 @media (max-width: 760px) {
   .account-menu,
-  .account-trigger {
-    width: 100%;
-  }
-  .account-trigger {
-    min-width: 0;
-  }
+  .account-trigger { width: 100%; }
+  .account-trigger { min-width: 0; }
   .account-menu-popover {
     position: static;
     width: 100%;
@@ -1187,9 +1183,9 @@
     justify-content: space-between;
     width: 100%;
     padding: 7px 8px 7px 11px;
-    border: 1px solid var(--tone-border, #dbe4dc);
+    border: 1px solid #dbe4dc;
     border-radius: 12px;
-    background: var(--surface);
+    background: #fff;
   }
   .account-trigger-name {
     max-width: none;
@@ -1197,6 +1193,6 @@
   }
   .account-menu-popover {
     margin-top: 7px;
-    background: var(--tone-soft, #fffefb);
+    background: #fffefb;
   }
 }

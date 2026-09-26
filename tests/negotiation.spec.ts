@@ -14,7 +14,7 @@ test('full attempt persists across reload, feedback and restart preserves histor
   await choose(page, 1);
   await expect(page.locator('.dialogue-header .badge')).toHaveText('Шаг 3');
   await page.getByRole('button', { name: 'Сохранить и выйти' }).click();
-  await page.getByRole('button', { name: 'Продолжить переговоры' }).click();
+  await page.getByRole('link', { name: 'Продолжить переговоры' }).click();
   await choose(page, 1);
   await expect(page.locator('.dialogue-header .badge')).toHaveText('Шаг 4');
   await page.getByRole('radio').nth(0).check();
@@ -31,7 +31,8 @@ test('full attempt persists across reload, feedback and restart preserves histor
   await expect(page.locator('.dialogue-header .badge')).toHaveText('Шаг 1');
   await page.goto('/profile');
   await expect(page.locator('.history-row')).toHaveCount(2);
-  await expect(page.locator('.history-row a')).toHaveCount(0);
+  await page.getByRole('link', { name: 'Разбор', exact: true }).click();
+  await expect(page.locator('.review-item')).toHaveCount(4);
 });
 
 test('failed save does not advance question and retry persists once', async ({ page }) => {
@@ -46,9 +47,7 @@ test('failed save does not advance question and retry persists once', async ({ p
   );
   await page.getByRole('radio').nth(0).check();
   await page.getByRole('button', { name: 'Ответить', exact: true }).click();
-  await expect(page.getByRole('alert', { name: 'Уведомление сервиса' })).toContainText(
-    'Нет связи с сервером',
-  );
+  await expect(page.getByRole('status')).toContainText('Тестовая ошибка соединения');
   await expect(page.locator('.dialogue-header .badge')).toHaveText('Шаг 1');
   await page.unroute('**/api/attempts/*/answers');
   await page.getByRole('button', { name: 'Ответить', exact: true }).click();
@@ -58,7 +57,7 @@ test('failed save does not advance question and retry persists once', async ({ p
 });
 
 test('all playable built-in scenarios require sign-in', async ({ page }) => {
-  for (const id of ['terms']) {
+  for (const id of ['terms', 'new-deadline', 'feedback']) {
     await page.goto(`/scenarios/${id}/play`);
     await expect(page).toHaveURL(/\/login\?next=/);
     await expect(page.locator('h1')).toHaveText('Рады видеть вас');

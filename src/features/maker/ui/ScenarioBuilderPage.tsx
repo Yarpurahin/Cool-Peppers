@@ -1,12 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import type { Connection, Edge, ReactFlowInstance } from '@xyflow/react';
-import { api, actionErrorMessage } from '../../../api/client.ts';
+import { api, errorMessage } from '../../../api/client.ts';
 import { useCatalog } from '../../../app/DataProvider.tsx';
 import { documentSchema } from '../../../types/validation.ts';
-import { ThemeToggle } from '../../../app/ThemeProvider.tsx';
-import { RequestFailure } from '../../../components/ui/RequestFailure.tsx';
-import { ResizableValidation } from './ResizableValidation.tsx';
 import { Icon } from '../../../components/ui/Icon.tsx';
 import type { IconName } from '../../../components/ui/Icon.tsx';
 import { toMakerDraft } from '../model/adapter.ts';
@@ -51,7 +48,8 @@ function sameSelection(a: Selection, b: Selection) {
     const selected = new Set(a.ids);
     return b.ids.every((id) => selected.has(id));
   }
-  if (a.type === 'reaction' && b.type === 'reaction') return a.id === b.id && a.nodeId === b.nodeId;
+  if (a.type === 'reaction' && b.type === 'reaction')
+    return a.id === b.id && a.nodeId === b.nodeId;
   if ((a.type === 'node' || a.type === 'ending') && (b.type === 'node' || b.type === 'ending'))
     return a.id === b.id;
   return true;
@@ -94,7 +92,6 @@ export function ScenarioBuilderPage() {
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const [error, setError] = useState('');
-  const [loadError, setLoadError] = useState<unknown>(null);
   const [message, setMessage] = useState('');
   const [query, setQuery] = useState('');
   const history = useRef(new DraftHistory<MakerDocument>());
@@ -140,7 +137,6 @@ export function ScenarioBuilderPage() {
     const controller = new AbortController();
     current.current = null;
     setDraft(null);
-    setLoadError(null);
     setError('');
     setMessage('');
     api<AuthoringDraft>(path, { signal: controller.signal })
@@ -176,10 +172,19 @@ export function ScenarioBuilderPage() {
         );
       })
       .catch((e) => {
-        if (!controller.signal.aborted) setLoadError(e);
+        if (!controller.signal.aborted) setError(errorMessage(e));
       });
     return () => controller.abort();
   }, [path, replace, storageKey]);
+  useEffect(() => {
+    if (!dirty) return;
+    const beforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', beforeUnload);
+    return () => window.removeEventListener('beforeunload', beforeUnload);
+  }, [dirty]);
   useEffect(() => {
     if (!branch) return;
     const dismiss = (e: KeyboardEvent) => {
@@ -209,8 +214,7 @@ export function ScenarioBuilderPage() {
     },
     [replace, persist],
   );
-  const select = useCallback((value: Selection, focus = false) => {
-    if (focus) setFocusToken((token) => token + 1);
+  const select = useCallback((value: Selection) => {
     history.current.breakGroup();
     setSelection((currentSelection) =>
       sameSelection(currentSelection, value) ? currentSelection : value,
@@ -275,7 +279,8 @@ export function ScenarioBuilderPage() {
       } else if ('id' in selection) {
         const id = selection.type === 'reaction' ? selection.nodeId : selection.id;
         const node = next.definition.nodes.find((n) => n.id === id);
-        if (!node && !next.definition.endings.some((e) => e.id === id)) select({ type: 'main' });
+        if (!node && !next.definition.endings.some((e) => e.id === id))
+          select({ type: 'main' });
         else if (
           selection.type === 'reaction' &&
           !node?.reactions.some((r) => r.id === selection.id)
@@ -552,13 +557,12 @@ export function ScenarioBuilderPage() {
         setMessage(`Опубликована версия ${published.version}.`);
       } else setMessage('Черновик сохранён.');
     } catch (e) {
-      setError(actionErrorMessage(e));
+      setError(errorMessage(e));
     } finally {
       busyRef.current = false;
       setBusy(false);
     }
   }
-  if (!draft && loadError) return <RequestFailure error={loadError} />;
   if (!draft)
     return (
       <main id="main-content" className="container page">
@@ -580,7 +584,7 @@ export function ScenarioBuilderPage() {
     `${n.title} ${n.text}`.toLocaleLowerCase('ru').includes(query.toLocaleLowerCase('ru')),
   );
   const nav: {
-    type: 'main' | 'characters' | 'settings';
+    type: 'main' | 'characters' | 'stages' | 'settings';
     title: string;
     icon: IconName;
     count?: number;
@@ -592,6 +596,7 @@ export function ScenarioBuilderPage() {
       icon: 'user',
       count: draft.definition.characters.length,
     },
+    { type: 'stages', title: 'Этапы', icon: 'menu', count: draft.definition.stages.length },
     { type: 'settings', title: 'Настройки', icon: 'edit' },
   ];
   return (
@@ -612,7 +617,8 @@ export function ScenarioBuilderPage() {
           className="maker-back"
           aria-label="К списку сценариев"
           onClick={() => {
-            navigate(listPath);
+            if (!dirty || window.confirm('Есть несохранённые изменения. Выйти из конструктора?'))
+              navigate(listPath);
           }}
         >
           <Icon name="back" size={17} />
@@ -659,7 +665,6 @@ export function ScenarioBuilderPage() {
             <Icon name="reset" size={18} style={{ transform: 'scaleX(-1)' }} />
           </button>
         </div>
-        <ThemeToggle />
         <div className="maker-header-actions">
           <button
             type="button"
@@ -905,7 +910,7 @@ export function ScenarioBuilderPage() {
           </button>
         )}
         {validationOpen && (
-          <ResizableValidation layoutKey={`${inspectorWidth.width}:${inspectorOpen}`}>
+          <section className="maker-validation" aria-label="Проверка сценария">
             <header>
               <div>
                 <h2>{errorCount ? `Ошибок: ${errorCount}` : 'Сценарий готов к прохождению'}</h2>
@@ -953,7 +958,7 @@ export function ScenarioBuilderPage() {
                 </p>
               )}
             </div>
-          </ResizableValidation>
+          </section>
         )}
       </div>
       {branch && (

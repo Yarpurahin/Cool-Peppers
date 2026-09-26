@@ -1,5 +1,4 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
-import type { LinkProps } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 
 type Variant = 'primary' | 'secondary' | 'outline' | 'ghost';
@@ -21,10 +20,9 @@ export function ButtonLink({
   variant = 'primary',
   className = '',
   children,
-  ...props
-}: Appearance & Pick<LinkProps, 'to' | 'replace'>) {
+}: Appearance & { to: string }) {
   return (
-    <Link to={to} className={buttonClass(variant, className)} {...props}>
+    <Link to={to} className={buttonClass(variant, className)}>
       {children}
     </Link>
   );

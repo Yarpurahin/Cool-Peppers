@@ -1,6 +1,5 @@
-import { RequestFailure } from '../components/ui/RequestFailure.tsx';
 import { useEffect, useMemo, useState } from 'react';
-import { api } from '../api/client.ts';
+import { api, errorMessage } from '../api/client.ts';
 import type { AdminScenarioSummary } from '../types/api.ts';
 import { ButtonLink } from '../components/ui/Button.tsx';
 import { Icon } from '../components/ui/Icon.tsx';
@@ -17,14 +16,14 @@ function formatDate(value: string) {
 export function AdminDashboardPage() {
   const [rows, setRows] = useState<AdminScenarioSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<unknown>(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const controller = new AbortController();
     api<AdminScenarioSummary[]>('/editor', { signal: controller.signal })
       .then(setRows)
       .catch((cause) => {
-        if (!controller.signal.aborted) setLoadError(cause);
+        if (!controller.signal.aborted) setError(errorMessage(cause));
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
@@ -42,7 +41,6 @@ export function AdminDashboardPage() {
     [rows],
   );
 
-  if (loadError && !rows.length) return <RequestFailure error={loadError} />;
   return (
     <div className="admin-page admin-dashboard-page">
       <div className="admin-page-heading">
@@ -58,6 +56,12 @@ export function AdminDashboardPage() {
           Управлять сценариями
         </ButtonLink>
       </div>
+
+      {error && (
+        <p className="field-error" role="alert">
+          {error}
+        </p>
+      )}
 
       <section className="admin-stat-grid" aria-label="Статистика сценариев">
         <article className="admin-stat-card">
@@ -159,8 +163,8 @@ export function AdminDashboardPage() {
             <div>
               <span>2</span>
               <p>
-                <strong>Персонажи</strong>
-                Участники переговоров
+                <strong>Персонажи и этапы</strong>
+                Участники и структура переговоров
               </p>
             </div>
             <div>

@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import conversationImage from '../assets/images/conversation.png';
 import { useCatalog } from '../app/DataProvider.tsx';
@@ -14,8 +13,7 @@ const benefits: { icon: IconName; title: string; text: string }[] = [
 ];
 
 export function HomePage() {
-  const { scenarios, catalogStatus } = useCatalog();
-  const [imageFailed, setImageFailed] = useState(false);
+  const { scenarios } = useCatalog();
   return (
     <div className="container home-page">
       <section className="hero">
@@ -41,36 +39,15 @@ export function HomePage() {
         <figure className="hero-visual">
           <div className="visual-heading">
             <span className="live-dot" />
-            От первой реплики — к общему решению
+            От первой реплики — к общему решению<span className="visual-index">01 / 03</span>
           </div>
-          {imageFailed ? (
-            <div
-              className="hero-image-fallback"
-              role="img"
-              aria-label="Диалог: услышать друг друга и найти общее решение"
-            >
-              <span className="fallback-bubble">
-                <Icon name="message" size={40} />
-              </span>
-              <span className="fallback-bubble fallback-bubble--reply">
-                <Icon name="check" size={36} />
-              </span>
-              <strong>
-                Услышать друг друга.
-                <br />
-                Найти общее решение.
-              </strong>
-            </div>
-          ) : (
-            <img
-              onError={() => setImageFailed(true)}
-              src={conversationImage}
-              alt="Два собеседника спокойно обсуждают условия за столом"
-              width="1536"
-              height="1024"
-              fetchPriority="high"
-            />
-          )}
+          <img
+            src={conversationImage}
+            alt="Два собеседника спокойно обсуждают условия за столом"
+            width="1536"
+            height="1024"
+            fetchPriority="high"
+          />
           <figcaption>
             <span className="icon-tile">
               <Icon name="message" />
@@ -109,8 +86,6 @@ export function HomePage() {
             Все сценарии <Icon name="arrow" size={18} />
           </Link>
         </div>
-        {catalogStatus === 'loading' && <p role="status">Загружаем сценарии…</p>}
-        {catalogStatus === 'error' && !scenarios.length && <p>Сценарии временно недоступны.</p>}
         <div className="scenario-grid">
           {scenarios.map((scenario, index) => (
             <ScenarioCard key={scenario.id} scenario={scenario} index={index} />
