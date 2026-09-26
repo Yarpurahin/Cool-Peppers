@@ -4,10 +4,12 @@ import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { Pool } from 'pg';
 import { z, ZodError } from 'zod';
+import { avatarSchema } from './avatar.ts';
 import { config } from './config.ts';
 import { transaction } from './db.ts';
 import {
   admin,
+  superAdmin,
   authenticate,
   checkPassword,
   clearSession,
@@ -157,19 +159,41 @@ export function createApp(pool: Pool) {
     );
     res.json(publicUser(updated.rows[0]));
   });
+  app.patch('/api/me/avatar', async (req, res) => {
+    const id = user(res).id;
+    const input = avatarSchema.parse(req.body);
+    const saved = await pool.query(
+      'UPDATE app_users SET avatar_data=$1, updated_at=now() WHERE id=$2 RETURNING *',
+      [input.avatar, id],
+    );
+    res.json(publicUser(saved.rows[0]));
+  });
+  app.post('/api/admin/accounts', async (req, res) => {
+    superAdmin(res);
+    const input = registerSchema.parse(req.body);
+    const passwordHash = await hashPassword(input.password);
+    const saved = await pool.query(
+      "INSERT INTO app_users(id, name, email, password_hash, role) VALUES ($1,$2,$3,$4,'admin') RETURNING *",
+      [randomUUID(), input.name, input.email, passwordHash],
+    );
+    res.status(201).json(publicUser(saved.rows[0]));
+  });
   app.post('/api/me/password', async (req, res) => {
     const id = user(res).id;
     const input = changePasswordSchema.parse(req.body);
     const found = await pool.query('SELECT password_hash FROM app_users WHERE id = $1', [id]);
-    if (!found.rowCount || !(await checkPassword(input.currentPassword, found.rows[0].password_hash)))
+    if (
+      !found.rowCount ||
+      !(await checkPassword(input.currentPassword, found.rows[0].password_hash))
+    )
       throw new ApiError(401, 'Текущий пароль указан неверно');
     const passwordHash = await hashPassword(input.newPassword);
     const token = sessionToken(req);
     await transaction(pool, async (client) => {
-      await client.query('UPDATE app_users SET password_hash = $1, updated_at = now() WHERE id = $2', [
-        passwordHash,
-        id,
-      ]);
+      await client.query(
+        'UPDATE app_users SET password_hash = $1, updated_at = now() WHERE id = $2',
+        [passwordHash, id],
+      );
       if (token)
         await client.query('DELETE FROM auth_sessions WHERE user_id = $1 AND token_hash <> $2', [
           id,
@@ -592,7 +616,18 @@ export function createApp(pool: Pool) {
     if (problem.type === 'entity.too.large')
       return res.status(413).json({ error: 'Слишком большой запрос' });
     console.error('Request failed:', error instanceof Error ? error.message : 'unknown error');
-    return res.status(503).json({ error: 'Сервис временно недоступен. Повторите запрос.' });
+    const unavailable = [
+      'ECONNREFUSED',
+      'ECONNRESET',
+      'ETIMEDOUT',
+      'ENOTFOUND',
+      '57P01',
+      '57P03',
+      '53300',
+    ].includes(problem.code ?? '');
+    return res
+      .status(unavailable ? 503 : 500)
+      .json({ error: 'Сервис временно недоступен. Повторите запрос.' });
   });
   return app;
 }

@@ -26,12 +26,13 @@ import type {
 import type { GraphIssue, MakerDocument } from '../model/types.ts';
 import { layoutGraph } from '../model/commands.ts';
 import { Icon } from '../../../components/ui/Icon.tsx';
+import { CanvasHelp } from './CanvasHelp.tsx';
 
 export type Selection =
   | { type: 'node' | 'ending'; id: string }
   | { type: 'blocks'; ids: string[] }
   | { type: 'reaction'; id: string; nodeId: string }
-  | { type: 'main' | 'characters' | 'stages' | 'settings' };
+  | { type: 'main' | 'characters' | 'settings' };
 
 export interface BranchRequest {
   nodeId: string;
@@ -45,7 +46,6 @@ type CardData = {
   text: string;
   initials?: string;
   character?: string;
-  stage?: string;
   start?: boolean;
   endingType?: string;
   error?: boolean;
@@ -55,27 +55,40 @@ type CardData = {
     id: string;
     label: string;
     linked: boolean;
+    side: Position;
     selected: boolean;
   }[];
-  selectReaction?: (id: string) => void;
+  selectReaction?: (id: string, focus?: boolean) => void;
 };
 export type CardNode = Node<CardData>;
 
-function IncomingHandles({ id, incomingIds }: { id: string; incomingIds: string[] }) {
+function IncomingHandles({
+  id,
+  incomingIds,
+  hidden = false,
+}: {
+  id: string;
+  incomingIds: string[];
+  hidden?: boolean;
+}) {
   const update = useUpdateNodeInternals();
   const signature = incomingIds.join(',');
   useEffect(() => {
     update(id);
   }, [id, signature, update]);
 
-  const handles = incomingIds.length ? incomingIds : ['available-target'];
+  const handles = incomingIds.length ? incomingIds : hidden ? [] : ['available-target'];
   return handles.map((incomingId, index) => (
     <Handle
       key={incomingId}
       id={`in-${incomingId}`}
       type="target"
+      isConnectable={!hidden}
       position={Position.Left}
-      style={{ top: `${((index + 1) / (handles.length + 1)) * 100}%` }}
+      style={{
+        top: `${((index + 1) / (handles.length + 1)) * 100}%`,
+        ...(hidden ? { opacity: 0, pointerEvents: 'none' as const } : {}),
+      }}
       aria-label={incomingId === 'available-target' ? 'Вход блока' : 'Вход перехода'}
       className={incomingId === 'available-target' ? 'maker-empty-target-handle' : ''}
     />
@@ -84,19 +97,18 @@ function IncomingHandles({ id, incomingIds }: { id: string; incomingIds: string[
 
 function DialogueCard({ id, data }: NodeProps<CardNode>) {
   const update = useUpdateNodeInternals();
-  const reactionSignature = data.reactions?.map((r) => r.id).join(',');
+  const reactionSignature = data.reactions?.map((r) => `${r.id}:${r.side}`).join(',');
   useEffect(() => {
     update(id);
   }, [id, reactionSignature, data.start, update]);
 
   return (
     <article className={`maker-card ${data.error ? 'has-error' : ''}`} data-testid={`block-${id}`}>
-      <IncomingHandles id={id} incomingIds={data.incomingIds} />
+      <IncomingHandles id={id} incomingIds={data.incomingIds} hidden={data.start} />
       <div className="maker-card-heading">
         <span className="maker-avatar">{data.initials || '—'}</span>
         <div>
           <strong>{data.character || 'Выберите персонажа'}</strong>
-          <span>{data.stage || 'Без этапа'}</span>
         </div>
         {data.warning && <span className="maker-warning-dot" title="Блок недостижим" />}
       </div>
@@ -107,13 +119,21 @@ function DialogueCard({ id, data }: NodeProps<CardNode>) {
       </div>
       <div className="maker-card-reactions">
         {data.reactions?.map((r) => (
-          <div className={`maker-card-reaction ${r.selected ? 'is-selected' : ''}`} key={r.id}>
+          <div
+            className={`maker-card-reaction ${r.side === Position.Left ? 'has-left-handle' : ''} ${r.selected ? 'is-selected' : ''}`}
+            key={r.id}
+          >
             <button
               type="button"
               className="nodrag nopan"
               onClick={(event) => {
                 event.stopPropagation();
                 data.selectReaction?.(r.id);
+              }}
+              onDoubleClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                data.selectReaction?.(r.id, true);
               }}
               title={r.label}
             >
@@ -122,7 +142,7 @@ function DialogueCard({ id, data }: NodeProps<CardNode>) {
             <Handle
               id={r.id}
               type="source"
-              position={Position.Right}
+              position={r.side}
               className={r.linked ? '' : 'is-unlinked'}
               aria-label={`Переход: ${r.label}`}
               data-testid={`handle-${r.id}`}
@@ -175,8 +195,7 @@ const ARIA_LABEL_CONFIG: NonNullable<ReactFlowProps<CardNode, Edge>['ariaLabelCo
   'minimap.ariaLabel': 'Мини-карта',
 };
 const MINIMAP_STYLE = { width: 145, height: 90 };
-const minimapNodeColor = (node: Node) =>
-  node.type === 'ending' ? '#eed4c5' : '#d7e4d7';
+const minimapNodeColor = (node: Node) => (node.type === 'ending' ? '#eed4c5' : '#d7e4d7');
 
 function InitialViewport({ hasSavedViewport }: { hasSavedViewport: boolean }) {
   const initialized = useNodesInitialized();
@@ -221,7 +240,7 @@ export function ScenarioCanvas({
   selection: Selection;
   issues: GraphIssue[];
   disabled: boolean;
-  onSelect: (selection: Selection) => void;
+  onSelect: (selection: Selection, focus?: boolean) => void;
   onBlockSelection: (ids: string[]) => void;
   onPositions: (positions: Record<string, { x: number; y: number }>) => void;
   onViewport: (viewport: { x: number; y: number; zoom: number }) => void;
@@ -445,6 +464,11 @@ export function ScenarioCanvas({
         incomingByTarget.set(target, [...(incomingByTarget.get(target) ?? []), reaction.id]);
       }
 
+    const sourceSide = (sourceId: string, targetId?: string) => {
+      const source = doc.editor.positions[sourceId] ?? defaults[sourceId];
+      const target = targetId ? (doc.editor.positions[targetId] ?? defaults[targetId]) : undefined;
+      return source && target && target.x < source.x ? Position.Left : Position.Right;
+    };
     const cards: CardNode[] = [
       ...def.nodes.map((node) => {
         const character = def.characters.find((c) => c.id === node.characterId);
@@ -459,7 +483,6 @@ export function ScenarioCanvas({
             text: node.text,
             character: character ? `${character.name} · ${character.role}` : '',
             initials: character?.initials,
-            stage: def.stages.find((s) => s.id === node.stageId)?.title,
             start: def.startNodeId === node.id,
             incomingIds: incomingByTarget.get(node.id) ?? [],
             ...flags(node.id),
@@ -467,10 +490,11 @@ export function ScenarioCanvas({
               id: reaction.id,
               label: reaction.label,
               linked: !!(reaction.nextNodeId || reaction.endingId),
+              side: sourceSide(node.id, reaction.nextNodeId || reaction.endingId),
               selected: activeSelection.type === 'reaction' && activeSelection.id === reaction.id,
             })),
-            selectReaction: (id: string) =>
-              runtime.current.onSelect({ type: 'reaction', id, nodeId: node.id }),
+            selectReaction: (id: string, focus = false) =>
+              runtime.current.onSelect({ type: 'reaction', id, nodeId: node.id }, focus),
           },
         } satisfies CardNode;
       }),
@@ -499,7 +523,8 @@ export function ScenarioCanvas({
         node.reactions.flatMap((reaction): Edge[] => {
           const target = reaction.nextNodeId || reaction.endingId;
           if (!target || !cards.some((card) => card.id === target)) return [];
-          const selected = activeSelection.type === 'reaction' && activeSelection.id === reaction.id;
+          const selected =
+            activeSelection.type === 'reaction' && activeSelection.id === reaction.id;
           return [
             {
               id: reaction.id,
@@ -518,14 +543,7 @@ export function ScenarioCanvas({
         }),
       ),
     );
-  }, [
-    doc.definition,
-    doc.editor.positions,
-    defaults,
-    issues,
-    setNodes,
-    setEdges,
-  ]);
+  }, [doc.definition, doc.editor.positions, defaults, issues, setNodes, setEdges]);
 
   useEffect(() => {
     const selectedIds = new Set(
@@ -570,7 +588,8 @@ export function ScenarioCanvas({
         const selected = edge.id === selectedReaction;
         const label = selected ? reactionLabels.get(edge.id) : undefined;
         const zIndex = selected ? 4 : 1;
-        if (edge.selected === selected && edge.label === label && edge.zIndex === zIndex) return edge;
+        if (edge.selected === selected && edge.label === label && edge.zIndex === zIndex)
+          return edge;
         changed = true;
         return { ...edge, selected, label, zIndex };
       });
@@ -621,85 +640,18 @@ export function ScenarioCanvas({
         >
           <NodeInitializationReporter onChange={handleNodesInitialized} />
           <InitialViewport hasSavedViewport={!!doc.editor.viewport} />
-          <Background color="#d8e0d6" gap={22} size={1.2} />
+          <Background color="var(--tone-border, #d8e0d6)" gap={22} size={1.2} />
           <Controls showInteractive={false} />
           <MiniMap
             style={MINIMAP_STYLE}
             pannable
             zoomable
             nodeColor={minimapNodeColor}
-            maskColor="rgba(247,247,242,.6)"
+            maskColor="var(--minimap-mask, rgba(247,247,242,.6))"
           />
           <Panel position="bottom-center" className="maker-canvas-tools-panel">
             <div className="maker-canvas-tools" ref={help}>
-              {helpOpen && (
-                <section className="maker-canvas-help" role="dialog" aria-label="Справка по полотну">
-                  <div className="maker-canvas-help-heading">
-                    <div className="maker-canvas-help-title">
-                      <span className="maker-canvas-help-title-icon">
-                        <Icon name="info" size={16} />
-                      </span>
-                      <div>
-                        <strong>Справка по конструктору</strong>
-                        <span>Полотно, связи, выделение и история изменений</span>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      className="maker-canvas-help-close"
-                      onClick={() => setHelpOpen(false)}
-                      aria-label="Закрыть справку"
-                    >
-                      <Icon name="close" size={15} />
-                    </button>
-                  </div>
-                  <p className="maker-canvas-help-intro">
-                    Реплики и финалы образуют граф разговора. Реакция пользователя задаёт переход
-                    к следующему блоку.
-                  </p>
-                  <div className="maker-canvas-help-sections">
-                    <section>
-                      <h3>Полотно</h3>
-                      <div className="maker-canvas-help-grid">
-                        <kbd>Рамка</kbd>
-                        <p>Потяните по пустому месту левой кнопкой, чтобы выделить несколько блоков.</p>
-                        <kbd>Shift / Ctrl</kbd>
-                        <p>Добавляет блок в текущее выделение или снимает его повторным кликом.</p>
-                        <kbd>Колесо</kbd>
-                        <p>Масштабирует схему. Средняя или правая кнопка мыши перемещает полотно.</p>
-                      </div>
-                    </section>
-                    <section>
-                      <h3>Связи и редактирование</h3>
-                      <div className="maker-canvas-help-grid">
-                        <kbd>Клик по реакции</kbd>
-                        <p>Выбирает реакцию и открывает её параметры в панели свойств.</p>
-                        <kbd>Точка реакции</kbd>
-                        <p>Потяните её к карточке, чтобы связать реакцию с существующим блоком.</p>
-                        <kbd>В пустое место</kbd>
-                        <p>Завершите перетаскивание на свободном месте — можно создать новую реплику или финал.</p>
-                        <kbd>Delete</kbd>
-                        <p>Удаляет выбранный блок. Если выбрана реакция — удаляется реакция и её связь.</p>
-                      </div>
-                    </section>
-                    <section>
-                      <h3>История изменений</h3>
-                      <div className="maker-canvas-help-grid">
-                        <kbd>Ctrl + Z</kbd>
-                        <p>Отменить последнее изменение конструктора.</p>
-                        <kbd>Ctrl + Y</kbd>
-                        <p>Вернуть отменённое изменение.</p>
-                        <kbd>Ctrl + Shift + Z</kbd>
-                        <p>Альтернативная команда повтора. В полях ввода работает обычная история текста.</p>
-                      </div>
-                    </section>
-                  </div>
-                  <p className="maker-canvas-help-note">
-                    «Упорядочить» перестраивает граф автоматически. Ручное расположение блоков можно
-                    вернуть через Ctrl + Z.
-                  </p>
-                </section>
-              )}
+              {helpOpen && <CanvasHelp onClose={() => setHelpOpen(false)} />}
               <div className="maker-canvas-dock">
                 <button type="button" onClick={onArrange} disabled={disabled}>
                   <Icon name="branch" size={15} />
