@@ -64,6 +64,8 @@ export interface AuthoringDocument {
 export interface AuthoringDraft extends AuthoringDocument {
   revision: number;
   publishedVersion: number | null;
+  hasUnpublishedChanges?: boolean;
+  archivedAt?: string | null;
 }
 export interface MakerDocument {
   preview: ScenarioPreview;
@@ -73,6 +75,8 @@ export interface MakerDocument {
 export interface MakerDraft extends MakerDocument {
   revision: number;
   publishedVersion: number | null;
+  hasUnpublishedChanges?: boolean;
+  archivedAt?: string | null;
 }
 
 export interface GraphIssue {

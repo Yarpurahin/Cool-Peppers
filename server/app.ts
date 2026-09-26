@@ -4,10 +4,12 @@ import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { Pool } from 'pg';
 import { z, ZodError } from 'zod';
+import { avatarSchema } from './avatar.ts';
 import { config } from './config.ts';
 import { transaction } from './db.ts';
 import {
   admin,
+  superAdmin,
   authenticate,
   checkPassword,
   clearSession,
@@ -30,6 +32,7 @@ import {
 } from './store.ts';
 import {
   answerSchema,
+  changePasswordSchema,
   documentSchema,
   feedbackSchema,
   idSchema,
@@ -48,7 +51,11 @@ import {
   startAttempt,
 } from '../src/features/negotiation/model/engine.ts';
 import type { AuthoringDocument } from '../src/features/maker/model/types.ts';
-import { createBlankDefinition, isMakerDefinition } from '../src/features/maker/model/adapter.ts';
+import {
+  createBlankDefinition,
+  fromPreview,
+  isMakerDefinition,
+} from '../src/features/maker/model/adapter.ts';
 import { validateMaker } from '../src/features/maker/model/validation.ts';
 import { scenarios as initialScenarios } from '../src/data/scenarios.ts';
 
@@ -66,7 +73,7 @@ function validateGraph(document: AuthoringDocument) {
 }
 async function ownedScenario(db: Database, id: string, ownerId: string, lock = false) {
   const row = await db.query(
-    `SELECT * FROM scenarios WHERE id = $1 AND owner_id = $2${lock ? ' FOR UPDATE' : ''}`,
+    `SELECT * FROM scenarios WHERE id = $1 AND owner_id = $2 AND deleted_at IS NULL${lock ? ' FOR UPDATE' : ''}`,
     [id, ownerId],
   );
   if (!row.rowCount)
@@ -152,6 +159,49 @@ export function createApp(pool: Pool) {
     );
     res.json(publicUser(updated.rows[0]));
   });
+  app.patch('/api/me/avatar', async (req, res) => {
+    const id = user(res).id;
+    const input = avatarSchema.parse(req.body);
+    const saved = await pool.query(
+      'UPDATE app_users SET avatar_data=$1, updated_at=now() WHERE id=$2 RETURNING *',
+      [input.avatar, id],
+    );
+    res.json(publicUser(saved.rows[0]));
+  });
+  app.post('/api/admin/accounts', async (req, res) => {
+    superAdmin(res);
+    const input = registerSchema.parse(req.body);
+    const passwordHash = await hashPassword(input.password);
+    const saved = await pool.query(
+      "INSERT INTO app_users(id, name, email, password_hash, role) VALUES ($1,$2,$3,$4,'admin') RETURNING *",
+      [randomUUID(), input.name, input.email, passwordHash],
+    );
+    res.status(201).json(publicUser(saved.rows[0]));
+  });
+  app.post('/api/me/password', async (req, res) => {
+    const id = user(res).id;
+    const input = changePasswordSchema.parse(req.body);
+    const found = await pool.query('SELECT password_hash FROM app_users WHERE id = $1', [id]);
+    if (
+      !found.rowCount ||
+      !(await checkPassword(input.currentPassword, found.rows[0].password_hash))
+    )
+      throw new ApiError(401, 'Текущий пароль указан неверно');
+    const passwordHash = await hashPassword(input.newPassword);
+    const token = sessionToken(req);
+    await transaction(pool, async (client) => {
+      await client.query(
+        'UPDATE app_users SET password_hash = $1, updated_at = now() WHERE id = $2',
+        [passwordHash, id],
+      );
+      if (token)
+        await client.query('DELETE FROM auth_sessions WHERE user_id = $1 AND token_hash <> $2', [
+          id,
+          hashToken(token),
+        ]);
+    });
+    res.status(204).end();
+  });
   app.get('/api/me/history', async (req, res) => {
     const id = user(res).id;
     const offset = z.coerce
@@ -202,12 +252,12 @@ export function createApp(pool: Pool) {
   app.get('/api/scenarios', async (_req, res) => {
     const rows =
       await pool.query(`SELECT v.preview, v.definition FROM scenarios s JOIN scenario_versions v
-      ON (v.scenario_id,v.version) = (s.id,s.published_version) WHERE s.archived_at IS NULL ORDER BY s.created_at, s.id`);
+      ON (v.scenario_id,v.version) = (s.id,s.published_version) WHERE s.archived_at IS NULL AND s.deleted_at IS NULL ORDER BY s.created_at, s.id`);
     res.json(
-      rows.rows.map((doc: AuthoringDocument) => ({
-        preview: doc.preview,
-        definition: doc.definition ? compileScenario(doc.definition).definition : null,
-      })),
+      rows.rows.map((doc: AuthoringDocument) => {
+        const definition = doc.definition ?? fromPreview(doc.preview);
+        return { preview: doc.preview, definition: compileScenario(definition).definition };
+      }),
     );
   });
 
@@ -256,14 +306,13 @@ export function createApp(pool: Pool) {
           throw new ApiError(409, 'Повторное прохождение отключено');
       }
       const source = await client.query(
-        `SELECT v.definition FROM scenarios s JOIN scenario_versions v
-        ON (v.scenario_id,v.version) = (s.id,s.published_version) WHERE s.id = $1 AND s.archived_at IS NULL`,
+        `SELECT v.preview, v.definition FROM scenarios s JOIN scenario_versions v
+        ON (v.scenario_id,v.version) = (s.id,s.published_version) WHERE s.id = $1 AND s.archived_at IS NULL AND s.deleted_at IS NULL`,
         [id],
       );
       if (!source.rowCount) throw new ApiError(404, 'Сценарий не найден');
-      if (!source.rows[0].definition)
-        throw new ApiError(409, 'Это демонстрационный сценарий, оценка прохождения ещё не задана');
-      const scenario = compileScenario(source.rows[0].definition);
+      const definition = source.rows[0].definition ?? fromPreview(source.rows[0].preview);
+      const scenario = compileScenario(definition);
       const next = startAttempt(scenario, randomUUID(), new Date().toISOString());
       if (current.rowCount)
         await client.query(
@@ -367,8 +416,11 @@ export function createApp(pool: Pool) {
       `SELECT s.id, s.published_version AS "publishedVersion", s.archived_at AS "archivedAt",
       s.created_at AS "createdAt", s.updated_at AS "updatedAt", d.revision,
       coalesce(d.definition #>> '{metadata,title}', d.preview->>'title') AS title,
-      coalesce(jsonb_array_length(d.definition->'nodes'), 0)::int AS "questionCount"
-      FROM scenarios s JOIN scenario_drafts d ON d.scenario_id = s.id WHERE s.owner_id = $1 ORDER BY s.updated_at DESC`,
+      coalesce(jsonb_array_length(d.definition->'nodes'), 0)::int AS "questionCount",
+      (v.version IS NULL OR d.preview IS DISTINCT FROM v.preview OR d.definition IS DISTINCT FROM v.definition) AS "hasUnpublishedChanges"
+      FROM scenarios s JOIN scenario_drafts d ON d.scenario_id = s.id
+      LEFT JOIN scenario_versions v ON v.scenario_id = s.id AND v.version = s.published_version
+      WHERE s.owner_id = $1 AND s.deleted_at IS NULL ORDER BY s.updated_at DESC`,
       [admin(res).id],
     );
     res.json(result.rows);
@@ -387,18 +439,21 @@ export function createApp(pool: Pool) {
       if ('sourceId' in input) {
         const source = await client.query(
           `SELECT v.preview, v.definition FROM scenarios s JOIN scenario_versions v
-        ON (v.scenario_id,v.version) = (s.id,s.published_version) WHERE s.id = $1 AND s.archived_at IS NULL`,
+        ON (v.scenario_id,v.version) = (s.id,s.published_version) WHERE s.id = $1 AND s.archived_at IS NULL AND s.deleted_at IS NULL`,
           [input.sourceId],
         );
         if (!source.rowCount) throw new ApiError(404, 'Шаблон не найден');
-        doc = source.rows[0];
+        const sourceDoc = source.rows[0] as AuthoringDocument;
+        const sourceDefinition = sourceDoc.definition ?? fromPreview(sourceDoc.preview);
+        doc = {
+          preview: structuredClone(sourceDoc.preview),
+          definition: structuredClone(sourceDefinition),
+        };
         doc.preview.id = id;
         doc.preview.title += ' — копия';
-        if (doc.definition) {
-          doc.definition.metadata.id = id;
-          doc.definition.metadata.version = 1;
-          doc.definition.metadata.title += ' — копия';
-        }
+        doc.definition!.metadata.id = id;
+        doc.definition!.metadata.version = 1;
+        doc.definition!.metadata.title += ' — копия';
       } else {
         doc = {
           preview: { ...structuredClone(initialScenarios[0]), id, title: input.title },
@@ -418,10 +473,18 @@ export function createApp(pool: Pool) {
     const id = idSchema.parse(req.params.id);
     const scenario = await ownedScenario(pool, id, admin(res).id);
     const draft = await pool.query(
-      'SELECT preview, definition, editor, revision FROM scenario_drafts WHERE scenario_id = $1',
+      `SELECT d.preview, d.definition, d.editor, d.revision,
+       (v.version IS NULL OR d.preview IS DISTINCT FROM v.preview OR d.definition IS DISTINCT FROM v.definition) AS "hasUnpublishedChanges"
+       FROM scenario_drafts d JOIN scenarios s ON s.id = d.scenario_id
+       LEFT JOIN scenario_versions v ON v.scenario_id = s.id AND v.version = s.published_version
+       WHERE d.scenario_id = $1`,
       [id],
     );
-    res.json({ ...draft.rows[0], publishedVersion: scenario.published_version });
+    res.json({
+      ...draft.rows[0],
+      publishedVersion: scenario.published_version,
+      archivedAt: scenario.archived_at,
+    });
   });
   app.put('/api/editor/:id', async (req, res) => {
     const id = idSchema.parse(req.params.id);
@@ -448,7 +511,14 @@ export function createApp(pool: Pool) {
           'Черновик изменён в другой вкладке. Скопируйте изменения и обновите страницу.',
         );
       await client.query('UPDATE scenarios SET updated_at=now() WHERE id=$1', [id]);
-      return result.rows[0];
+      const status = await client.query(
+        `SELECT (v.version IS NULL OR d.preview IS DISTINCT FROM v.preview OR d.definition IS DISTINCT FROM v.definition) AS "hasUnpublishedChanges"
+         FROM scenario_drafts d JOIN scenarios s ON s.id = d.scenario_id
+         LEFT JOIN scenario_versions v ON v.scenario_id = s.id AND v.version = s.published_version
+         WHERE s.id = $1`,
+        [id],
+      );
+      return { ...result.rows[0], ...status.rows[0] };
     });
     res.json(saved);
   });
@@ -491,6 +561,18 @@ export function createApp(pool: Pool) {
     });
     res.json(saved);
   });
+  app.delete('/api/editor/:id', async (req, res) => {
+    const id = idSchema.parse(req.params.id);
+    const userId = admin(res).id;
+    await transaction(pool, async (client) => {
+      await ownedScenario(client, id, userId, true);
+      await client.query('UPDATE scenarios SET deleted_at=now(),updated_at=now() WHERE id=$1', [
+        id,
+      ]);
+    });
+    res.status(204).end();
+  });
+
   app.post('/api/editor/:id/archive', async (req, res) => {
     const id = idSchema.parse(req.params.id);
     const userId = admin(res).id;
@@ -509,7 +591,14 @@ export function createApp(pool: Pool) {
   const dist = fileURLToPath(new URL('../dist/', import.meta.url));
   if (existsSync(dist)) {
     app.use(express.static(dist));
-    app.get('/{*path}', (_req, res) => res.sendFile(`${dist}/index.html`));
+    app.get('/{*path}', (req, res) => {
+      if (
+        /^\/(admin|editor|profile|attempts|login|register)(?:\/|$)/.test(req.path) ||
+        /\/(play|result)$/.test(req.path)
+      )
+        res.set('X-Robots-Tag', 'noindex, nofollow');
+      res.sendFile(`${dist}/index.html`);
+    });
   }
   app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
     if (error instanceof ApiError)
@@ -527,7 +616,18 @@ export function createApp(pool: Pool) {
     if (problem.type === 'entity.too.large')
       return res.status(413).json({ error: 'Слишком большой запрос' });
     console.error('Request failed:', error instanceof Error ? error.message : 'unknown error');
-    return res.status(503).json({ error: 'Сервис временно недоступен. Повторите запрос.' });
+    const unavailable = [
+      'ECONNREFUSED',
+      'ECONNRESET',
+      'ETIMEDOUT',
+      'ENOTFOUND',
+      '57P01',
+      '57P03',
+      '53300',
+    ].includes(problem.code ?? '');
+    return res
+      .status(unavailable ? 503 : 500)
+      .json({ error: 'Сервис временно недоступен. Повторите запрос.' });
   });
   return app;
 }

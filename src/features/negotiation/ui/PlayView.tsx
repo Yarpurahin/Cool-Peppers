@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../../../components/ui/Button.tsx';
@@ -28,15 +27,6 @@ export function PlayView({
   footer,
   message,
 }: Props) {
-  const questionRef = useRef<HTMLDivElement>(null);
-  const previousQuestion = useRef(model.question.id);
-  useEffect(() => {
-    if (previousQuestion.current !== model.question.id) {
-      questionRef.current?.focus();
-      previousQuestion.current = model.question.id;
-    }
-  }, [model.question.id]);
-
   return (
     <div className="container page play-page negotiation-play">
       <div className="section-heading">
@@ -87,8 +77,7 @@ export function PlayView({
           )}
           <div
             className="dialogue-message"
-            ref={questionRef}
-            tabIndex={-1}
+            aria-live="polite"
             aria-label={`Реплика: ${model.character.name}`}
           >
             <span>{model.character.name}</span>

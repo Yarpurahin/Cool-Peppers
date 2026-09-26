@@ -1,0 +1,265 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arena.local/schemas/arena-scenario-v1.schema.json",
+  "title": "Arena Scenario JSON v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "formatVersion", "definition"],
+  "properties": {
+    "format": { "const": "arena-scenario" },
+    "formatVersion": { "const": 1 },
+    "definition": { "$ref": "#/$defs/definition" },
+    "editor": { "$ref": "#/$defs/editor" },
+    "coverImage": {
+      "oneOf": [
+        { "$ref": "#/$defs/coverImage" },
+        { "type": "null" }
+      ]
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]{1,100}$"
+    },
+    "coverImage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["src", "alt"],
+      "properties": {
+        "src": {
+          "type": "string",
+          "maxLength": 710000,
+          "pattern": "^data:image/(png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$"
+        },
+        "alt": { "type": "string", "maxLength": 250 }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version",
+        "title",
+        "description",
+        "category",
+        "difficulty",
+        "duration",
+        "skill",
+        "context",
+        "goal",
+        "playerRole",
+        "tip"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "version": { "type": "integer", "minimum": 1 },
+        "title": { "type": "string", "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 10000 },
+        "category": { "type": "string", "maxLength": 100 },
+        "difficulty": { "enum": ["easy", "medium", "hard"] },
+        "duration": { "type": "string", "maxLength": 100 },
+        "skill": { "type": "string", "maxLength": 200 },
+        "context": { "type": "string", "maxLength": 10000 },
+        "goal": { "type": "string", "maxLength": 10000 },
+        "playerRole": { "type": "string", "maxLength": 200 },
+        "tip": { "type": "string", "maxLength": 10000 }
+      }
+    },
+    "character": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "initials", "role", "description"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "maxLength": 100 },
+        "initials": { "type": "string", "maxLength": 8 },
+        "role": { "type": "string", "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 10000 }
+      }
+    },
+    "stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "title": { "type": "string", "maxLength": 200 }
+      }
+    },
+    "reaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "intent", "label", "examples"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "intent": { "type": "string", "maxLength": 100 },
+        "label": { "type": "string", "maxLength": 10000 },
+        "examples": {
+          "type": "array",
+          "maxItems": 100,
+          "items": { "type": "string", "maxLength": 10000 }
+        },
+        "nextNodeId": { "$ref": "#/$defs/id" },
+        "endingId": { "$ref": "#/$defs/id" },
+        "legacy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["penalty", "feedback"],
+          "properties": {
+            "penalty": { "type": "integer", "minimum": 0, "maximum": 10000 },
+            "feedback": { "type": "string", "maxLength": 10000 }
+          }
+        }
+      }
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "characterId", "text", "reactions"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "title": { "type": "string", "maxLength": 200 },
+        "characterId": {
+          "oneOf": [
+            { "$ref": "#/$defs/id" },
+            { "const": "" }
+          ]
+        },
+        "stageId": {
+          "oneOf": [
+            { "$ref": "#/$defs/id" },
+            { "const": "" }
+          ]
+        },
+        "text": { "type": "string", "maxLength": 10000 },
+        "textVariants": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["afterReactionId", "text"],
+            "properties": {
+              "afterReactionId": { "$ref": "#/$defs/id" },
+              "text": { "type": "string", "maxLength": 10000 }
+            }
+          }
+        },
+        "reactions": {
+          "type": "array",
+          "maxItems": 30,
+          "items": { "$ref": "#/$defs/reaction" }
+        }
+      }
+    },
+    "ending": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "description", "type"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "title": { "type": "string", "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 10000 },
+        "type": { "enum": ["success", "neutral", "failure"] },
+        "nextStep": { "type": "string", "maxLength": 10000 }
+      }
+    },
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allowRestart", "collectFeedback"],
+      "properties": {
+        "allowRestart": { "type": "boolean" },
+        "collectFeedback": { "type": "boolean" },
+        "assessmentNote": { "type": "string", "maxLength": 10000 },
+        "legacyFailure": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["rule", "endingId"],
+          "properties": {
+            "rule": { "const": "half-all-questions" },
+            "endingId": { "$ref": "#/$defs/id" }
+          }
+        }
+      }
+    },
+    "definition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "metadata",
+        "startNodeId",
+        "characters",
+        "stages",
+        "nodes",
+        "endings",
+        "settings"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 2 },
+        "metadata": { "$ref": "#/$defs/metadata" },
+        "startNodeId": {
+          "oneOf": [
+            { "$ref": "#/$defs/id" },
+            { "const": "" }
+          ]
+        },
+        "characters": {
+          "type": "array",
+          "maxItems": 100,
+          "items": { "$ref": "#/$defs/character" }
+        },
+        "stages": {
+          "type": "array",
+          "maxItems": 100,
+          "items": { "$ref": "#/$defs/stage" }
+        },
+        "nodes": {
+          "type": "array",
+          "maxItems": 500,
+          "items": { "$ref": "#/$defs/node" }
+        },
+        "endings": {
+          "type": "array",
+          "maxItems": 100,
+          "items": { "$ref": "#/$defs/ending" }
+        },
+        "settings": { "$ref": "#/$defs/settings" }
+      }
+    },
+    "position": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number", "minimum": -1000000, "maximum": 1000000 },
+        "y": { "type": "number", "minimum": -1000000, "maximum": 1000000 }
+      }
+    },
+    "editor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["positions"],
+      "properties": {
+        "positions": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/id" },
+          "additionalProperties": { "$ref": "#/$defs/position" }
+        },
+        "viewport": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["x", "y", "zoom"],
+          "properties": {
+            "x": { "type": "number" },
+            "y": { "type": "number" },
+            "zoom": { "type": "number", "minimum": 0.05, "maximum": 4 }
+          }
+        }
+      }
+    }
+  }
+}

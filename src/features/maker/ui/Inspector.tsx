@@ -1,9 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { MakerDefinition, MakerDocument } from '../model/types.ts';
 import type { Selection } from './ScenarioCanvas.tsx';
-import { addReaction, cleanVariants, connectReaction, newId } from '../model/commands.ts';
+import { addReaction, connectReaction, newId } from '../model/commands.ts';
 import { Icon } from '../../../components/ui/Icon.tsx';
+import { ScenarioCoverField } from './ScenarioCoverField.tsx';
 
 function Field({
   label,
@@ -22,12 +23,14 @@ function Field({
   hint?: string;
   focusRef?: React.RefObject<HTMLTextAreaElement | null>;
 }) {
+  const hintId = useId();
   return (
     <label className="field">
       {label}
       {multiline ? (
         <textarea
           aria-label={label}
+          aria-describedby={hint ? hintId : undefined}
           ref={focusRef}
           rows={4}
           value={value}
@@ -37,12 +40,13 @@ function Field({
       ) : (
         <input
           aria-label={label}
+          aria-describedby={hint ? hintId : undefined}
           value={value}
           maxLength={maxLength}
           onChange={(e) => onChange(e.target.value)}
         />
       )}
-      {hint && <small>{hint}</small>}
+      {hint && <small id={hintId}>{hint}</small>}
     </label>
   );
 }
@@ -67,15 +71,96 @@ function Select({
   );
 }
 
+const DURATION_OPTIONS = ['3–5 минут', '5–10 минут', '10–15 минут', '15–20 минут', '20+ минут'];
+
+function ScenarioJsonTools({
+  onExport,
+  onImport,
+}: {
+  onExport: () => void;
+  onImport: (file: File) => Promise<void>;
+}) {
+  const input = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+  const [error, setError] = useState('');
+
+  async function importFile(file: File) {
+    setError('');
+    setImporting(true);
+    try {
+      await onImport(file);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Не удалось импортировать JSON.');
+    } finally {
+      setImporting(false);
+      if (input.current) input.current.value = '';
+    }
+  }
+
+  return (
+    <section className="maker-json-tools" aria-labelledby="maker-json-tools-title">
+      <div className="maker-json-tools-heading">
+        <span className="maker-json-tools-icon">
+          <Icon name="upload" size={17} />
+        </span>
+        <div>
+          <strong id="maker-json-tools-title">JSON сценария</strong>
+          <p>Загрузите готовую структуру или сохраните текущую для переноса и редактирования.</p>
+        </div>
+      </div>
+      <div className="maker-json-tools-actions">
+        <button
+          type="button"
+          className="maker-secondary"
+          disabled={importing}
+          onClick={() => input.current?.click()}
+        >
+          <Icon name="upload" size={15} />
+          {importing ? 'Импортируем…' : 'Импортировать JSON'}
+        </button>
+        <button type="button" className="maker-text-button" onClick={onExport}>
+          <Icon name="save" size={14} />
+          Скачать JSON
+        </button>
+      </div>
+      <input
+        ref={input}
+        className="maker-json-file-input"
+        type="file"
+        accept=".json,application/json"
+        aria-label="Выбрать JSON-файл сценария"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) void importFile(file);
+        }}
+      />
+      <small>
+        Поддерживаются Arena JSON v1, JSON из предыдущего экспорта и чистая definition со
+        schemaVersion 2. ID текущего сценария при импорте не меняется.
+      </small>
+      {error && (
+        <p className="maker-json-import-error" role="alert">
+          {error.split('\n').map((line, index) => (
+            <span key={`${line}-${index}`}>{line}</span>
+          ))}
+        </p>
+      )}
+    </section>
+  );
+}
+
 export function Inspector({
   doc,
   selection,
   change,
   onSelect,
   onDelete,
+  onDeleteMany,
+  onDeleteReaction,
   onDuplicate,
   onClose,
   onExport,
+  onImport,
   focusToken,
   disabled,
 }: {
@@ -84,11 +169,14 @@ export function Inspector({
   change: (mutator: (doc: MakerDocument) => void) => void;
   onSelect: (selection: Selection) => void;
   onDelete: (id: string) => void;
+  onDeleteMany: (ids: string[]) => void;
+  onDeleteReaction: (nodeId: string, reactionId: string) => void;
   onDuplicate: (id: string) => void;
   onClose: () => void;
   focusToken: number;
   disabled: boolean;
   onExport: () => void;
+  onImport: (file: File) => Promise<void>;
 }) {
   const textRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
@@ -112,14 +200,14 @@ export function Inspector({
       ? 'Реплика'
       : selection.type === 'reaction'
         ? 'Реакция'
-        : selection.type === 'ending'
-          ? 'Финал'
-          : selection.type === 'main'
-            ? 'Основное'
-            : selection.type === 'characters'
-              ? 'Персонажи'
-              : selection.type === 'stages'
-                ? 'Этапы'
+        : selection.type === 'blocks'
+          ? `Выбрано блоков: ${selection.ids.length}`
+          : selection.type === 'ending'
+            ? 'Финал'
+            : selection.type === 'main'
+              ? 'Основное'
+              : selection.type === 'characters'
+                ? 'Персонажи'
                 : 'Настройки';
   const blockId = 'id' in selection ? selection.id : '';
   const mutateNode = (mutator: (n: NonNullable<typeof node>) => void) =>
@@ -133,12 +221,16 @@ export function Inspector({
       if (r) mutator(r);
     });
   return (
-    <aside className="maker-inspector" aria-label="Свойства выбранного элемента">
+    <aside
+      id="maker-inspector"
+      tabIndex={-1}
+      className="maker-inspector"
+      aria-label="Свойства выбранного элемента"
+    >
       <div className="maker-inspector-heading">
         <div>
           <p className="eyebrow">{title}</p>
           <h2>{reaction?.label || node?.title || ending?.title || title}</h2>
-          {blockId && <code>{blockId}</code>}
         </div>
         <button
           className="maker-icon-button"
@@ -150,6 +242,29 @@ export function Inspector({
         </button>
       </div>
       <fieldset disabled={disabled} className="maker-inspector-fields">
+        <legend className="sr-only">{title}: свойства</legend>
+        {selection.type === 'blocks' && (
+          <section className="maker-bulk-selection">
+            <div className="maker-bulk-selection-icon">
+              <Icon name="branch" size={20} />
+            </div>
+            <div>
+              <strong>Выбрано блоков: {selection.ids.length}</strong>
+              <p>
+                Перетаскивайте любой выбранный блок — группа переместится вместе. Shift или Ctrl
+                добавляет блок в выделение и убирает его повторным нажатием.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="maker-danger-button"
+              onClick={() => onDeleteMany(selection.ids)}
+            >
+              <Icon name="trash" size={16} />
+              Удалить выбранные блоки
+            </button>
+          </section>
+        )}
         {selection.type === 'node' && node && (
           <>
             <Field
@@ -189,22 +304,6 @@ export function Inspector({
                 })
               }
             />
-            <Select
-              label="Этап"
-              value={node.stageId ?? ''}
-              onChange={(v) =>
-                mutateNode((n) => {
-                  n.stageId = v || undefined;
-                })
-              }
-            >
-              <option value="">Без этапа</option>
-              {def.stages.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.title}
-                </option>
-              ))}
-            </Select>
             <label className="checkbox-field">
               <input
                 type="checkbox"
@@ -283,10 +382,11 @@ export function Inspector({
           <>
             <button
               type="button"
-              className="maker-text-button"
+              className="maker-secondary maker-return-to-node"
               onClick={() => onSelect({ type: 'node', id: node.id })}
             >
-              <Icon name="back" size={15} />К реплике
+              <Icon name="back" size={15} />
+              <span>К реплике</span>
             </button>
             <Field
               label="Название реакции"
@@ -299,17 +399,6 @@ export function Inspector({
                 })
               }
               hint="Этот текст участник увидит на кнопке."
-            />
-            <Field
-              label="Intent"
-              value={reaction.intent}
-              maxLength={100}
-              onChange={(v) =>
-                mutateReaction((r) => {
-                  r.intent = v;
-                })
-              }
-              hint="Устойчивый смысл реакции, например salary_offer. Не меняется при переименовании кнопки."
             />
             <div className="maker-section-heading">
               <h3>Примеры фраз</h3>
@@ -395,7 +484,7 @@ export function Inspector({
               </optgroup>
             </Select>
             <p className="maker-hint">
-              Можно также перетащить точку справа от реакции к другой карточке или в пустое место.
+              Можно также перетащить точку у реакции к другой карточке или в пустое место.
             </p>
             {reaction.legacy && (
               <div className="maker-legacy">
@@ -407,15 +496,16 @@ export function Inspector({
             )}
             <button
               type="button"
+              className="maker-primary maker-return-to-node"
+              onClick={() => onSelect({ type: 'node', id: node.id })}
+            >
+              <Icon name="check" size={16} />
+              <span>Готово</span>
+            </button>
+            <button
+              type="button"
               className="maker-danger-button"
-              onClick={() => {
-                update((d) => {
-                  const n = d.nodes.find((n) => n.id === node.id)!;
-                  n.reactions = n.reactions.filter((r) => r.id !== reaction.id);
-                  cleanVariants(d);
-                });
-                onSelect({ type: 'node', id: node.id });
-              }}
+              onClick={() => onDeleteReaction(node.id, reaction.id)}
             >
               <Icon name="trash" size={16} />
               Удалить реакцию
@@ -484,6 +574,15 @@ export function Inspector({
         )}
         {selection.type === 'main' && (
           <>
+            <ScenarioCoverField
+              value={doc.preview.coverImage}
+              onChange={(image) =>
+                change((d) => {
+                  if (image) d.preview.coverImage = image;
+                  else delete d.preview.coverImage;
+                })
+              }
+            />
             <Field
               label="Название сценария"
               maxLength={200}
@@ -527,31 +626,74 @@ export function Inspector({
               <option value="medium">Средний</option>
               <option value="hard">Продвинутый</option>
             </Select>
-            {(
-              [
-                ['context', 'Контекст'],
-                ['goal', 'Цель участника'],
-                ['playerRole', 'Роль участника'],
-                ['skill', 'Навык'],
-                ['duration', 'Длительность'],
-                ['tip', 'Совет участнику'],
-              ] as const
-            ).map(([key, label]) => (
-              <Field
-                key={key}
-                label={label}
-                value={def.metadata[key]}
-                multiline={['context', 'goal', 'tip'].includes(key)}
-                maxLength={
-                  key === 'duration' ? 100 : ['playerRole', 'skill'].includes(key) ? 200 : 10000
-                }
-                onChange={(v) =>
-                  update((d) => {
-                    d.metadata[key] = v;
-                  })
-                }
-              />
-            ))}
+            <Field
+              label="Контекст"
+              multiline
+              value={def.metadata.context}
+              onChange={(v) =>
+                update((d) => {
+                  d.metadata.context = v;
+                })
+              }
+            />
+            <Field
+              label="Цель участника"
+              multiline
+              value={def.metadata.goal}
+              onChange={(v) =>
+                update((d) => {
+                  d.metadata.goal = v;
+                })
+              }
+            />
+            <Field
+              label="Роль участника"
+              maxLength={200}
+              value={def.metadata.playerRole}
+              onChange={(v) =>
+                update((d) => {
+                  d.metadata.playerRole = v;
+                })
+              }
+            />
+            <Field
+              label="Навык"
+              maxLength={200}
+              value={def.metadata.skill}
+              onChange={(v) =>
+                update((d) => {
+                  d.metadata.skill = v;
+                })
+              }
+            />
+            <Select
+              label="Длительность"
+              value={def.metadata.duration}
+              onChange={(v) =>
+                update((d) => {
+                  d.metadata.duration = v;
+                })
+              }
+            >
+              {!DURATION_OPTIONS.includes(def.metadata.duration) && (
+                <option value={def.metadata.duration}>{def.metadata.duration}</option>
+              )}
+              {DURATION_OPTIONS.map((duration) => (
+                <option key={duration} value={duration}>
+                  {duration}
+                </option>
+              ))}
+            </Select>
+            <Field
+              label="Совет участнику"
+              multiline
+              value={def.metadata.tip}
+              onChange={(v) =>
+                update((d) => {
+                  d.metadata.tip = v;
+                })
+              }
+            />
           </>
         )}
         {selection.type === 'characters' && (
@@ -601,7 +743,7 @@ export function Inspector({
                 />
                 <button
                   type="button"
-                  className="maker-text-button"
+                  className="maker-danger-button"
                   disabled={def.nodes.some((n) => n.characterId === c.id)}
                   onClick={() =>
                     update((d) => {
@@ -609,6 +751,7 @@ export function Inspector({
                     })
                   }
                 >
+                  <Icon name="trash" size={16} />
                   Удалить персонажа
                 </button>
                 {def.nodes.some((n) => n.characterId === c.id) && (
@@ -636,58 +779,9 @@ export function Inspector({
             </button>
           </>
         )}
-        {selection.type === 'stages' && (
-          <>
-            <p className="maker-hint">
-              Этапы помогают ориентироваться в разговоре. Они не ограничивают переходы между
-              репликами.
-            </p>
-            {def.stages.map((s, i) => (
-              <section key={s.id} className="maker-entity-fields">
-                <Field
-                  label={`Этап ${i + 1}`}
-                  value={s.title}
-                  maxLength={200}
-                  onChange={(v) =>
-                    update((d) => {
-                      d.stages.find((x) => x.id === s.id)!.title = v;
-                    })
-                  }
-                />
-                <button
-                  type="button"
-                  className="maker-text-button"
-                  onClick={() =>
-                    update((d) => {
-                      d.stages = d.stages.filter((x) => x.id !== s.id);
-                      for (const n of d.nodes) if (n.stageId === s.id) delete n.stageId;
-                    })
-                  }
-                >
-                  Удалить этап
-                </button>
-              </section>
-            ))}
-            <button
-              type="button"
-              className="maker-dashed-button"
-              disabled={def.stages.length >= 100}
-              onClick={() =>
-                update((d) => {
-                  d.stages.push({ id: newId('stage'), title: 'Новый этап' });
-                })
-              }
-            >
-              + Добавить этап
-            </button>
-          </>
-        )}
         {selection.type === 'settings' && (
           <>
-            <button type="button" className="maker-dashed-button" onClick={onExport}>
-              <Icon name="save" size={15} />
-              Скачать JSON черновика
-            </button>
+            <ScenarioJsonTools onExport={onExport} onImport={onImport} />
             <label className="checkbox-field">
               <input
                 type="checkbox"

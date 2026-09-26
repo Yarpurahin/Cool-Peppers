@@ -1,3 +1,4 @@
+import type { ChangeEventHandler } from 'react';
 import { useId, useState } from 'react';
 import { Icon } from './Icon.tsx';
 
@@ -5,10 +6,14 @@ export function PasswordField({
   label = 'Пароль',
   name = 'password',
   newPassword = false,
+  value,
+  onChange,
 }: {
   label?: string;
   name?: string;
   newPassword?: boolean;
+  value?: string;
+  onChange?: ChangeEventHandler<HTMLInputElement>;
 }) {
   const [visible, setVisible] = useState(false);
   const id = useId();
@@ -18,10 +23,13 @@ export function PasswordField({
       <div className="password-input">
         <input
           id={id}
+          value={value}
+          onChange={onChange}
           name={name}
           type={visible ? 'text' : 'password'}
           required
           minLength={newPassword ? 8 : undefined}
+          maxLength={128}
           autoComplete={newPassword ? 'new-password' : 'current-password'}
           placeholder={newPassword ? 'Не менее 8 символов' : 'Введите пароль'}
         />

@@ -12,6 +12,8 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
+  isSuperAdmin: boolean;
+  avatar: string | null;
   createdAt: string;
 }
 export interface ScenarioDocument {
@@ -21,12 +23,14 @@ export interface ScenarioDocument {
 export interface ScenarioDraft extends ScenarioDocument {
   revision: number;
   publishedVersion: number | null;
+  hasUnpublishedChanges?: boolean;
 }
 export interface AdminScenarioSummary {
   id: string;
   title: string;
   revision: number;
   publishedVersion: number | null;
+  hasUnpublishedChanges?: boolean;
   archivedAt: string | null;
   questionCount: number;
   createdAt: string;

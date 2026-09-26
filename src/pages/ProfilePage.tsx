@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { api, errorMessage } from '../api/client.ts';
+import { Avatar } from '../components/ui/Avatar.tsx';
+import { AvatarSettings } from '../components/ui/AvatarSettings.tsx';
+import { changePasswordSchema } from '../types/validation.ts';
+import { api, actionErrorMessage, errorMessage } from '../api/client.ts';
 import { useCatalog } from '../app/DataProvider.tsx';
 import type { HistoryRow, User } from '../types/api.ts';
 import { Button } from '../components/ui/Button.tsx';
 import { Icon } from '../components/ui/Icon.tsx';
+import { PasswordField } from '../components/ui/PasswordField.tsx';
 
 interface History {
   total: number;
@@ -20,7 +23,10 @@ export function ProfilePage() {
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
   const [historyError, setHistoryError] = useState('');
-  const [retry, setRetry] = useState(0);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordNotice, setPasswordNotice] = useState('');
+  const [passwordBusy, setPasswordBusy] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
   useEffect(() => {
     const controller = new AbortController();
     setHistoryError('');
@@ -30,14 +36,8 @@ export function ProfilePage() {
         if (!controller.signal.aborted) setHistoryError(errorMessage(cause));
       });
     return () => controller.abort();
-  }, [offset, retry]);
+  }, [offset]);
   if (!user) return null;
-  const initials = user.name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join('')
-    .toUpperCase();
   return (
     <div className="container page profile-page">
       <div className="section-heading">
@@ -51,7 +51,7 @@ export function ProfilePage() {
           onClick={() => {
             setBusy(true);
             void logout().catch((cause) => {
-              setError(errorMessage(cause));
+              setError(actionErrorMessage(cause));
               setBusy(false);
             });
           }}
@@ -61,10 +61,10 @@ export function ProfilePage() {
       </div>
       <div className="profile-overview">
         <div className="profile-person">
-          <span className="avatar avatar--large">{initials}</span>
+          <Avatar name={user.name} image={user.avatar} className="avatar avatar--large" />
           <div>
             <h2>{user.name}</h2>
-            <p>Участник Арены</p>
+            <p>{user.role === 'admin' ? 'Администратор Арены' : 'Участник Арены'}</p>
           </div>
         </div>
         <div className="stat stat--dark">
@@ -88,6 +88,7 @@ export function ProfilePage() {
           <h2>Личные данные</h2>
           <Icon name="user" />
         </div>
+        <AvatarSettings />
         <form
           onSubmit={async (event) => {
             event.preventDefault();
@@ -105,7 +106,7 @@ export function ProfilePage() {
               );
               setNotice('Изменения сохранены.');
             } catch (cause) {
-              setError(errorMessage(cause));
+              setError(actionErrorMessage(cause));
             } finally {
               setBusy(false);
             }
@@ -147,24 +148,92 @@ export function ProfilePage() {
           )}
         </form>
       </section>
+      <section className="panel personal-panel security-panel">
+        <div className="panel-heading">
+          <div>
+            <h2>Безопасность</h2>
+            <p>
+              Смените пароль аккаунта. После сохранения остальные активные сессии будут завершены.
+            </p>
+          </div>
+          <Icon name="lock" />
+        </div>
+        <form
+          noValidate
+          onSubmit={async (event) => {
+            event.preventDefault();
+            if (passwordBusy) return;
+            const form = event.currentTarget;
+            const data = new FormData(form);
+            const currentPassword = String(data.get('currentPassword') ?? '');
+            const newPassword = String(data.get('newPassword') ?? '');
+            const repeatPassword = String(data.get('repeatPassword') ?? '');
+            setPasswordError('');
+            setPasswordNotice('');
+            if (!currentPassword) {
+              setPasswordError('Введите текущий пароль.');
+              return;
+            }
+            const input = changePasswordSchema.safeParse({ currentPassword, newPassword });
+            if (!input.success) {
+              setPasswordError(
+                currentPassword === newPassword
+                  ? 'Новый пароль должен отличаться от текущего.'
+                  : 'Пароль должен содержать от 8 до 128 символов.',
+              );
+              return;
+            }
+            if (newPassword !== repeatPassword) {
+              setPasswordError('Новые пароли не совпадают.');
+              return;
+            }
+            setPasswordBusy(true);
+            try {
+              await api('/me/password', {
+                method: 'POST',
+                body: { currentPassword, newPassword },
+              });
+              form.reset();
+              setCurrentPassword('');
+              setPasswordNotice('Пароль изменён. Остальные активные сессии завершены.');
+            } catch (cause) {
+              setPasswordError(actionErrorMessage(cause));
+            } finally {
+              setPasswordBusy(false);
+            }
+          }}
+        >
+          <div className="password-change-grid">
+            <PasswordField
+              label="Текущий пароль"
+              name="currentPassword"
+              value={currentPassword}
+              onChange={(event) => setCurrentPassword(event.target.value)}
+            />
+            <PasswordField label="Новый пароль" name="newPassword" newPassword />
+            <PasswordField label="Повторите новый пароль" name="repeatPassword" newPassword />
+          </div>
+          <div className="form-bottom">
+            <Button type="submit" disabled={passwordBusy || !currentPassword} variant="secondary">
+              <Icon name="lock" size={17} />
+              {passwordBusy ? 'Сохраняем…' : 'Изменить пароль'}
+            </Button>
+            {passwordNotice && <p role="status">{passwordNotice}</p>}
+          </div>
+          {passwordError && (
+            <p className="field-error" role="alert">
+              {passwordError}
+            </p>
+          )}
+        </form>
+      </section>
       <section className="panel history-panel">
         <div className="panel-heading">
           <h2>История практики</h2>
         </div>
-        {historyError && (
-          <p role="alert">
-            {historyError}{' '}
-            <Button variant="outline" onClick={() => setRetry((n) => n + 1)}>
-              Повторить
-            </Button>
-          </p>
-        )}
+        {historyError && <p role="status">История временно недоступна.</p>}
         {!history && !historyError && <p role="status">Загружаем историю…</p>}
-        {history?.total === 0 && (
-          <p>
-            История пока пуста. <Link to="/scenarios">Выберите сценарий</Link> и начните тренировку.
-          </p>
-        )}
+        {history?.total === 0 && <p>История пока пуста. Выберите сценарий и начните тренировку.</p>}
         <div className="history-list">
           {history?.rows.map((row) => (
             <article className="history-row" key={row.id}>
@@ -186,10 +255,6 @@ export function ProfilePage() {
                 <strong>{row.penalties}</strong>
                 <span> штрафов</span>
               </div>
-              <Link className="review-link" to={`/attempts/${row.id}`}>
-                {row.status === 'completed' ? 'Разбор' : 'История'}{' '}
-                <Icon name="upRight" size={18} />
-              </Link>
             </article>
           ))}
         </div>

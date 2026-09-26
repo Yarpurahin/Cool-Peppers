@@ -3,6 +3,7 @@ import type { ScenarioAttempt } from '../src/features/negotiation/model/types.ts
 import type { AttemptDetail } from '../src/types/api.ts';
 import type { AuthoringDocument } from '../src/features/maker/model/types.ts';
 import { compileScenario } from '../src/features/negotiation/model/engine.ts';
+import { fromPreview } from '../src/features/maker/model/adapter.ts';
 
 export type Database = Pick<Pool, 'query'>;
 export interface AttemptRow {
@@ -39,7 +40,10 @@ export async function getVersion(
     [id, version],
   );
   if (!result.rowCount) throw new ApiError(404, 'Версия сценария не найдена');
-  return result.rows[0];
+  const document = result.rows[0] as AuthoringDocument;
+  return document.definition
+    ? document
+    : { ...document, definition: fromPreview(document.preview) };
 }
 export async function readAttempt(db: Database, row: AttemptRow): Promise<ScenarioAttempt> {
   const answers = await db.query<{ node_id: string; answer_id: string; answered_at: Date }>(
@@ -70,15 +74,13 @@ export async function readAttempt(db: Database, row: AttemptRow): Promise<Scenar
 }
 export async function detail(db: Database, row: AttemptRow): Promise<AttemptDetail> {
   const document = await getVersion(db, row.scenario_id, row.scenario_version);
-  if (!document.definition)
-    throw new ApiError(409, 'Демонстрационный сценарий не содержит попыток');
   const feedback = await db.query(
     'SELECT helpful, comment, created_at FROM feedback WHERE attempt_id = $1',
     [row.id],
   );
   return {
     attempt: await readAttempt(db, row),
-    definition: compileScenario(document.definition).definition,
+    definition: compileScenario(document.definition!).definition,
     isCurrent: row.is_current,
     abandonedAt: row.abandoned_at?.toISOString() ?? null,
     feedback: feedback.rowCount

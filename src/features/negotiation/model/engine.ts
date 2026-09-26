@@ -78,7 +78,8 @@ export function compileScenario(input: ScenarioDefinition | MakerDefinition): Co
         `Повторяющийся или пустой ID ответа: ${answer.id}`,
       );
       requireValid(
-        answer.text.trim() && answer.feedback.trim(),
+        answer.text.trim() &&
+          (definition.settings.navigation === 'graph' || answer.feedback.trim()),
         `Пустой ответ или разбор: ${answer.id}`,
       );
       requireValid(

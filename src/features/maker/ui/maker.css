@@ -23,7 +23,7 @@
   align-items: center;
   padding: 16px 22px;
   border-bottom: 1px solid var(--line);
-  background: #fafaf6;
+  background: var(--tone-soft, #fafaf6);
   min-height: 84px;
   z-index: 6;
 }
@@ -63,8 +63,8 @@
   flex-wrap: wrap;
 }
 .maker-status {
-  background: #fae8dd;
-  color: #a53b1d;
+  background: var(--tone-warm, #fae8dd);
+  color: var(--tone-orange, #a53b1d);
   border-radius: 6px;
   padding: 4px 8px;
   font-size: 10px;
@@ -95,10 +95,10 @@
   font-size: 11px !important;
   white-space: nowrap;
   color: var(--green);
-  background: #fff;
+  background: var(--surface);
 }
 .maker-primary {
-  color: #fff;
+  color: var(--on-accent);
   border-color: var(--orange);
   background: var(--orange);
 }
@@ -118,9 +118,10 @@
 }
 .maker-workspace {
   display: grid;
-  grid-template-columns: 224px minmax(0, 1fr) 326px;
+  grid-template-columns: 224px minmax(0, 1fr) var(--inspector-width, 326px);
   min-height: 0;
-  flex: 1;
+  height: 100%;
+  flex: 1 1 0;
   position: relative;
 }
 .is-inspector-closed .maker-workspace {
@@ -131,7 +132,7 @@
   border-right: 1px solid var(--line);
   overflow-y: auto;
   min-height: 0;
-  background: #f8f8f3;
+  background: var(--tone-soft, #f8f8f3);
 }
 .maker-sidebar > .eyebrow {
   font-size: 10px;
@@ -167,12 +168,12 @@
   border-radius: 6px;
   padding: 1px 5px;
   font-size: 10px;
-  background: #edf0e9;
+  background: var(--tone-soft, #edf0e9);
   font-weight: 600;
   color: var(--muted);
 }
 .maker-sidebar nav .is-active {
-  background: white;
+  background: var(--surface);
   color: var(--green);
   font-weight: 800;
   box-shadow: var(--shadow);
@@ -196,7 +197,7 @@
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 6px 9px;
-  background: white;
+  background: var(--surface);
 }
 .maker-search input {
   background: none;
@@ -247,7 +248,7 @@
   justify-content: center;
   width: 100%;
   padding: 12px;
-  border: 1px dashed #a1b7a4;
+  border: 1px dashed var(--tone-border, #a1b7a4);
   border-radius: 9px;
   background: none;
   color: var(--green);
@@ -264,28 +265,41 @@
 .maker-canvas {
   min-width: 0;
   min-height: 0;
-  background: #f7f8f3;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  background: var(--tone-soft, #f7f8f3);
+}
+.maker-canvas-loading {
+  width: 100%;
+  height: 100%;
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 11px;
 }
 .maker-canvas .react-flow__node {
   border-radius: 15px;
 }
 .maker-card {
   width: 292px;
-  background: #fff;
-  border: 1px solid #cbd7ca;
+  background: var(--surface);
+  border: 1px solid var(--tone-border, #cbd7ca);
   border-radius: 15px;
   box-shadow: 0 4px 20px #243d3010;
   color: var(--ink);
 }
 .react-flow__node.selected .maker-card {
-  border-color: #527e61;
+  border-color: var(--tone-border, #527e61);
   box-shadow:
     0 0 0 3px #49745520,
     0 6px 20px #243d3010;
 }
 .maker-card.has-error,
 .react-flow__node.selected .maker-card.has-error {
-  border: 2px solid #d25235;
+  border: 2px solid var(--tone-border, #d25235);
 }
 .maker-card-heading {
   display: flex;
@@ -323,7 +337,7 @@
   height: 8px;
   display: inline-block;
   flex-shrink: 0;
-  background: #d7a72d;
+  background: var(--tone-warm, #d7a72d);
   border-radius: 50%;
 }
 .maker-card-text {
@@ -358,13 +372,13 @@
 }
 .maker-card-reaction {
   position: relative;
-  border-top: 1px solid #eef1eb;
+  border-top: 1px solid var(--tone-border, #eef1eb);
 }
 .maker-card-reaction:first-child {
   border-top: 0;
 }
 .maker-card-reaction.is-selected {
-  background: #edf3e9;
+  background: var(--tone-soft, #edf3e9);
 }
 .maker-card-reaction button {
   width: 100%;
@@ -383,15 +397,15 @@
 .maker-card .react-flow__handle {
   width: 12px;
   height: 12px;
-  background: #fff;
-  border: 2px solid #769681;
+  background: var(--surface);
+  border: 2px solid var(--tone-border, #769681);
 }
 .maker-card .react-flow__handle::after {
   content: '';
   position: absolute;
   inset: -7px;
 }
-.maker-card-reaction .react-flow__handle {
+.maker-card-reaction .react-flow__handle-right {
   right: 15px;
   transform: translateY(-50%);
 }
@@ -423,25 +437,20 @@
   font-weight: 800;
 }
 .maker-ending--success {
-  background: #f2f8ef;
-  border-color: #7d9f82;
-  color: #2d5939;
+  background: var(--tone-soft, #f2f8ef);
+  border-color: var(--tone-border, #7d9f82);
+  color: var(--tone-green, #2d5939);
 }
 .maker-ending--neutral {
-  background: #f9f7ee;
-  border-color: #cfc8ae;
-  color: #776938;
+  background: var(--tone-soft, #f9f7ee);
+  border-color: var(--tone-border, #cfc8ae);
+  color: var(--tone-muted, #776938);
 }
 .maker-ending--failure {
-  background: #fff5ee;
-  border-color: #dbac95;
-  color: #a54423;
+  background: var(--tone-soft, #fff5ee);
+  border-color: var(--tone-border, #dbac95);
+  color: var(--tone-orange, #a54423);
 }
-.maker-canvas-tools {
-  display: flex;
-  gap: 7px;
-}
-.maker-canvas-tools button,
 .maker-open-inspector {
   padding: 9px 11px;
   display: inline-flex;
@@ -471,7 +480,7 @@
 .maker-canvas .react-flow__controls-button {
   color: var(--green);
   fill: var(--green);
-  background: white;
+  background: var(--surface);
   padding: 9px;
   height: 36px;
   width: 36px;
@@ -491,8 +500,39 @@
   font-size: 8px;
   opacity: 0.65;
 }
+.maker-inspector-panel {
+  position: relative;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  z-index: 5;
+}
+.maker-inspector-resize {
+  position: absolute;
+  left: -6px;
+  top: 0;
+  bottom: 0;
+  width: 12px;
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 7;
+}
+.maker-inspector-resize::after {
+  content: '';
+  position: absolute;
+  inset: 0 5px;
+  background: transparent;
+}
+.maker-inspector-resize:hover::after,
+.maker-inspector-resize:focus-visible::after {
+  background: var(--green);
+}
+.maker-inspector-resize:focus-visible {
+  outline-offset: -3px;
+}
 .maker-inspector {
-  background: white;
+  width: 100%;
+  background: var(--surface);
   border-left: 1px solid var(--line);
   min-width: 0;
   min-height: 0;
@@ -520,11 +560,6 @@
   margin: 0 0 8px;
   overflow-wrap: anywhere;
 }
-.maker-inspector-heading code {
-  font-size: 9px;
-  color: var(--muted);
-  overflow-wrap: anywhere;
-}
 .maker-inspector-fields {
   border: 0;
   padding: 20px;
@@ -543,8 +578,8 @@
 .maker-inspector textarea {
   width: 100%;
   min-width: 0;
-  border: 1px solid #cdd8cb;
-  background: white;
+  border: 1px solid var(--tone-border, #cdd8cb);
+  background: var(--surface);
   border-radius: 8px;
   padding: 10px;
   font-size: 11px;
@@ -591,7 +626,7 @@
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 9px;
-  background: #fafbf8;
+  background: var(--tone-soft, #fafbf8);
   text-align: left;
   color: var(--ink);
 }
@@ -619,7 +654,7 @@
   gap: 7px;
 }
 .maker-legacy {
-  background: #f7f6ef;
+  background: var(--tone-soft, #f7f6ef);
   padding: 14px;
   border-radius: 10px;
   font-size: 10px;
@@ -643,14 +678,14 @@
   width: 100%;
   padding: 11px;
   border: 1px solid var(--line);
-  background: white;
+  background: var(--surface);
   color: var(--green);
   border-radius: 9px;
   font-size: 11px !important;
 }
 .maker-danger-button {
-  color: #b54228 !important;
-  border-color: #eac0ae !important;
+  color: var(--tone-orange, #b54228) !important;
+  border-color: var(--tone-border, #eac0ae) !important;
 }
 .maker-text-button {
   font-size: 11px !important;
@@ -674,13 +709,13 @@
   justify-content: space-between;
   padding: 10px 22px;
   font-size: 12px;
-  background: #edf4e8;
+  background: var(--tone-soft, #edf4e8);
   color: var(--green);
   border-bottom: 1px solid var(--line);
 }
 .maker-notice.is-error {
-  background: #fff0e9;
-  color: #aa4026;
+  background: var(--tone-soft, #fff0e9);
+  color: var(--tone-orange, #aa4026);
 }
 .maker-notice > button {
   background: none;
@@ -695,9 +730,9 @@
   position: absolute;
   bottom: 16px;
   left: 242px;
-  right: 342px;
+  right: calc(var(--inspector-width, 326px) + 16px);
   z-index: 6;
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   box-shadow: 0 12px 50px #26352f29;
   border-radius: 14px;
@@ -736,15 +771,15 @@
   gap: 10px;
   width: 100%;
   border: 0;
-  background: white;
+  background: var(--surface);
   padding: 12px 17px;
   text-align: left;
-  border-bottom: 1px solid #edf0e9;
+  border-bottom: 1px solid var(--tone-border, #edf0e9);
   font-size: 11px !important;
-  color: #ae452f;
+  color: var(--tone-orange, #ae452f);
 }
 .maker-issue:hover {
-  background: #f9f9f5;
+  background: var(--tone-soft, #f9f9f5);
 }
 .maker-issue > span {
   flex: 1;
@@ -756,7 +791,7 @@
   font-size: 9px;
 }
 .maker-issue--warning {
-  color: #957224;
+  color: var(--tone-orange, #957224);
 }
 .maker-validation-success {
   display: flex;
@@ -776,7 +811,7 @@
   position: fixed;
   width: 230px;
   border: 1px solid var(--line);
-  background: white;
+  background: var(--surface);
   border-radius: 12px;
   box-shadow: 0 12px 40px #26352f25;
   padding: 10px;
@@ -813,7 +848,7 @@
   border-left: 1px solid var(--line);
   padding: 0;
   color: var(--ink);
-  background: #fafbf7;
+  background: var(--tone-soft, #fafbf7);
 }
 .maker-test-drawer[open] {
   display: flex;
@@ -852,7 +887,7 @@
   padding: 24px;
 }
 .maker-test-speech {
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 14px 14px 14px 3px;
   padding: 16px;
@@ -872,7 +907,7 @@
 }
 .maker-test-answer {
   border-radius: 14px 14px 3px 14px;
-  background: #e7efdf;
+  background: var(--tone-soft, #e7efdf);
   padding: 14px 16px;
   margin: 0 0 22px 34px;
   font-size: 12px;
@@ -882,7 +917,7 @@
 .maker-test-drawer > footer {
   padding: 20px 24px;
   border-top: 1px solid var(--line);
-  background: white;
+  background: var(--surface);
   max-height: 45dvh;
   overflow-y: auto;
 }
@@ -896,9 +931,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  border: 1px solid #a9bda8;
+  border: 1px solid var(--tone-border, #a9bda8);
   padding: 14px;
-  background: white;
+  background: var(--surface);
   color: var(--green);
   font-size: 12px;
   text-align: left;
@@ -932,7 +967,7 @@
     padding: 12px 16px;
   }
   .maker-workspace {
-    grid-template-columns: 194px minmax(0, 1fr) 300px;
+    grid-template-columns: 194px minmax(0, 1fr) var(--inspector-width, 326px);
   }
   .is-inspector-closed .maker-workspace {
     grid-template-columns: 194px minmax(0, 1fr);
@@ -944,14 +979,14 @@
     font-size: 15px;
   }
   .maker-history-buttons {
-    display: none;
+    display: flex;
   }
   .maker-canvas-count {
     display: none;
   }
   .maker-validation {
     left: 208px;
-    right: 314px;
+    right: calc(var(--inspector-width, 326px) + 14px);
   }
 }
 @media (max-width: 1000px) {
@@ -962,12 +997,13 @@
     min-width: 180px;
   }
   .maker-header-actions {
+    flex-wrap: wrap;
     flex: 0 0 100%;
     justify-content: flex-end;
   }
   .maker-workspace,
   .is-inspector-closed .maker-workspace {
-    grid-template-columns: minmax(0, 1fr) 300px;
+    grid-template-columns: minmax(0, 1fr) var(--inspector-width, 326px);
   }
   .is-inspector-closed .maker-workspace {
     grid-template-columns: minmax(0, 1fr);
@@ -1001,7 +1037,7 @@
   }
   .maker-validation {
     left: 14px;
-    right: 314px;
+    right: calc(var(--inspector-width, 326px) + 14px);
   }
 }
 @media (max-width: 640px) {
@@ -1033,12 +1069,12 @@
   .maker-header-actions svg {
     display: none;
   }
-  .maker-inspector {
+  .maker-inspector-panel {
     position: absolute;
     right: 0;
     top: 0;
     bottom: 0;
-    width: min(320px, calc(100vw - 38px));
+    width: min(var(--inspector-width, 326px), calc(100vw - 38px));
     box-shadow: -8px 0 24px #26352f20;
     z-index: 8;
   }
@@ -1051,14 +1087,955 @@
   .maker-canvas .react-flow__minimap {
     display: none;
   }
-  .maker-canvas-tools {
-    gap: 4px;
+}
+
+.maker-search:focus-within {
+  border-color: var(--green);
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+.maker-search input:focus {
+  outline: none;
+  box-shadow: none;
+}
+.maker-search input {
+  min-height: 30px;
+}
+.maker-card .maker-start-handle {
+  opacity: 0;
+  pointer-events: none;
+}
+.maker-card-reaction .react-flow__handle-left {
+  left: 15px;
+  right: auto;
+  transform: translateY(-50%);
+}
+.maker-card-reaction.has-left-handle button {
+  padding-inline: 36px 17px;
+}
+.maker-sidebar nav button:hover:not(:disabled),
+.maker-node-list button:hover:not(:disabled),
+.maker-card-reaction button:hover:not(:disabled),
+.maker-dashed-button:hover:not(:disabled),
+.maker-reaction-list button:hover:not(:disabled),
+.maker-block-actions button:hover:not(:disabled),
+.maker-open-inspector:hover:not(:disabled),
+.maker-mobile-tools button:hover:not(:disabled),
+.maker-canvas .react-flow__controls-button:hover {
+  background: var(--sage);
+  color: var(--green);
+}
+.maker-back:hover:not(:disabled),
+.maker-text-button:hover:not(:disabled) {
+  color: var(--orange);
+  text-decoration: underline;
+}
+.maker-danger-button:hover:not(:disabled) {
+  background: var(--tone-soft, #fcece6);
+  border-color: var(--tone-border, #b54228) !important;
+}
+.maker-page button:focus-visible,
+.maker-test-drawer button:focus-visible,
+.maker-legacy summary:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+.maker-canvas .react-flow__controls-button:focus-visible,
+.maker-card-reaction button:focus-visible {
+  outline-offset: -3px;
+}
+.maker-card-reaction button:focus-visible {
+  background: var(--sage);
+}
+.maker-legacy summary {
+  cursor: pointer;
+}
+.maker-legacy summary:hover {
+  color: var(--orange);
+}
+.maker-primary:disabled:hover {
+  background: var(--orange);
+}
+.maker-secondary:disabled:hover,
+.maker-danger-button:disabled:hover {
+  background: var(--surface);
+}
+.maker-return-to-node {
+  white-space: normal;
+  width: 100%;
+  line-height: 1.5;
+}
+.maker-cover-field {
+  display: grid;
+  gap: 12px;
+}
+.maker-cover-field h3 {
+  font-size: 12px;
+}
+.maker-cover-preview {
+  width: 100%;
+  aspect-ratio: 36 / 17;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+}
+.maker-cover-field input[type='file'] {
+  padding: 8px;
+  white-space: normal;
+}
+.maker-cover-field input::file-selector-button {
+  font: inherit;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--green);
+  background: var(--sage);
+  cursor: pointer;
+}
+.maker-cover-field input::file-selector-button:hover {
+  background: var(--tone-soft, #d8e5cf);
+}
+.maker-notice {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.maker-notice > span {
+  flex: 1 1 260px;
+}
+.maker-sidebar,
+.maker-inspector,
+.maker-test-conversation {
+  overscroll-behavior: contain;
+}
+.maker-icon-button,
+.maker-back,
+.maker-text-button {
+  min-height: 40px;
+}
+@media (max-width: 640px) {
+  .maker-heading {
+    flex-basis: calc(100% - 46px);
+    min-width: 0;
   }
-  .maker-canvas-tools button {
-    padding: 8px;
-    font-size: 9px !important;
+  .maker-history-buttons {
+    margin-right: auto;
   }
-  .maker-canvas-tools svg {
-    display: none;
+  .maker-header-actions {
+    flex: 1 1 230px;
   }
+  .maker-page .maker-header-actions button {
+    flex: 1 1 auto;
+    white-space: normal;
+  }
+}
+
+.maker-notice > button:hover:not(:disabled) {
+  background: var(--sage);
+  border-radius: 6px;
+}
+
+.maker-status--published {
+  background: var(--sage);
+  color: var(--green);
+}
+.maker-status--archived {
+  background: var(--tone-soft, #eef0e9);
+  color: var(--muted);
+}
+
+/* Maker interaction polish: multi-selection, readable routes and stable controls. */
+.maker-search:focus-within {
+  border-color: var(--green);
+  outline: none;
+  outline-offset: 0;
+  box-shadow: 0 0 0 3px rgb(55 91 66 / 13%);
+}
+.maker-search:focus-within svg {
+  color: var(--green);
+}
+.maker-canvas .react-flow__selection,
+.maker-canvas .react-flow__nodesselection-rect {
+  border: 1px solid var(--tone-border, #527e61);
+  background: rgb(82 126 97 / 8%);
+  border-radius: 10px;
+}
+.maker-canvas .react-flow__edge-path {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.maker-canvas .react-flow__edge.selected .react-flow__edge-path {
+  filter: drop-shadow(0 1px 2px rgb(177 74 38 / 18%));
+}
+.maker-canvas .react-flow__edge-textbg {
+  fill: var(--tone-soft, #fffdf8);
+  stroke: var(--tone-soft, #e2ddd2);
+  stroke-width: 1;
+}
+.maker-canvas .react-flow__edge-text {
+  fill: var(--ink);
+  font-size: 10px;
+  font-weight: 700;
+}
+.maker-card-reaction .react-flow__handle-right {
+  right: -6px;
+}
+.maker-card > .react-flow__handle-left {
+  left: -6px;
+}
+.maker-card .maker-empty-target-handle {
+  border-style: dashed;
+  opacity: 0.72;
+}
+.maker-open-inspector {
+  z-index: 9;
+  isolation: isolate;
+  transition:
+    background-color 130ms ease,
+    border-color 130ms ease,
+    color 130ms ease,
+    box-shadow 130ms ease;
+}
+.maker-open-inspector:hover:not(:disabled) {
+  border-color: var(--tone-border, #b9c9b9);
+  background: var(--sage);
+  color: var(--green);
+  box-shadow: 0 5px 14px rgb(36 61 48 / 10%);
+}
+.maker-bulk-selection {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 15px;
+  border: 1px solid var(--tone-border, #cfdacb);
+  border-radius: 12px;
+  background: var(--tone-soft, #f7faf4);
+}
+.maker-bulk-selection-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--sage);
+  color: var(--green);
+}
+.maker-bulk-selection strong {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 12px;
+}
+.maker-bulk-selection p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.6;
+}
+.maker-bulk-selection .maker-danger-button {
+  grid-column: 1 / -1;
+}
+.maker-entity-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.maker-entity-heading > strong {
+  font-size: 11px;
+  color: var(--ink);
+}
+/* Unified maker focus language. */
+.maker-search:focus-within {
+  border-color: var(--tone-border, #769483);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+.maker-page button:focus-visible,
+.maker-test-drawer button:focus-visible,
+.maker-legacy summary:focus-visible,
+.maker-canvas .react-flow__controls-button:focus-visible,
+.maker-card-reaction button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.maker-cover-field {
+  gap: 10px;
+}
+.maker-cover-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.maker-cover-heading h3 {
+  margin: 0;
+  font-size: 12px;
+}
+.maker-cover-heading p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.5;
+}
+.maker-cover-remove,
+.maker-cover-replace {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--green);
+  font-size: 9px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.maker-cover-remove {
+  color: var(--tone-orange, #a94028);
+  border-color: var(--tone-border, #ead0c5);
+}
+.maker-cover-preview-wrap {
+  position: relative;
+  overflow: hidden;
+  border-radius: 11px;
+}
+.maker-cover-preview-wrap .maker-cover-preview {
+  display: block;
+}
+.maker-cover-replace {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  box-shadow: 0 6px 18px rgb(25 45 35 / 16%);
+}
+.maker-cover-dropzone {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  width: 100%;
+  min-height: 155px;
+  padding: 22px 16px;
+  border: 1.5px dashed var(--tone-border, #afc1b4);
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--tone-soft, #fbfcf8), var(--tone-soft, #f5f8f2));
+  color: var(--green);
+  text-align: center;
+  cursor: pointer;
+}
+.maker-cover-dropzone:hover,
+.maker-cover-dropzone.is-dragging {
+  border-color: var(--green);
+  background: var(--sage);
+}
+.maker-cover-dropzone-icon {
+  display: inline-flex;
+  padding: 9px;
+  border-radius: 10px;
+  background: var(--tone-soft, #dfead9);
+}
+.maker-cover-dropzone strong {
+  font-size: 11px;
+}
+.maker-cover-dropzone span:not(.maker-cover-dropzone-icon) {
+  color: var(--muted);
+  font-size: 9px;
+}
+.maker-cover-dropzone small {
+  color: var(--tone-green, #849087);
+  font-size: 8px;
+}
+.maker-cover-file-input {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.maker-cover-hint {
+  margin-top: -2px;
+}
+
+/* v0.4.6 — bottom canvas tools and contextual help. */
+.maker-canvas-tools-panel {
+  margin-bottom: 14px !important;
+  z-index: 8 !important;
+}
+.maker-canvas-tools {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  pointer-events: auto;
+}
+.maker-canvas-dock {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px;
+  border: 1px solid var(--tone-border, #d4ded4);
+  border-radius: 12px;
+  background: rgb(255 255 252 / 96%);
+  box-shadow: 0 10px 28px rgb(36 61 48 / 10%);
+  backdrop-filter: blur(8px);
+}
+.maker-canvas-dock button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  color: var(--green);
+  font-size: 10px !important;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.maker-canvas-dock button:hover:not(:disabled),
+.maker-canvas-dock button[aria-expanded='true'] {
+  background: var(--sage);
+}
+.maker-canvas-dock-separator {
+  width: 1px;
+  height: 20px;
+  background: var(--line);
+}
+.maker-canvas-help {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  width: min(470px, calc(100vw - 40px));
+  padding: 16px;
+  border: 1px solid var(--tone-border, #dfe3dc);
+  border-radius: 16px;
+  background: var(--tone-soft, #fffefa);
+  box-shadow: 0 18px 48px rgb(30 52 42 / 15%);
+  transform: translateX(-50%);
+  max-height: none;
+  overflow: visible;
+  color: var(--ink);
+  z-index: 20;
+}
+.maker-canvas-help::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  width: 11px;
+  height: 11px;
+  border-right: 1px solid var(--tone-border, #dfe3dc);
+  border-bottom: 1px solid var(--tone-border, #dfe3dc);
+  background: var(--tone-soft, #fffefa);
+  transform: translateX(-50%) rotate(45deg);
+}
+.maker-canvas-help-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.maker-canvas-help-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.maker-canvas-help-title-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  border: 1px solid var(--tone-border, #dfe3dc);
+  border-radius: 9px;
+  background: var(--tone-soft, #f5f5f1);
+  color: var(--tone-muted, #56625c);
+}
+.maker-canvas-help-heading strong,
+.maker-canvas-help-title > div > span {
+  display: block;
+}
+.maker-canvas-help-heading strong {
+  font-size: 12px;
+}
+.maker-canvas-help-heading .maker-canvas-help-title > div > span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 9px;
+}
+.maker-canvas-help-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border-radius: 8px;
+  color: var(--muted);
+}
+.maker-canvas-help-close:hover {
+  background: var(--tone-soft, #f1f2ee);
+  color: var(--ink);
+}
+.maker-canvas-help-intro {
+  margin-top: 12px;
+  color: var(--tone-muted, #59645e);
+  font-size: 9px;
+  line-height: 1.55;
+}
+.maker-canvas-help-navigation {
+  display: flex;
+  gap: 4px;
+  margin-top: 12px;
+  padding: 3px;
+  border-radius: 9px;
+  background: var(--bg);
+}
+.maker-canvas-help-navigation button {
+  flex: 1;
+  min-height: 30px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 750;
+  color: var(--muted);
+}
+.maker-canvas-help-navigation button:hover,
+.maker-canvas-help-navigation button[aria-pressed='true'] {
+  background: var(--sage);
+  color: var(--ink);
+}
+.maker-canvas-help-section {
+  margin-top: 12px;
+}
+.maker-canvas-help-section h3 {
+  margin: 0 0 8px;
+  color: var(--tone-muted, #3f4b45);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.maker-canvas-help-grid {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 8px 12px;
+  align-items: start;
+}
+.maker-canvas-help-grid kbd {
+  min-width: 60px;
+  padding: 4px 7px;
+  border: 1px solid var(--tone-border, #d8ddd7);
+  border-bottom-color: var(--tone-border, #c7cdc7);
+  border-radius: 6px;
+  background: var(--tone-soft, #f4f4f0);
+  box-shadow: 0 1px 0 var(--tone-border, #d8ddd7);
+  color: var(--tone-muted, #465149);
+  font-family: inherit;
+  font-size: 8px;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: center;
+  white-space: nowrap;
+}
+.maker-canvas-help-grid p {
+  color: var(--tone-green, #59665f);
+  font-size: 9px;
+  line-height: 1.45;
+}
+.maker-canvas-help-note {
+  margin-top: 13px;
+  padding: 9px 10px;
+  border: 1px solid var(--tone-border, #e2e5df);
+  border-radius: 9px;
+  background: var(--tone-soft, #f7f7f3);
+  color: var(--tone-muted, #59645e);
+  font-size: 9px;
+  line-height: 1.5;
+}
+.maker-canvas-dock button:hover:not(:disabled) {
+  background: var(--tone-soft, #f4f5f1);
+}
+.maker-canvas-dock button[aria-expanded='true'] {
+  background: var(--tone-soft, #eef0ec);
+  color: var(--ink);
+}
+
+/* Stage deletion uses the same full-width destructive action as reaction deletion. */
+.maker-entity-usage {
+  padding: 3px 6px;
+  border-radius: 6px;
+  background: var(--tone-soft, #f1f4ed);
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 750;
+}
+.maker-stage-delete-action {
+  margin-top: 1px;
+}
+
+/* Cover preview mirrors the catalogue card crop without modifying the original file. */
+.maker-cover-preview-wrap {
+  aspect-ratio: 360 / 176;
+  background: var(--tone-soft, #edf2ea);
+}
+.maker-cover-preview-wrap .maker-cover-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+.maker-cover-crop-label {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  z-index: 1;
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 90%);
+  color: var(--tone-green, #52625a);
+  font-size: 8px;
+  font-weight: 800;
+  box-shadow: 0 2px 8px rgb(35 57 47 / 8%);
+}
+.maker-cover-dropzone {
+  min-height: 150px;
+}
+
+/* Portable scenario JSON import/export in scenario settings. */
+.maker-json-tools {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--tone-border, #dde3dc);
+  border-radius: 12px;
+  background: var(--tone-soft, #fbfcf8);
+}
+.maker-json-tools-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+}
+.maker-json-tools-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 31px;
+  height: 31px;
+  flex: 0 0 31px;
+  border: 1px solid var(--tone-border, #dce1da);
+  border-radius: 8px;
+  background: var(--tone-soft, #f1f3ee);
+  color: var(--tone-muted, #536159);
+}
+.maker-json-tools-heading strong {
+  display: block;
+  font-size: 10px;
+}
+.maker-json-tools-heading p,
+.maker-json-tools > small {
+  color: var(--muted);
+  font-size: 8.5px;
+  line-height: 1.5;
+}
+.maker-json-tools-heading p {
+  margin-top: 2px;
+}
+.maker-json-tools-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.maker-json-tools-actions button {
+  min-height: 32px;
+}
+.maker-json-tools-actions .maker-text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-inline: 9px;
+}
+.maker-json-file-input {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.maker-json-import-error {
+  display: grid;
+  gap: 3px;
+  padding: 8px 9px;
+  border: 1px solid var(--tone-border, #e6c6bb);
+  border-radius: 8px;
+  background: var(--tone-soft, #fff5f1);
+  color: var(--tone-orange, #8f3e28);
+  font-size: 8.5px;
+  line-height: 1.45;
+}
+
+@media (max-width: 620px) {
+  .maker-canvas-tools-panel {
+    margin-bottom: 9px !important;
+  }
+  .maker-canvas-help {
+    width: min(360px, calc(100vw - 24px));
+    padding: 13px;
+  }
+  .maker-canvas-help-grid {
+    grid-template-columns: minmax(70px, 0.75fr) minmax(0, 1.25fr);
+    gap: 7px;
+  }
+  .maker-canvas-help-grid kbd {
+    min-width: 0;
+    white-space: normal;
+  }
+  .maker-canvas-dock button {
+    padding-inline: 9px;
+  }
+}
+
+/* Compatibility additions from the global UI patch, adapted for v0.4.8. */
+.maker-card-reaction:last-child,
+.maker-card-reaction:last-child > button {
+  border-radius: 0 0 12px 12px;
+}
+.maker-card-reaction button:focus-visible {
+  outline-offset: -3px;
+}
+.maker-validation,
+.is-inspector-closed .maker-validation {
+  left: auto;
+  max-height: calc(100% - 32px);
+}
+.maker-validation > header {
+  flex-shrink: 0;
+  padding-left: 25px;
+}
+.maker-validation > .maker-validation-resize {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  width: 24px;
+  height: 24px;
+  cursor: nwse-resize;
+  touch-action: none;
+  overflow: hidden;
+  background: linear-gradient(
+      135deg,
+      transparent 35%,
+      var(--muted) 36% 41%,
+      transparent 42% 53%,
+      var(--muted) 54% 59%,
+      transparent 60%
+    )
+    5px 5px / 12px 12px no-repeat;
+}
+.maker-validation-resize:focus-visible {
+  outline-offset: -2px;
+}
+.maker-header .theme-toggle {
+  width: 38px;
+  height: 38px;
+  padding: 8px;
+}
+.maker-header .theme-toggle select {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+}
+:root[data-theme='dark'] .maker-page {
+  --xy-background-color: var(--bg);
+  --xy-background-pattern-dots-color: var(--line);
+  --xy-minimap-background-color: var(--surface);
+  --xy-minimap-mask-background-color: rgb(17 27 23 / 60%);
+  --xy-controls-button-background-color: var(--surface);
+  --xy-controls-button-background-color-hover: var(--sage);
+  --xy-controls-button-color: var(--ink);
+  --xy-controls-button-border-color: var(--line);
+  --xy-node-background-color: var(--surface);
+  --minimap-mask: rgb(17 27 23 / 65%);
+  --route-edge: #6f8d7a;
+  --route-edge-dimmed: #647169;
+  --route-edge-focus: #89aa94;
+  --route-edge-active: #a4cdb0;
+}
+:root[data-theme='dark'] .maker-canvas-controls,
+:root[data-theme='dark'] .maker-canvas-count {
+  background: var(--surface);
+  color: var(--ink);
+}
+:root[data-theme='dark'] .maker-canvas-dock,
+:root[data-theme='dark'] .maker-cover-crop-label {
+  background: var(--surface);
+}
+@media (max-height: 590px) and (min-width: 700px) {
+  .maker-canvas-help {
+    width: 620px;
+    padding: 10px;
+  }
+  .maker-canvas-help-grid {
+    grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1fr);
+    gap: 6px 10px;
+  }
+  .maker-canvas-help-note {
+    margin-top: 8px;
+  }
+}
+
+/* v0.4.8 — readable routing for dense scenario graphs. */
+.maker-route-edge {
+  stroke: var(--route-edge, #789182);
+  stroke-width: 2;
+  opacity: .78;
+  transition:
+    stroke 120ms ease,
+    stroke-width 120ms ease,
+    opacity 120ms ease,
+    filter 120ms ease;
+  pointer-events: none;
+}
+.maker-route-hitbox {
+  pointer-events: stroke;
+  cursor: pointer;
+}
+.maker-route-edge--dimmed {
+  stroke: var(--route-edge-dimmed, #9eaba2);
+  stroke-width: 1.4;
+  opacity: .11;
+}
+.maker-route-edge--focus {
+  stroke: var(--route-edge-focus, #64846e);
+  stroke-width: 2.35;
+  opacity: .9;
+}
+.maker-route-edge--active {
+  stroke: var(--route-edge-active, #3f7653);
+  stroke-width: 3.2;
+  opacity: 1;
+  filter: drop-shadow(0 1px 2px rgb(46 91 62 / 20%));
+}
+.maker-card {
+  transition:
+    opacity 120ms ease,
+    filter 120ms ease,
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+.maker-card--route-dimmed {
+  opacity: .24;
+  filter: saturate(.72);
+}
+.maker-card--route-focus {
+  border-color: var(--tone-border, #b8cab9);
+}
+.maker-card--route-active {
+  border-color: var(--route-edge-focus, #789d81);
+  box-shadow:
+    0 0 0 2px rgb(72 119 83 / 12%),
+    0 8px 24px rgb(36 61 48 / 9%);
+}
+.maker-card.is-route-target {
+  border-color: var(--route-edge-active, #4f825f);
+  box-shadow:
+    0 0 0 4px rgb(79 130 95 / 15%),
+    0 9px 26px rgb(36 61 48 / 11%);
+}
+.maker-card-reaction {
+  transition: opacity 120ms ease, background-color 120ms ease;
+}
+.maker-card-reaction--dimmed {
+  opacity: .28;
+}
+.maker-card-reaction--focus {
+  background: color-mix(in srgb, var(--sage) 72%, transparent);
+}
+.maker-card-reaction--active,
+.maker-card-reaction--active.is-selected {
+  background: var(--sage);
+  opacity: 1;
+}
+.maker-card-reaction--active button {
+  color: var(--green);
+  font-weight: 750;
+}
+.maker-route-target-hint {
+  position: absolute;
+  left: calc(100% + 14px);
+  top: 50%;
+  z-index: 30;
+  width: 190px;
+  padding: 8px 10px;
+  border: 1px solid var(--tone-border, #d5dfd4);
+  border-radius: 9px;
+  background: var(--surface);
+  box-shadow: 0 10px 30px rgb(36 61 48 / 15%);
+  color: var(--ink);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.maker-route-target-hint::before {
+  content: '';
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  border: 6px solid transparent;
+  border-right-color: var(--tone-border, #d5dfd4);
+  transform: translateY(-50%);
+}
+.maker-route-target-hint::after {
+  content: '';
+  position: absolute;
+  right: calc(100% - 1px);
+  top: 50%;
+  border: 5px solid transparent;
+  border-right-color: var(--surface);
+  transform: translateY(-50%);
+}
+.maker-route-target-hint small,
+.maker-route-target-hint strong {
+  display: block;
+}
+.maker-route-target-hint small {
+  margin-bottom: 3px;
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.maker-route-target-hint strong {
+  font-size: 10px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.maker-canvas-dock button.is-active {
+  background: var(--sage);
+  color: var(--green);
+}
+
+.maker-canvas .react-flow__edge.selected .maker-route-edge--normal,
+.maker-canvas .react-flow__edge.selected .maker-route-edge--active {
+  stroke: var(--route-edge-active, #3f7653);
+}
+.maker-canvas .react-flow__edge.selected .maker-route-edge--focus {
+  stroke: var(--route-edge-focus, #64846e);
+}
+.maker-canvas .react-flow__edge.selected .maker-route-edge--dimmed {
+  stroke: var(--route-edge-dimmed, #9eaba2);
+  stroke-width: 1.4;
+  opacity: .11;
+  filter: none;
 }

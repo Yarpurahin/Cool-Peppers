@@ -1,31 +1,14 @@
+import { RequestFailure } from '../components/ui/RequestFailure.tsx';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { api, errorMessage } from '../api/client.ts';
+import { api, actionErrorMessage } from '../api/client.ts';
 import { useCatalog } from '../app/DataProvider.tsx';
 import type { AdminScenarioSummary } from '../types/api.ts';
 import { Button, ButtonLink } from '../components/ui/Button.tsx';
 import { Icon } from '../components/ui/Icon.tsx';
+import { statusOf, statusLabel, statusClass } from '../features/maker/model/publication.ts';
 
 type StatusFilter = 'all' | 'draft' | 'published' | 'archived';
-
-function statusOf(row: AdminScenarioSummary): Exclude<StatusFilter, 'all'> {
-  if (row.archivedAt) return 'archived';
-  if (row.publishedVersion) return 'published';
-  return 'draft';
-}
-
-function statusLabel(row: AdminScenarioSummary) {
-  if (row.archivedAt) return 'Архив';
-  if (row.publishedVersion) return `Опубликован · v${row.publishedVersion}`;
-  return 'Черновик';
-}
-
-function statusClass(row: AdminScenarioSummary) {
-  const status = statusOf(row);
-  if (status === 'published') return 'badge badge--green';
-  if (status === 'draft') return 'badge badge--orange';
-  return 'badge badge--outline';
-}
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('ru-RU', {
@@ -36,17 +19,51 @@ function formatDate(value: string) {
 }
 
 export function EditorListPage() {
-  const { scenarios, refreshCatalog } = useCatalog();
+  const { catalogStatus } = useCatalog();
+  if (catalogStatus === 'loading')
+    return (
+      <div className="container page" role="status">
+        Загружаем сценарии…
+      </div>
+    );
+  return <EditorListContent />;
+}
+function EditorListContent() {
+  const { scenarios, refreshCatalog, user } = useCatalog();
   const navigate = useNavigate();
   const location = useLocation();
   const adminMode = location.pathname.startsWith('/admin');
   const routeBase = adminMode ? '/admin/scenarios' : '/editor';
   const [rows, setRows] = useState<AdminScenarioSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sourceId, setSourceId] = useState('terms');
-  const [newTitle, setNewTitle] = useState('Новый сценарий');
+  const [loadError, setLoadError] = useState<unknown>(null);
+  const creationKey = `arena:scenario-create:${user!.id}`;
+  const [creation, setCreation] = useState(() => {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(creationKey) ?? 'null');
+      if (typeof saved?.sourceId === 'string' && typeof saved?.title === 'string')
+        return saved as { sourceId: string; title: string };
+    } catch {
+      /* The form still works if browser storage is unavailable. */
+    }
+    return {
+      sourceId: scenarios.find((s) => s.id === 'terms')?.id ?? scenarios[0]?.id ?? '',
+      title: 'Новый сценарий',
+    };
+  });
+  const sourceId = scenarios.some((s) => s.id === creation.sourceId) ? creation.sourceId : '';
+  const newTitle = creation.title;
+  const updateCreation = (value: typeof creation) => {
+    setCreation(value);
+    try {
+      sessionStorage.setItem(creationKey, JSON.stringify(value));
+    } catch {
+      /* Optional form recovery. */
+    }
+  };
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<StatusFilter>('all');
 
@@ -56,7 +73,7 @@ export function EditorListPage() {
 
   useEffect(() => {
     void load()
-      .catch((cause) => setError(errorMessage(cause)))
+      .catch(setLoadError)
       .finally(() => setLoading(false));
   }, []);
 
@@ -69,6 +86,7 @@ export function EditorListPage() {
     });
   }, [query, rows, status]);
 
+  if (loadError && !rows.length) return <RequestFailure error={loadError} />;
   return (
     <div
       className={adminMode ? 'admin-page admin-scenarios-page' : 'container page editor-list-page'}
@@ -88,20 +106,23 @@ export function EditorListPage() {
         </div>
       </div>
 
-      <section className="panel admin-create-panel description-editor">
+      <section className="panel admin-create-panel" aria-labelledby="create-scenario-title">
         <div className="admin-create-copy">
           <span className="icon-tile">
-            <Icon name="plus" />
+            <Icon name="edit" />
           </span>
           <div>
-            <h2>Новый сценарий</h2>
+            <h2 id="create-scenario-title">Новый сценарий</h2>
             <p>Начните с пустого полотна или возьмите готовый сценарий за основу.</p>
           </div>
         </div>
-        <div className="admin-create-controls">
+        <div className={`admin-create-controls ${!sourceId ? 'admin-create-controls--blank' : ''}`}>
           <label className="field">
             Основа сценария
-            <select value={sourceId} onChange={(event) => setSourceId(event.target.value)}>
+            <select
+              value={sourceId}
+              onChange={(event) => updateCreation({ ...creation, sourceId: event.target.value })}
+            >
               <option value="">Пустой сценарий</option>
               {scenarios.map((scenario) => (
                 <option key={scenario.id} value={scenario.id}>
@@ -116,7 +137,7 @@ export function EditorListPage() {
               <input
                 value={newTitle}
                 maxLength={200}
-                onChange={(event) => setNewTitle(event.target.value)}
+                onChange={(event) => updateCreation({ ...creation, title: event.target.value })}
               />
             </label>
           )}
@@ -132,18 +153,21 @@ export function EditorListPage() {
                 });
                 navigate(`${routeBase}/${result.id}`);
               } catch (cause) {
-                setError(errorMessage(cause));
+                setError(actionErrorMessage(cause));
               } finally {
                 setBusy(false);
               }
             }}
           >
-            <Icon name="plus" />
-            {sourceId ? 'Создать копию' : 'Создать и открыть maker'}
+            <span>{sourceId ? 'Создать' : 'Создать сценарий'}</span>
+            <Icon name="arrow" />
           </Button>
         </div>
       </section>
 
+      <p className="sr-only" role="status">
+        {notice}
+      </p>
       {error && (
         <p className="field-error" role="alert">
           {error}
@@ -242,7 +266,7 @@ export function EditorListPage() {
                         await load();
                         await refreshCatalog();
                       } catch (cause) {
-                        setError(errorMessage(cause));
+                        setError(actionErrorMessage(cause));
                       } finally {
                         setBusy(false);
                       }
@@ -251,6 +275,40 @@ export function EditorListPage() {
                     В архив
                   </Button>
                 )}
+                <Button
+                  variant="outline"
+                  className="button--danger"
+                  disabled={busy}
+                  aria-label={`Удалить сценарий «${row.title}»`}
+                  onClick={async () => {
+                    if (
+                      !window.confirm(
+                        `Удалить сценарий «${row.title}»? Он исчезнет из каталога и списка сценариев. История прохождений сохранится.`,
+                      )
+                    )
+                      return;
+                    setBusy(true);
+                    setError('');
+                    try {
+                      await api(`/editor/${row.id}`, { method: 'DELETE' });
+                      setRows((value) => value.filter((item) => item.id !== row.id));
+                      setNotice(`Сценарий «${row.title}» удалён.`);
+                      try {
+                        sessionStorage.removeItem(`arena:maker:${user!.id}:${row.id}`);
+                      } catch {
+                        /* Optional cache. */
+                      }
+                      await refreshCatalog();
+                    } catch (cause) {
+                      setError(actionErrorMessage(cause));
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  <Icon name="trash" size={16} />
+                  Удалить
+                </Button>
               </div>
             </article>
           ))}

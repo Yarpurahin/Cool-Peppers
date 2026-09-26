@@ -1,10 +1,28 @@
 import type { ScenarioArt as ArtType } from '../../types/scenario.ts';
 
-export function ScenarioArt({ kind }: { kind: ArtType }) {
+export function ScenarioArt({
+  kind,
+  image,
+}: {
+  kind: ArtType;
+  image?: { src: string; alt: string };
+}) {
+  if (image)
+    return (
+      <img
+        className="scenario-art scenario-art--image"
+        src={image.src}
+        alt={image.alt}
+        width={360}
+        height={176}
+        loading="lazy"
+        decoding="async"
+      />
+    );
   return (
     <svg
       className={`scenario-art scenario-art--${kind}`}
-      viewBox="0 0 360 170"
+      viewBox="0 0 360 176"
       fill="none"
       aria-hidden="true"
     >

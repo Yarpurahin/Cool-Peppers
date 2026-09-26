@@ -88,6 +88,14 @@ button {
   background: none;
   color: inherit;
 }
+/* Low specificity gives unstyled controls an interaction state without overriding variants. */
+:where(button:not(:disabled):not(.maker-menu-overlay)):hover {
+  background-color: var(--sage);
+}
+:where(button, a, summary, [role='separator']):focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
 button:disabled {
   cursor: not-allowed;
 }
@@ -103,8 +111,8 @@ input,
 select,
 textarea {
   color: var(--ink);
-  background: #fff;
-  border: 1px solid #d6ddd4;
+  background: var(--surface);
+  border: 1px solid var(--tone-border, #d6ddd4);
   border-radius: 9px;
   width: 100%;
   min-width: 0;
@@ -121,13 +129,19 @@ textarea {
 }
 input::placeholder,
 textarea::placeholder {
-  color: #818980;
+  color: var(--tone-muted, #818980);
   opacity: 1;
 }
 input:focus,
 textarea:focus,
 select:focus {
-  border-color: var(--green);
+  border-color: var(--focus);
+}
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 select {
   padding-right: 28px;
@@ -141,14 +155,14 @@ input[type='radio'] {
   cursor: pointer;
 }
 :focus-visible {
-  outline: 3px solid #b14a26;
-  outline-offset: 4px;
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
 }
 main:focus {
   outline: none;
 }
 ::selection {
-  background: #d8e5cf;
+  background: var(--tone-soft, #d8e5cf);
 }
 [hidden] {
   display: none !important;
@@ -266,8 +280,8 @@ main:focus {
 }
 .field-error {
   padding: 12px;
-  background: #fcece6;
-  color: #a43319;
+  background: var(--tone-soft, #fcece6);
+  color: var(--tone-orange, #a43319);
   border-radius: 8px;
   font-size: 13px;
 }
@@ -293,7 +307,7 @@ main:focus {
   top: -100px;
   left: 20px;
   z-index: 100;
-  background: white;
+  background: var(--surface);
   border: 2px solid var(--orange);
   padding: 12px 20px;
   border-radius: 6px;
@@ -312,4 +326,30 @@ main:focus {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+@media (forced-colors: active) {
+  button,
+  input,
+  select,
+  textarea,
+  .button,
+  .maker-card {
+    border: 1px solid ButtonText;
+  }
+  :focus-visible {
+    outline: 3px solid Highlight;
+  }
+  [aria-pressed='true'],
+  [aria-selected='true'] {
+    outline: 2px solid Highlight;
+  }
+}
+
+/* A text caret is visible only where text can actually be edited. */
+body {
+  caret-color: transparent;
+}
+:where(input, textarea, [contenteditable='true'], [role='textbox']) {
+  caret-color: var(--ink);
 }

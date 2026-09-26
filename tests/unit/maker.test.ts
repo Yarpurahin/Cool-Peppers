@@ -9,7 +9,9 @@ import {
 } from '../../src/features/negotiation/model/engine.ts';
 import {
   createBlankDefinition,
+  fromPreview,
   toMakerDefinition,
+  toRuntimeDefinition,
 } from '../../src/features/maker/model/adapter.ts';
 import { compileMaker, startMaker, submitIntent } from '../../src/features/maker/model/engine.ts';
 import { validateMaker } from '../../src/features/maker/model/validation.ts';
@@ -20,10 +22,15 @@ import {
   duplicateBlock,
   layoutGraph,
   removeBlocks,
+  removeReaction,
 } from '../../src/features/maker/model/commands.ts';
 import { scenarios } from '../../src/data/scenarios.ts';
 import { documentSchema, normalizeDocument } from '../../src/types/validation.ts';
-import type { MakerDocument } from '../../src/features/maker/model/types.ts';
+import type { MakerDocument, MakerDraft } from '../../src/features/maker/model/types.ts';
+import {
+  createScenarioFile,
+  parseScenarioFile,
+} from '../../src/features/maker/model/scenarioFile.ts';
 const now = '2026-09-21T10:00:00.000Z';
 function fixture(): MakerDocument {
   const definition = createBlankDefinition('test_maker', 'Тест');
@@ -52,6 +59,20 @@ function fixture(): MakerDocument {
     editor: { positions: {} },
   };
 }
+
+test('every built-in preview can be compiled into a playable template', () => {
+  for (const preview of scenarios) {
+    const definition =
+      preview.id === employmentScenario.metadata.id
+        ? toMakerDefinition(employmentScenario)
+        : fromPreview(preview);
+    assert.deepEqual(validateMaker(definition), []);
+    const engine = compileMaker(definition);
+    const attempt = startMaker(engine, `template-${preview.id}`, now);
+    assert.equal(attempt.status, 'in-progress');
+    assert.equal(attempt.currentNodeId, definition.startNodeId);
+  }
+});
 
 test('adapter preserves all legacy paths, history, penalties and contextual replies', () => {
   const original = structuredClone(employmentScenario);
@@ -158,6 +179,7 @@ test('block commands keep references and IDs consistent; movement changes editor
   const before = structuredClone(doc.definition);
   doc.editor.positions = layoutGraph(doc.definition);
   assert.deepEqual(doc.definition, before);
+  assert.ok(doc.editor.positions.agreement.x > doc.editor.positions.node_1.x);
   addBlock(doc, 'node', { x: 12, y: 35 }, 'next');
   doc.definition.nodes[1].text = 'Продолжим';
   const r = addReaction(doc.definition, 'next')!;
@@ -187,4 +209,115 @@ test('publication projection is valid for a subsequent edit with optional metada
   assert.deepEqual(normalized.editor, doc.editor);
   assert.equal(normalized.preview.title, doc.definition.metadata.title);
   assert.equal(normalized.preview.person.name, 'Анна');
+});
+
+
+test('reaction deletion removes the reaction and route but preserves the destination block', () => {
+  const doc = fixture();
+  const beforeEndings = doc.definition.endings.length;
+  assert.equal(removeReaction(doc.definition, 'node_1', 'salary_reaction'), true);
+  assert.equal(doc.definition.nodes[0].reactions.length, 0);
+  assert.equal(doc.definition.endings.length, beforeEndings);
+  assert.equal(removeReaction(doc.definition, 'node_1', 'missing'), false);
+});
+
+test('auto layout keeps converging branches around their shared destination', () => {
+  const doc = fixture();
+  addBlock(doc, 'node', { x: 0, y: 0 }, 'upper');
+  addBlock(doc, 'node', { x: 0, y: 0 }, 'lower');
+  addBlock(doc, 'node', { x: 0, y: 0 }, 'merge');
+  const start = doc.definition.nodes[0];
+  start.reactions = [
+    { id: 'to_upper', intent: 'upper', label: 'Верхняя ветка', examples: [], nextNodeId: 'upper' },
+    { id: 'to_lower', intent: 'lower', label: 'Нижняя ветка', examples: [], nextNodeId: 'lower' },
+  ];
+  doc.definition.nodes.find((node) => node.id === 'upper')!.reactions = [
+    { id: 'upper_merge', intent: 'upper_merge', label: 'Дальше', examples: [], nextNodeId: 'merge' },
+  ];
+  doc.definition.nodes.find((node) => node.id === 'lower')!.reactions = [
+    { id: 'lower_merge', intent: 'lower_merge', label: 'Дальше', examples: [], nextNodeId: 'merge' },
+  ];
+  doc.definition.nodes.find((node) => node.id === 'merge')!.reactions = [
+    { id: 'finish', intent: 'finish', label: 'Финиш', examples: [], endingId: 'agreement' },
+  ];
+  const positions = layoutGraph(doc.definition);
+  assert.ok(positions.upper.x === positions.lower.x);
+  assert.ok(positions.merge.x > positions.upper.x);
+  assert.ok(positions.merge.y > Math.min(positions.upper.y, positions.lower.y));
+  assert.ok(positions.merge.y < Math.max(positions.upper.y, positions.lower.y));
+});
+
+test('new maker reactions do not invent explanatory feedback for the result screen', () => {
+  const doc = fixture();
+  const runtime = toRuntimeDefinition(doc.definition);
+  assert.equal(runtime.nodes[0].answers[0].feedback, '');
+});
+
+
+test('portable Arena JSON imports content but preserves the current scenario identity', () => {
+  const source = fixture();
+  source.definition.metadata.id = 'source_scenario';
+  source.definition.metadata.title = 'Импортированный сценарий';
+  source.editor.positions = { node_1: { x: 321, y: 123 } };
+  const file = createScenarioFile(source);
+
+  const currentDocument = fixture();
+  currentDocument.definition.metadata.id = 'current_scenario';
+  currentDocument.definition.metadata.version = 7;
+  currentDocument.preview.id = 'current_scenario';
+  const current: MakerDraft = {
+    ...currentDocument,
+    revision: 4,
+    publishedVersion: 6,
+  };
+
+  const imported = parseScenarioFile(file, current);
+  assert.equal(imported.source, 'arena-scenario');
+  assert.equal(imported.document.definition.metadata.id, 'current_scenario');
+  assert.equal(imported.document.definition.metadata.version, 7);
+  assert.equal(imported.document.preview.id, 'current_scenario');
+  assert.equal(imported.document.definition.metadata.title, 'Импортированный сценарий');
+  assert.deepEqual(imported.document.editor.positions.node_1, { x: 321, y: 123 });
+});
+
+test('scenario JSON importer also accepts a raw schemaVersion 2 definition', () => {
+  const currentDocument = fixture();
+  const current: MakerDraft = {
+    ...currentDocument,
+    revision: 1,
+    publishedVersion: null,
+  };
+  const definition = structuredClone(sourceDefinitionForImport());
+  const imported = parseScenarioFile(definition, current);
+  assert.equal(imported.source, 'definition');
+  assert.equal(imported.document.definition.metadata.id, current.definition.metadata.id);
+  assert.equal(imported.document.definition.metadata.title, definition.metadata.title);
+});
+
+function sourceDefinitionForImport() {
+  const definition = fixture().definition;
+  definition.metadata.id = 'external_id';
+  definition.metadata.title = 'Definition без оболочки';
+  return definition;
+}
+
+test('scenario JSON importer stays compatible with the previous full draft export', () => {
+  const source = fixture();
+  source.definition.metadata.id = 'old_export';
+  source.preview.id = 'old_export';
+  const currentDocument = fixture();
+  currentDocument.definition.metadata.id = 'current_for_old_export';
+  currentDocument.preview.id = 'current_for_old_export';
+  const current: MakerDraft = {
+    ...currentDocument,
+    revision: 2,
+    publishedVersion: null,
+  };
+  const imported = parseScenarioFile(
+    { preview: source.preview, definition: source.definition, editor: source.editor },
+    current,
+  );
+  assert.equal(imported.source, 'exported-draft');
+  assert.equal(imported.document.definition.metadata.id, 'current_for_old_export');
+  assert.equal(imported.document.preview.id, 'current_for_old_export');
 });

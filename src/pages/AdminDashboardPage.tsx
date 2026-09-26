@@ -1,27 +1,10 @@
+import { RequestFailure } from '../components/ui/RequestFailure.tsx';
 import { useEffect, useMemo, useState } from 'react';
-import { api, errorMessage } from '../api/client.ts';
+import { api } from '../api/client.ts';
 import type { AdminScenarioSummary } from '../types/api.ts';
 import { ButtonLink } from '../components/ui/Button.tsx';
 import { Icon } from '../components/ui/Icon.tsx';
-
-function statusOf(row: AdminScenarioSummary) {
-  if (row.archivedAt) return 'archived';
-  if (row.publishedVersion) return 'published';
-  return 'draft';
-}
-
-function statusLabel(row: AdminScenarioSummary) {
-  if (row.archivedAt) return 'Архив';
-  if (row.publishedVersion) return `Опубликован · v${row.publishedVersion}`;
-  return 'Черновик';
-}
-
-function statusClass(row: AdminScenarioSummary) {
-  const status = statusOf(row);
-  if (status === 'published') return 'badge badge--green';
-  if (status === 'draft') return 'badge badge--orange';
-  return 'badge badge--outline';
-}
+import { statusOf, statusLabel, statusClass } from '../features/maker/model/publication.ts';
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('ru-RU', {
@@ -34,14 +17,14 @@ function formatDate(value: string) {
 export function AdminDashboardPage() {
   const [rows, setRows] = useState<AdminScenarioSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [loadError, setLoadError] = useState<unknown>(null);
 
   useEffect(() => {
     const controller = new AbortController();
     api<AdminScenarioSummary[]>('/editor', { signal: controller.signal })
       .then(setRows)
       .catch((cause) => {
-        if (!controller.signal.aborted) setError(errorMessage(cause));
+        if (!controller.signal.aborted) setLoadError(cause);
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
@@ -59,6 +42,7 @@ export function AdminDashboardPage() {
     [rows],
   );
 
+  if (loadError && !rows.length) return <RequestFailure error={loadError} />;
   return (
     <div className="admin-page admin-dashboard-page">
       <div className="admin-page-heading">
@@ -70,16 +54,10 @@ export function AdminDashboardPage() {
           <p>Создавайте, публикуйте и поддерживайте учебные сценарии переговоров.</p>
         </div>
         <ButtonLink to="/admin/scenarios" className="admin-heading-action">
-          <Icon name="plus" size={18} />
+          <Icon name="book" size={18} />
           Управлять сценариями
         </ButtonLink>
       </div>
-
-      {error && (
-        <p className="field-error" role="alert">
-          {error}
-        </p>
-      )}
 
       <section className="admin-stat-grid" aria-label="Статистика сценариев">
         <article className="admin-stat-card">
@@ -167,12 +145,9 @@ export function AdminDashboardPage() {
         </section>
 
         <aside className="panel admin-roadmap-panel">
-          <p className="eyebrow">Следующий этап</p>
-          <h2>Конструктор сценариев</h2>
-          <p>
-            Базовая работа с черновиками уже есть. Дальше редактор будет разбит на понятные шаги
-            вместо одной большой формы.
-          </p>
+          <p className="eyebrow">Конструктор</p>
+          <h2>Что уже доступно</h2>
+          <p>Основные настройки сценария собраны в одном визуальном редакторе.</p>
           <div className="admin-roadmap-list">
             <div>
               <span>1</span>
@@ -184,22 +159,22 @@ export function AdminDashboardPage() {
             <div>
               <span>2</span>
               <p>
-                <strong>Персонажи и этапы</strong>
-                Участники и структура переговоров
+                <strong>Персонажи</strong>
+                Участники переговоров
               </p>
             </div>
             <div>
               <span>3</span>
               <p>
                 <strong>Диалог</strong>
-                Реплики, ответы и переходы
+                Реплики, реакции, переходы и мультивыделение
               </p>
             </div>
             <div>
               <span>4</span>
               <p>
                 <strong>Проверка и публикация</strong>
-                Валидация графа перед запуском
+                Тестовый проход и валидация графа перед запуском
               </p>
             </div>
           </div>
