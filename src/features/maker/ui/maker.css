@@ -1731,3 +1731,148 @@
     padding-inline: 9px;
   }
 }
+
+/* v0.4.8 — readable routing for dense scenario graphs. */
+.maker-route-edge {
+  stroke: #789182;
+  stroke-width: 2;
+  opacity: .78;
+  transition:
+    stroke 120ms ease,
+    stroke-width 120ms ease,
+    opacity 120ms ease,
+    filter 120ms ease;
+  pointer-events: none;
+}
+.maker-route-hitbox {
+  pointer-events: stroke;
+  cursor: pointer;
+}
+.maker-route-edge--dimmed {
+  stroke: #9eaba2;
+  stroke-width: 1.4;
+  opacity: .11;
+}
+.maker-route-edge--focus {
+  stroke: #64846e;
+  stroke-width: 2.35;
+  opacity: .9;
+}
+.maker-route-edge--active {
+  stroke: #3f7653;
+  stroke-width: 3.2;
+  opacity: 1;
+  filter: drop-shadow(0 1px 2px rgb(46 91 62 / 20%));
+}
+.maker-card {
+  transition:
+    opacity 120ms ease,
+    filter 120ms ease,
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+.maker-card--route-dimmed {
+  opacity: .24;
+  filter: saturate(.72);
+}
+.maker-card--route-focus {
+  border-color: #b8cab9;
+}
+.maker-card--route-active {
+  border-color: #789d81;
+  box-shadow:
+    0 0 0 2px rgb(72 119 83 / 12%),
+    0 8px 24px rgb(36 61 48 / 9%);
+}
+.maker-card.is-route-target {
+  border-color: #4f825f;
+  box-shadow:
+    0 0 0 4px rgb(79 130 95 / 15%),
+    0 9px 26px rgb(36 61 48 / 11%);
+}
+.maker-card-reaction {
+  transition: opacity 120ms ease, background-color 120ms ease;
+}
+.maker-card-reaction--dimmed {
+  opacity: .28;
+}
+.maker-card-reaction--focus {
+  background: rgb(238 244 235 / 72%);
+}
+.maker-card-reaction--active,
+.maker-card-reaction--active.is-selected {
+  background: #e7f0e4;
+  opacity: 1;
+}
+.maker-card-reaction--active button {
+  color: #244d32;
+  font-weight: 750;
+}
+.maker-route-target-hint {
+  position: absolute;
+  left: calc(100% + 14px);
+  top: 50%;
+  z-index: 30;
+  width: 190px;
+  padding: 8px 10px;
+  border: 1px solid #d5dfd4;
+  border-radius: 9px;
+  background: rgb(255 255 252 / 98%);
+  box-shadow: 0 10px 30px rgb(36 61 48 / 15%);
+  color: var(--ink);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.maker-route-target-hint::before {
+  content: '';
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  border: 6px solid transparent;
+  border-right-color: #d5dfd4;
+  transform: translateY(-50%);
+}
+.maker-route-target-hint::after {
+  content: '';
+  position: absolute;
+  right: calc(100% - 1px);
+  top: 50%;
+  border: 5px solid transparent;
+  border-right-color: #fffffc;
+  transform: translateY(-50%);
+}
+.maker-route-target-hint small,
+.maker-route-target-hint strong {
+  display: block;
+}
+.maker-route-target-hint small {
+  margin-bottom: 3px;
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.maker-route-target-hint strong {
+  font-size: 10px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.maker-canvas-dock button.is-active {
+  background: #e7eee5;
+  color: #315f40;
+}
+
+.maker-canvas .react-flow__edge.selected .maker-route-edge--normal,
+.maker-canvas .react-flow__edge.selected .maker-route-edge--active {
+  stroke: #3f7653;
+}
+.maker-canvas .react-flow__edge.selected .maker-route-edge--focus {
+  stroke: #64846e;
+}
+.maker-canvas .react-flow__edge.selected .maker-route-edge--dimmed {
+  stroke: #9eaba2;
+  stroke-width: 1.4;
+  opacity: .11;
+  filter: none;
+}

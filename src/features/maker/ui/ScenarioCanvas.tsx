@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Background,
+  BaseEdge,
   Controls,
   Handle,
   MarkerType,
@@ -18,6 +19,7 @@ import {
 import type {
   Connection,
   Edge,
+  EdgeProps,
   Node,
   NodeProps,
   ReactFlowInstance,
@@ -25,6 +27,8 @@ import type {
 } from '@xyflow/react';
 import type { GraphIssue, MakerDocument } from '../model/types.ts';
 import { layoutGraph } from '../model/commands.ts';
+import { routeOrthogonalEdge, roundedOrthogonalPath } from '../model/edgeRouting.ts';
+import type { RouteRect } from '../model/edgeRouting.ts';
 import { Icon } from '../../../components/ui/Icon.tsx';
 
 export type Selection =
@@ -40,6 +44,8 @@ export interface BranchRequest {
   screen: { x: number; y: number };
 }
 
+type RouteEmphasis = 'normal' | 'active' | 'focus' | 'dimmed';
+
 type CardData = {
   title: string;
   text: string;
@@ -51,15 +57,59 @@ type CardData = {
   error?: boolean;
   warning?: boolean;
   incomingIds: string[];
+  routeEmphasis?: RouteEmphasis;
+  routeTarget?: boolean;
   reactions?: {
     id: string;
     label: string;
     linked: boolean;
     selected: boolean;
+    hovered?: boolean;
+    emphasis?: RouteEmphasis;
+    targetTitle?: string;
   }[];
   selectReaction?: (id: string) => void;
+  hoverReaction?: (id: string | null) => void;
+  focusReaction?: (id: string) => void;
 };
 export type CardNode = Node<CardData>;
+
+type MakerRouteData = {
+  obstacles: RouteRect[];
+  lane: number;
+  emphasis: RouteEmphasis;
+};
+type MakerEdge = Edge<MakerRouteData>;
+
+function MakerRouteEdge({
+  id,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  markerEnd,
+  style,
+  data,
+}: EdgeProps<MakerEdge>) {
+  const points = routeOrthogonalEdge({
+    source: { x: sourceX, y: sourceY },
+    target: { x: targetX, y: targetY },
+    obstacles: data?.obstacles ?? [],
+    lane: data?.lane ?? 0,
+  });
+  const path = roundedOrthogonalPath(points, 10);
+  const emphasis = data?.emphasis ?? 'normal';
+  return (
+    <BaseEdge
+      id={id}
+      path={path}
+      markerEnd={markerEnd}
+      style={style}
+      interactionWidth={20}
+      className={`maker-route-edge maker-route-edge--${emphasis}`}
+    />
+  );
+}
 
 function IncomingHandles({ id, incomingIds }: { id: string; incomingIds: string[] }) {
   const update = useUpdateNodeInternals();
@@ -90,7 +140,10 @@ function DialogueCard({ id, data }: NodeProps<CardNode>) {
   }, [id, reactionSignature, data.start, update]);
 
   return (
-    <article className={`maker-card ${data.error ? 'has-error' : ''}`} data-testid={`block-${id}`}>
+    <article
+      className={`maker-card maker-card--route-${data.routeEmphasis ?? 'normal'} ${data.routeTarget ? 'is-route-target' : ''} ${data.error ? 'has-error' : ''}`}
+      data-testid={`block-${id}`}
+    >
       <IncomingHandles id={id} incomingIds={data.incomingIds} />
       <div className="maker-card-heading">
         <span className="maker-avatar">{data.initials || '—'}</span>
@@ -107,7 +160,10 @@ function DialogueCard({ id, data }: NodeProps<CardNode>) {
       </div>
       <div className="maker-card-reactions">
         {data.reactions?.map((r) => (
-          <div className={`maker-card-reaction ${r.selected ? 'is-selected' : ''}`} key={r.id}>
+          <div
+            className={`maker-card-reaction ${r.selected ? 'is-selected' : ''} maker-card-reaction--${r.emphasis ?? 'normal'}`}
+            key={r.id}
+          >
             <button
               type="button"
               className="nodrag nopan"
@@ -115,10 +171,22 @@ function DialogueCard({ id, data }: NodeProps<CardNode>) {
                 event.stopPropagation();
                 data.selectReaction?.(r.id);
               }}
-              title={r.label}
+              onMouseEnter={() => data.hoverReaction?.(r.id)}
+              onMouseLeave={() => data.hoverReaction?.(null)}
+              onDoubleClick={(event) => {
+                event.stopPropagation();
+                if (r.linked) data.focusReaction?.(r.id);
+              }}
+              title={r.targetTitle ? `${r.label}\nВедёт к: ${r.targetTitle}` : r.label}
             >
               {r.label || 'Без названия'}
             </button>
+            {r.hovered && r.targetTitle && (
+              <span className="maker-route-target-hint" role="tooltip">
+                <small>Ведёт к</small>
+                <strong>{r.targetTitle}</strong>
+              </span>
+            )}
             <Handle
               id={r.id}
               type="source"
@@ -138,7 +206,7 @@ function DialogueCard({ id, data }: NodeProps<CardNode>) {
 function EndingCard({ id, data }: NodeProps<CardNode>) {
   return (
     <article
-      className={`maker-card maker-ending maker-ending--${data.endingType} ${data.error ? 'has-error' : ''}`}
+      className={`maker-card maker-ending maker-ending--${data.endingType} maker-card--route-${data.routeEmphasis ?? 'normal'} ${data.routeTarget ? 'is-route-target' : ''} ${data.error ? 'has-error' : ''}`}
     >
       <IncomingHandles id={id} incomingIds={data.incomingIds} />
       <div className="maker-ending-title">
@@ -159,10 +227,11 @@ function EndingCard({ id, data }: NodeProps<CardNode>) {
 }
 
 const nodeTypes = { dialogue: DialogueCard, ending: EndingCard };
+const edgeTypes = { makerRoute: MakerRouteEdge };
 const PAN_ON_DRAG = [1, 2];
 const MULTI_SELECTION_KEYS = ['Shift', 'Control', 'Meta'];
 const DEFAULT_EDGE_OPTIONS: NonNullable<ReactFlowProps<CardNode, Edge>['defaultEdgeOptions']> = {
-  type: 'smoothstep',
+  type: 'makerRoute',
   style: { stroke: '#799383', strokeWidth: 2 },
 };
 const ARIA_LABEL_CONFIG: NonNullable<ReactFlowProps<CardNode, Edge>['ariaLabelConfig']> = {
@@ -238,6 +307,8 @@ export function ScenarioCanvas({
   const [containerReady, setContainerReady] = useState(false);
   const [nodesReady, setNodesReady] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [hoveredReactionId, setHoveredReactionId] = useState<string | null>(null);
+  const [focusedReactionId, setFocusedReactionId] = useState<string | null>(null);
   const help = useRef<HTMLDivElement | null>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState<CardNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -279,6 +350,15 @@ export function ScenarioCanvas({
       window.removeEventListener('keydown', closeOnEscape);
     };
   }, [helpOpen]);
+
+  useEffect(() => {
+    if (!focusedReactionId) return;
+    const exists = doc.definition.nodes.some((node) =>
+      node.reactions.some((reaction) => reaction.id === focusedReactionId),
+    );
+    if (!exists) setFocusedReactionId(null);
+  }, [doc.definition, focusedReactionId]);
+
 
   // React Flow stores event handlers/options in its internal Zustand store.
   // Keep every handler passed to <ReactFlow> referentially stable: recreating them
@@ -379,6 +459,20 @@ export function ScenarioCanvas({
     runtime.current.onSelect({ type: 'reaction', nodeId: edge.source, id: edge.id });
   }, []);
 
+
+  const handleEdgeMouseEnter = useCallback<NonNullable<FlowProps['onEdgeMouseEnter']>>((_, edge) => {
+    setHoveredReactionId(edge.id);
+  }, []);
+
+  const handleEdgeMouseLeave = useCallback<NonNullable<FlowProps['onEdgeMouseLeave']>>((_, edge) => {
+    setHoveredReactionId((current) => (current === edge.id ? null : current));
+  }, []);
+
+  const handleEdgeDoubleClick = useCallback<NonNullable<FlowProps['onEdgeDoubleClick']>>((event, edge) => {
+    event.stopPropagation();
+    setFocusedReactionId((current) => (current === edge.id ? null : edge.id));
+  }, []);
+
   const handleNodesDelete = useCallback<NonNullable<FlowProps['onNodesDelete']>>((deleted) => {
     runtime.current.onRemove(deleted.map((node) => node.id));
   }, []);
@@ -445,6 +539,33 @@ export function ScenarioCanvas({
         incomingByTarget.set(target, [...(incomingByTarget.get(target) ?? []), reaction.id]);
       }
 
+    const targetTitleById = new Map<string, string>([
+      ...def.nodes.map((node) => [node.id, node.title || 'Без названия'] as const),
+      ...def.endings.map((ending) => [ending.id, ending.title || 'Финал'] as const),
+    ]);
+    const positions = new Map<string, { x: number; y: number }>();
+    for (const node of def.nodes)
+      positions.set(node.id, doc.editor.positions[node.id] ?? defaults[node.id] ?? { x: 0, y: 0 });
+    for (const ending of def.endings)
+      positions.set(ending.id, doc.editor.positions[ending.id] ?? defaults[ending.id] ?? { x: 0, y: 0 });
+
+    const routeRects: RouteRect[] = [
+      ...def.nodes.map((node) => {
+        const position = positions.get(node.id)!;
+        return {
+          id: node.id,
+          x: position.x - 18,
+          y: position.y - 18,
+          width: 328,
+          height: 231 + node.reactions.length * 42,
+        };
+      }),
+      ...def.endings.map((ending) => {
+        const position = positions.get(ending.id)!;
+        return { id: ending.id, x: position.x - 18, y: position.y - 18, width: 328, height: 171 };
+      }),
+    ];
+
     const cards: CardNode[] = [
       ...def.nodes.map((node) => {
         const character = def.characters.find((c) => c.id === node.characterId);
@@ -452,7 +573,7 @@ export function ScenarioCanvas({
           id: node.id,
           type: 'dialogue',
           ariaLabel: `Реплика: ${node.title || 'Без названия'}`,
-          position: doc.editor.positions[node.id] ?? defaults[node.id],
+          position: positions.get(node.id)!,
           selected: selectedIds.has(node.id),
           data: {
             title: node.title,
@@ -462,15 +583,21 @@ export function ScenarioCanvas({
             stage: def.stages.find((s) => s.id === node.stageId)?.title,
             start: def.startNodeId === node.id,
             incomingIds: incomingByTarget.get(node.id) ?? [],
+            routeEmphasis: 'normal',
             ...flags(node.id),
             reactions: node.reactions.map((reaction) => ({
               id: reaction.id,
               label: reaction.label,
               linked: !!(reaction.nextNodeId || reaction.endingId),
               selected: activeSelection.type === 'reaction' && activeSelection.id === reaction.id,
+              emphasis: 'normal',
+              targetTitle: targetTitleById.get(reaction.nextNodeId || reaction.endingId || ''),
             })),
             selectReaction: (id: string) =>
               runtime.current.onSelect({ type: 'reaction', id, nodeId: node.id }),
+            hoverReaction: setHoveredReactionId,
+            focusReaction: (id: string) =>
+              setFocusedReactionId((current) => (current === id ? null : id)),
           },
         } satisfies CardNode;
       }),
@@ -480,13 +607,14 @@ export function ScenarioCanvas({
             id: ending.id,
             type: 'ending',
             ariaLabel: `Финал: ${ending.title || 'Без названия'}`,
-            position: doc.editor.positions[ending.id] ?? defaults[ending.id],
+            position: positions.get(ending.id)!,
             selected: selectedIds.has(ending.id),
             data: {
               title: ending.title,
               text: ending.description,
               endingType: ending.type,
               incomingIds: incomingByTarget.get(ending.id) ?? [],
+              routeEmphasis: 'normal',
               ...flags(ending.id),
             },
           }) satisfies CardNode,
@@ -496,10 +624,15 @@ export function ScenarioCanvas({
     setNodes(cards);
     setEdges(
       def.nodes.flatMap((node) =>
-        node.reactions.flatMap((reaction): Edge[] => {
+        node.reactions.flatMap((reaction, reactionIndex): MakerEdge[] => {
           const target = reaction.nextNodeId || reaction.endingId;
           if (!target || !cards.some((card) => card.id === target)) return [];
           const selected = activeSelection.type === 'reaction' && activeSelection.id === reaction.id;
+          const sourceLane = reactionIndex - (node.reactions.length - 1) / 2;
+          const incoming = incomingByTarget.get(target) ?? [];
+          const targetIndex = incoming.indexOf(reaction.id);
+          const targetLane = targetIndex >= 0 ? targetIndex - (incoming.length - 1) / 2 : 0;
+          const lane = sourceLane * 0.65 + targetLane * 0.35;
           return [
             {
               id: reaction.id,
@@ -507,12 +640,16 @@ export function ScenarioCanvas({
               sourceHandle: reaction.id,
               target,
               targetHandle: `in-${reaction.id}`,
-              type: 'smoothstep',
+              type: 'makerRoute',
               ariaLabel: `Переход: ${reaction.label || 'Без названия'}`,
               markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
               selected,
-              zIndex: selected ? 4 : 1,
-              label: selected ? reaction.label : undefined,
+              zIndex: selected ? 8 : 1,
+              data: {
+                lane,
+                emphasis: selected ? 'active' : 'normal',
+                obstacles: routeRects.filter((rect) => rect.id !== node.id && rect.id !== target),
+              },
             },
           ];
         }),
@@ -536,30 +673,96 @@ export function ScenarioCanvas({
           : [],
     );
     const selectedReaction = selection.type === 'reaction' ? selection.id : '';
-    const reactionLabels = new Map(
-      doc.definition.nodes.flatMap((node) =>
-        node.reactions.map((reaction) => [reaction.id, reaction.label] as const),
-      ),
-    );
+    const relations = new Map<string, { source: string; target: string }>();
+    for (const node of doc.definition.nodes)
+      for (const reaction of node.reactions) {
+        const target = reaction.nextNodeId || reaction.endingId;
+        if (target) relations.set(reaction.id, { source: node.id, target });
+      }
+
+    const focusEdgeIds = new Set<string>();
+    const focusNodeIds = new Set<string>();
+    if (focusedReactionId && relations.has(focusedReactionId)) {
+      const first = relations.get(focusedReactionId)!;
+      focusEdgeIds.add(focusedReactionId);
+      focusNodeIds.add(first.source);
+      const queue = [first.target];
+      for (let cursor = 0; cursor < queue.length; cursor++) {
+        const id = queue[cursor];
+        if (focusNodeIds.has(id)) continue;
+        focusNodeIds.add(id);
+        const dialogue = doc.definition.nodes.find((node) => node.id === id);
+        if (!dialogue) continue;
+        for (const reaction of dialogue.reactions) {
+          const target = reaction.nextNodeId || reaction.endingId;
+          if (!target) continue;
+          focusEdgeIds.add(reaction.id);
+          if (!focusNodeIds.has(target)) queue.push(target);
+        }
+      }
+    }
+
+    const activeEdgeIds = new Set<string>();
+    const primaryReaction = hoveredReactionId || selectedReaction;
+    if (primaryReaction && relations.has(primaryReaction)) activeEdgeIds.add(primaryReaction);
+    else if (selection.type === 'node' || selection.type === 'ending') {
+      for (const [reactionId, relation] of relations)
+        if (relation.source === selection.id || relation.target === selection.id)
+          activeEdgeIds.add(reactionId);
+    }
+
+    const activeNodeIds = new Set<string>();
+    for (const reactionId of activeEdgeIds) {
+      const relation = relations.get(reactionId);
+      if (!relation) continue;
+      activeNodeIds.add(relation.source);
+      activeNodeIds.add(relation.target);
+    }
+    const activeTarget = activeEdgeIds.size === 1
+      ? relations.get([...activeEdgeIds][0])?.target
+      : undefined;
+    const focusActive = focusNodeIds.size > 0;
+    const localActive = activeEdgeIds.size > 0;
 
     setNodes((currentNodes) => {
       let changed = false;
       const nextNodes = currentNodes.map((node) => {
         const selected = selectedIds.has(node.id);
+        let routeEmphasis: RouteEmphasis = 'normal';
+        if (focusActive) routeEmphasis = focusNodeIds.has(node.id) ? 'focus' : 'dimmed';
+        else if (localActive) routeEmphasis = activeNodeIds.has(node.id) ? 'active' : 'dimmed';
+        const routeTarget = activeTarget === node.id;
+        const zIndex = routeEmphasis === 'active' ? 8 : routeEmphasis === 'focus' ? 5 : routeEmphasis === 'dimmed' ? 0 : selected ? 4 : 1;
         let data = node.data;
+        let dataChanged = data.routeEmphasis !== routeEmphasis || !!data.routeTarget !== routeTarget;
         if (data.reactions) {
           let reactionsChanged = false;
           const reactions = data.reactions.map((reaction) => {
             const reactionSelected = reaction.id === selectedReaction;
-            if (reaction.selected === reactionSelected) return reaction;
+            const hovered = reaction.id === hoveredReactionId;
+            let emphasis: RouteEmphasis = 'normal';
+            if (focusActive) {
+              if (!focusEdgeIds.has(reaction.id)) emphasis = 'dimmed';
+              else emphasis = activeEdgeIds.has(reaction.id) ? 'active' : 'focus';
+            } else if (localActive) emphasis = activeEdgeIds.has(reaction.id) ? 'active' : 'dimmed';
+            if (
+              reaction.selected === reactionSelected &&
+              !!reaction.hovered === hovered &&
+              reaction.emphasis === emphasis
+            )
+              return reaction;
             reactionsChanged = true;
-            return { ...reaction, selected: reactionSelected };
+            return { ...reaction, selected: reactionSelected, hovered, emphasis };
           });
-          if (reactionsChanged) data = { ...data, reactions };
+          if (reactionsChanged) {
+            data = { ...data, reactions };
+            dataChanged = true;
+          }
         }
-        if (node.selected === selected && data === node.data) return node;
+        if (dataChanged) data = { ...data, routeEmphasis, routeTarget };
+        if (node.selected === selected && node.zIndex === zIndex && data === node.data) return node;
         changed = true;
-        return { ...node, selected, data };
+        return { ...node, selected, zIndex, data };
       });
       return changed ? nextNodes : currentNodes;
     });
@@ -568,15 +771,43 @@ export function ScenarioCanvas({
       let changed = false;
       const nextEdges = currentEdges.map((edge) => {
         const selected = edge.id === selectedReaction;
-        const label = selected ? reactionLabels.get(edge.id) : undefined;
-        const zIndex = selected ? 4 : 1;
-        if (edge.selected === selected && edge.label === label && edge.zIndex === zIndex) return edge;
+        let emphasis: RouteEmphasis = 'normal';
+        if (focusActive) {
+          if (!focusEdgeIds.has(edge.id)) emphasis = 'dimmed';
+          else emphasis = activeEdgeIds.has(edge.id) ? 'active' : 'focus';
+        } else if (localActive) emphasis = activeEdgeIds.has(edge.id) ? 'active' : 'dimmed';
+        const zIndex = emphasis === 'active' ? 10 : emphasis === 'focus' ? 5 : emphasis === 'dimmed' ? 0 : 1;
+        const currentData = (edge.data ?? {}) as MakerRouteData;
+        if (edge.selected === selected && edge.zIndex === zIndex && currentData.emphasis === emphasis)
+          return edge;
         changed = true;
-        return { ...edge, selected, label, zIndex };
+        return {
+          ...edge,
+          selected,
+          zIndex,
+          label: undefined,
+          data: { ...currentData, emphasis },
+        };
       });
       return changed ? nextEdges : currentEdges;
     });
-  }, [doc.definition, selection, setEdges, setNodes]);
+  }, [
+    doc.definition,
+    focusedReactionId,
+    hoveredReactionId,
+    selection,
+    setEdges,
+    setNodes,
+  ]);
+
+  const canFocusSelectedReaction =
+    selection.type === 'reaction' &&
+    doc.definition.nodes.some((node) =>
+      node.reactions.some(
+        (reaction) =>
+          reaction.id === selection.id && !!(reaction.nextNodeId || reaction.endingId),
+      ),
+    );
 
   return (
     <div
@@ -591,6 +822,7 @@ export function ScenarioCanvas({
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
           onNodesChange={handleNodesChange}
           onEdgesChange={handleEdgesChange}
           onInit={handleInit}
@@ -602,6 +834,9 @@ export function ScenarioCanvas({
           onSelectionChange={handleSelectionChange}
           onPaneClick={handlePaneClick}
           onEdgeClick={handleEdgeClick}
+          onEdgeMouseEnter={handleEdgeMouseEnter}
+          onEdgeMouseLeave={handleEdgeMouseLeave}
+          onEdgeDoubleClick={handleEdgeDoubleClick}
           onNodesDelete={handleNodesDelete}
           onEdgesDelete={handleEdgesDelete}
           onConnect={handleConnect}
@@ -683,6 +918,19 @@ export function ScenarioCanvas({
                       </div>
                     </section>
                     <section>
+                      <h3>Навигация по сложному графу</h3>
+                      <div className="maker-canvas-help-grid">
+                        <kbd>Навести</kbd>
+                        <p>Подсвечивает только выбранную реакцию, её линию и карточку назначения.</p>
+                        <kbd>Клик по реплике</kbd>
+                        <p>Показывает все входящие и исходящие связи этой реплики.</p>
+                        <kbd>Двойной клик</kbd>
+                        <p>Фиксирует ветку от реакции до следующих реплик и финалов. Остальной граф приглушается.</p>
+                        <kbd>Показать ветку</kbd>
+                        <p>То же действие доступно снизу, когда выбрана связанная реакция. «Вся схема» возвращает полный граф.</p>
+                      </div>
+                    </section>
+                    <section>
                       <h3>История изменений</h3>
                       <div className="maker-canvas-help-grid">
                         <kbd>Ctrl + Z</kbd>
@@ -705,6 +953,27 @@ export function ScenarioCanvas({
                   <Icon name="branch" size={15} />
                   Упорядочить
                 </button>
+                {(focusedReactionId || canFocusSelectedReaction) && (
+                  <>
+                    <span className="maker-canvas-dock-separator" aria-hidden="true" />
+                    <button
+                      type="button"
+                      className={focusedReactionId ? 'is-active' : ''}
+                      onClick={() =>
+                        setFocusedReactionId(
+                          focusedReactionId
+                            ? null
+                            : selection.type === 'reaction'
+                              ? selection.id
+                              : null,
+                        )
+                      }
+                    >
+                      <Icon name="branch" size={15} />
+                      {focusedReactionId ? 'Вся схема' : 'Показать ветку'}
+                    </button>
+                  </>
+                )}
                 <span className="maker-canvas-dock-separator" aria-hidden="true" />
                 <button
                   type="button"
