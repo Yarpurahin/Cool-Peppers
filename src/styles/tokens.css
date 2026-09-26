@@ -1,12 +1,10 @@
 :root {
   font-family: 'Manrope Variable', 'Segoe UI', sans-serif;
-  color: var(--ink);
-  background: var(--bg);
+  color: #26352f;
+  background: #f7f7f2;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  color-scheme: light;
-  --on-accent: #ffffff;
   --bg: #f7f7f2;
   --surface: #ffffff;
   --ink: #26352f;
@@ -23,33 +21,4 @@
   --peach: #f4e5dc;
   --radius: 20px;
   --shadow: 0 12px 36px rgb(32 52 39 / 5%);
-}
-
-/* Forest charcoal, soft sage and warm coral. All controls use the same tokens. */
-:root[data-theme='dark'] {
-  color-scheme: dark;
-  --bg: #111b17;
-  --surface: #1b2822;
-  --ink: #e7ede8;
-  --muted: #a7b6aa;
-  --line: #34473b;
-  --orange: #f29470;
-  --orange-hover: #ffa98b;
-  --green: #94cbae;
-  --green-hover: #b0dbc3;
-  --sage: #263d30;
-  --sand: #39362a;
-  --peach: #402d26;
-  --focus: #b0d3b8;
-  --focus-ring: rgb(176 211 184 / 20%);
-  --shadow: 0 12px 36px rgb(0 0 0 / 22%);
-  --on-accent: #112419;
-  --tone-ink: var(--ink);
-  --tone-muted: var(--muted);
-  --tone-orange: #ffa791;
-  --tone-green: var(--green);
-  --tone-border: var(--line);
-  --tone-soft: #223229;
-  --tone-warm: #3a3027;
-  --tone-decoration: #466452;
 }

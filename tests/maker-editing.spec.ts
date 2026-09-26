@@ -30,7 +30,7 @@ test('unsaved work survives reload; editing a field is one undo step and panel w
   await expect(text).toHaveValue('Добрый день');
   await page.getByRole('button', { name: 'Добавить реакцию', exact: true }).click();
   await page.getByLabel('Название реакции').fill('Обсудить условия');
-  await page.getByRole('button', { name: 'Готово', exact: true }).click();
+  await page.getByRole('button', { name: 'Готово — вернуться к реплике' }).click();
   await expect(text).toHaveValue('Добрый день');
   await page.getByRole('button', { name: 'Настройки', exact: true }).click();
   await page.getByLabel('Разрешить повторное прохождение').uncheck();
@@ -69,7 +69,7 @@ test('unsaved work survives reload; editing a field is one undo step and panel w
   const server = await (await page.request.get(`/api/editor/${id}`)).json();
   expect(server.definition.nodes[0].text).toBe('');
   await page.getByLabel('Поиск реплики').focus();
-  await expect(page.locator('.maker-search')).not.toHaveCSS('box-shadow', 'none');
+  await expect(page.locator('.maker-search')).toHaveCSS('outline-style', 'solid');
   await expect(page.getByLabel('Поиск реплики')).toHaveCSS('outline-style', 'none');
   await page.getByRole('button', { name: 'Сохранить черновик', exact: true }).click();
   await expect(page.locator('.maker-notice')).toHaveText('Черновик сохранён.');
@@ -90,17 +90,13 @@ test('unsaved work survives reload; editing a field is one undo step and panel w
   });
   await page.reload();
   await expect(text).toHaveValue('Локальная версия во время конфликта');
-  await expect(
-    page.getByRole('button', { name: 'Сохранить черновик', exact: true }),
-  ).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Сохранить черновик', exact: true })).toBeDisabled();
   await page.getByRole('button', { name: 'Загрузить серверную версию' }).click();
   await page.locator('.maker-node-list').first().getByRole('button').first().click();
   await expect(text).toHaveValue('Работа из другой вкладки');
 });
 
-test('maker sections stay selected and React Flow initializes before interaction', async ({
-  page,
-}) => {
+test('maker sections stay selected and React Flow initializes before interaction', async ({ page }) => {
   const flowWarnings: string[] = [];
   page.on('console', (message) => {
     if (message.type() === 'warning' && message.text().includes('[React Flow]'))
@@ -113,28 +109,8 @@ test('maker sections stay selected and React Flow initializes before interaction
   ).json();
   await page.goto(`/admin/scenarios/${id}`);
   await expect(page.getByTestId('maker-canvas')).toBeVisible();
-  await page.getByRole('button', { name: 'Закрыть свойства' }).click();
   await page.getByRole('button', { name: 'Подсказки по работе с полотном' }).click();
-  const help = page.getByRole('dialog', { name: 'Справка по полотну' });
-  await help.getByRole('button', { name: 'История', exact: true }).click();
-  await expect(help).toContainText('Ctrl + Y');
-  for (const viewport of [
-    { width: 320, height: 640 },
-    { width: 1280, height: 590 },
-  ]) {
-    await page.setViewportSize(viewport);
-    for (const section of ['Полотно', 'Связи', 'История']) {
-      await help.getByRole('button', { name: section, exact: true }).click();
-      const bounds = (await help.boundingBox())!;
-      expect(bounds.x).toBeGreaterThanOrEqual(0);
-      expect(bounds.y).toBeGreaterThanOrEqual(0);
-      expect(bounds.x + bounds.width).toBeLessThanOrEqual(viewport.width);
-      expect(bounds.y + bounds.height).toBeLessThanOrEqual(viewport.height);
-      await expect(help).toHaveCSS('overflow-y', 'visible');
-    }
-  }
-  await page.screenshot({ path: 'test-results/maker-help-compact.png' });
-  await page.setViewportSize({ width: 1180, height: 820 });
+  await expect(page.getByRole('dialog', { name: 'Справка по полотну' })).toContainText('Ctrl + Y');
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog', { name: 'Справка по полотну' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Настройки', exact: true }).click();
@@ -231,13 +207,16 @@ test('reaction ports switch sides when a target moves; the start port is hidden'
   await page.goto(`/admin/scenarios/${id}`);
   const handle = page.getByTestId('handle-left_reply');
   await expect(handle).toHaveClass(/react-flow__handle-left/);
-  await expect(page.locator('[data-id="node_1"] .react-flow__handle.target')).toHaveCount(0);
+  await expect(page.locator('[data-id="node_1"] .react-flow__handle.target')).toHaveCSS(
+    'opacity',
+    '0',
+  );
   await expect(page.getByRole('button', { name: 'Автораскладка', exact: true })).toHaveCount(0);
   const target = page.locator('.react-flow__node[data-id="node_2"]');
   await target.focus();
   await page.keyboard.press('Enter');
   await expect(page.getByLabel('Название блока')).toHaveValue('Вторая реплика');
-  for (let i = 0; i < 40; i++) await page.keyboard.press('Shift+ArrowRight');
+  for (let i = 0; i < 20; i++) await page.keyboard.press('Shift+ArrowRight');
   await expect(handle).toHaveClass(/react-flow__handle-right/);
   await page.reload();
   await expect(handle).toHaveClass(/react-flow__handle-right/);
@@ -256,10 +235,7 @@ test('creation form recovers its fields and fits narrow screens; metadata and ac
     'Мобильный сценарий',
   );
   await expect(page.locator('.admin-sidebar-user')).toHaveCount(0);
-  await expect(page.locator('summary.account-trigger')).toHaveAttribute(
-    'aria-label',
-    /администратор/,
-  );
+  await expect(page.locator('summary.account-trigger')).toHaveAttribute('aria-label', /администратор/);
   await page.locator('summary.account-trigger').click();
   await expect(page.getByRole('link', { name: 'Профиль и безопасность' })).toBeVisible();
   await page.locator('summary.account-trigger').click();
@@ -269,7 +245,7 @@ test('creation form recovers its fields and fits narrow screens; metadata and ac
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
     );
-    const button = page.getByRole('button', { name: 'Создать сценарий', exact: true });
+    const button = page.getByRole('button', { name: 'Создать и открыть конструктор' });
     await expect(button).toBeVisible();
     expect(await button.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
     await page.screenshot({ path: `test-results/admin-create-${width}.png`, fullPage: true });
@@ -283,11 +259,8 @@ test('creation form recovers its fields and fits narrow screens; metadata and ac
   );
 });
 
-test('maker imports Arena JSON from settings and keeps the database scenario id', async ({
-  page,
-}) => {
+test('maker imports Arena JSON from settings and keeps the database scenario id', async ({ page }) => {
   page.on('dialog', (dialog) => void dialog.accept());
-  await page.emulateMedia({ colorScheme: 'dark' });
   await page.setViewportSize({ width: 1280, height: 860 });
   await loginAdmin(page);
   const { id } = await (
@@ -324,13 +297,13 @@ test('maker imports Arena JSON from settings and keeps the database scenario id'
 
   await page.goto(`/admin/scenarios/${id}`);
   await page.getByRole('button', { name: 'Настройки', exact: true }).click();
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await page.screenshot({ path: 'test-results/maker-json-dark.png' });
-  await page.getByLabel('Выбрать JSON-файл сценария').setInputFiles({
-    name: 'scenario.json',
-    mimeType: 'application/json',
-    buffer: Buffer.from(JSON.stringify(file)),
-  });
+  await page
+    .getByLabel('Выбрать JSON-файл сценария')
+    .setInputFiles({
+      name: 'scenario.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(file)),
+    });
 
   await expect(page.locator('.maker-heading h1')).toHaveText('Сценарий из JSON');
   await expect(page.locator('.maker-notice')).toContainText('JSON импортирован');

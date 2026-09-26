@@ -1,7 +1,6 @@
-import { RequestFailure } from '../components/ui/RequestFailure.tsx';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { api, actionErrorMessage } from '../api/client.ts';
+import { api, errorMessage } from '../api/client.ts';
 import { useCatalog } from '../app/DataProvider.tsx';
 import type { AdminScenarioSummary } from '../types/api.ts';
 import { Button, ButtonLink } from '../components/ui/Button.tsx';
@@ -19,16 +18,6 @@ function formatDate(value: string) {
 }
 
 export function EditorListPage() {
-  const { catalogStatus } = useCatalog();
-  if (catalogStatus === 'loading')
-    return (
-      <div className="container page" role="status">
-        Загружаем сценарии…
-      </div>
-    );
-  return <EditorListContent />;
-}
-function EditorListContent() {
   const { scenarios, refreshCatalog, user } = useCatalog();
   const navigate = useNavigate();
   const location = useLocation();
@@ -36,7 +25,6 @@ function EditorListContent() {
   const routeBase = adminMode ? '/admin/scenarios' : '/editor';
   const [rows, setRows] = useState<AdminScenarioSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<unknown>(null);
   const creationKey = `arena:scenario-create:${user!.id}`;
   const [creation, setCreation] = useState(() => {
     try {
@@ -73,7 +61,7 @@ function EditorListContent() {
 
   useEffect(() => {
     void load()
-      .catch(setLoadError)
+      .catch((cause) => setError(errorMessage(cause)))
       .finally(() => setLoading(false));
   }, []);
 
@@ -86,7 +74,6 @@ function EditorListContent() {
     });
   }, [query, rows, status]);
 
-  if (loadError && !rows.length) return <RequestFailure error={loadError} />;
   return (
     <div
       className={adminMode ? 'admin-page admin-scenarios-page' : 'container page editor-list-page'}
@@ -153,14 +140,14 @@ function EditorListContent() {
                 });
                 navigate(`${routeBase}/${result.id}`);
               } catch (cause) {
-                setError(actionErrorMessage(cause));
+                setError(errorMessage(cause));
               } finally {
                 setBusy(false);
               }
             }}
           >
-            <span>{sourceId ? 'Создать' : 'Создать сценарий'}</span>
             <Icon name="arrow" />
+            <span>{sourceId ? 'Создать' : 'Создать сценарий'}</span>
           </Button>
         </div>
       </section>
@@ -266,7 +253,7 @@ function EditorListContent() {
                         await load();
                         await refreshCatalog();
                       } catch (cause) {
-                        setError(actionErrorMessage(cause));
+                        setError(errorMessage(cause));
                       } finally {
                         setBusy(false);
                       }
@@ -300,7 +287,7 @@ function EditorListContent() {
                       }
                       await refreshCatalog();
                     } catch (cause) {
-                      setError(actionErrorMessage(cause));
+                      setError(errorMessage(cause));
                     } finally {
                       setBusy(false);
                     }

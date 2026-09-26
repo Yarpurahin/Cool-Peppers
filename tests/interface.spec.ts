@@ -53,9 +53,9 @@ test('registration form, profile editing, logout and login work', async ({ page 
   await expect(page.getByRole('status')).toContainText('Изменения сохранены');
   await page.reload();
   await expect(page.getByLabel('Имя', { exact: true })).toHaveValue('Андрей Тест');
-  await page.getByLabel('Текущий пароль', { exact: true }).fill('Test-password-2026');
+  await page.getByLabel('Текущий пароль').fill('Test-password-2026');
   await page.getByLabel('Новый пароль', { exact: true }).fill('Updated-password-2026');
-  await page.getByLabel('Повторите новый пароль', { exact: true }).fill('Updated-password-2026');
+  await page.getByLabel('Повторите новый пароль').fill('Updated-password-2026');
   await page.getByRole('button', { name: 'Изменить пароль' }).click();
   await expect(page.getByRole('status')).toContainText('Пароль изменён');
   await page.getByRole('button', { name: 'Выйти', exact: true }).click();
@@ -94,7 +94,7 @@ test('editor is admin-only and an admin can publish a persisted scenario', async
   const id = page.url().split('/').at(-1);
   await page.goto(`/scenarios/${id}`);
   await expect(page.locator('h1')).toHaveText(title);
-  await page.getByRole('button', { name: 'Начать переговоры', exact: true }).click();
+  await page.getByRole('link', { name: 'Начать переговоры', exact: true }).click();
   await expect(page.locator('.dialogue-message')).toContainText(
     'Что для вас важно в новом предложении?',
   );

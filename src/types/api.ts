@@ -12,8 +12,6 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
-  isSuperAdmin: boolean;
-  avatar: string | null;
   createdAt: string;
 }
 export interface ScenarioDocument {

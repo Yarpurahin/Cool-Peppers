@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 
-export function Logo({ replace = false }: { replace?: boolean }) {
+export function Logo() {
   return (
-    <Link to="/" replace={replace} className="brand" aria-label="Арена — главная">
+    <Link to="/" className="brand" aria-label="Арена — главная">
       <svg width="34" height="34" viewBox="0 0 40 40" aria-hidden="true">
         <rect width="40" height="40" rx="12" fill="currentColor" />
         <path

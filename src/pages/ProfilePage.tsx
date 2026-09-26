@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Avatar } from '../components/ui/Avatar.tsx';
-import { AvatarSettings } from '../components/ui/AvatarSettings.tsx';
-import { changePasswordSchema } from '../types/validation.ts';
-import { api, actionErrorMessage, errorMessage } from '../api/client.ts';
+import { Link } from 'react-router-dom';
+import { api, errorMessage } from '../api/client.ts';
 import { useCatalog } from '../app/DataProvider.tsx';
 import type { HistoryRow, User } from '../types/api.ts';
 import { Button } from '../components/ui/Button.tsx';
@@ -26,7 +24,7 @@ export function ProfilePage() {
   const [passwordError, setPasswordError] = useState('');
   const [passwordNotice, setPasswordNotice] = useState('');
   const [passwordBusy, setPasswordBusy] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState('');
+  const [retry, setRetry] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
     setHistoryError('');
@@ -36,8 +34,14 @@ export function ProfilePage() {
         if (!controller.signal.aborted) setHistoryError(errorMessage(cause));
       });
     return () => controller.abort();
-  }, [offset]);
+  }, [offset, retry]);
   if (!user) return null;
+  const initials = user.name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase();
   return (
     <div className="container page profile-page">
       <div className="section-heading">
@@ -51,7 +55,7 @@ export function ProfilePage() {
           onClick={() => {
             setBusy(true);
             void logout().catch((cause) => {
-              setError(actionErrorMessage(cause));
+              setError(errorMessage(cause));
               setBusy(false);
             });
           }}
@@ -61,7 +65,7 @@ export function ProfilePage() {
       </div>
       <div className="profile-overview">
         <div className="profile-person">
-          <Avatar name={user.name} image={user.avatar} className="avatar avatar--large" />
+          <span className="avatar avatar--large">{initials}</span>
           <div>
             <h2>{user.name}</h2>
             <p>{user.role === 'admin' ? 'Администратор Арены' : 'Участник Арены'}</p>
@@ -88,7 +92,6 @@ export function ProfilePage() {
           <h2>Личные данные</h2>
           <Icon name="user" />
         </div>
-        <AvatarSettings />
         <form
           onSubmit={async (event) => {
             event.preventDefault();
@@ -106,7 +109,7 @@ export function ProfilePage() {
               );
               setNotice('Изменения сохранены.');
             } catch (cause) {
-              setError(actionErrorMessage(cause));
+              setError(errorMessage(cause));
             } finally {
               setBusy(false);
             }
@@ -152,14 +155,11 @@ export function ProfilePage() {
         <div className="panel-heading">
           <div>
             <h2>Безопасность</h2>
-            <p>
-              Смените пароль аккаунта. После сохранения остальные активные сессии будут завершены.
-            </p>
+            <p>Смените пароль аккаунта. После сохранения остальные активные сессии будут завершены.</p>
           </div>
           <Icon name="lock" />
         </div>
         <form
-          noValidate
           onSubmit={async (event) => {
             event.preventDefault();
             if (passwordBusy) return;
@@ -170,19 +170,6 @@ export function ProfilePage() {
             const repeatPassword = String(data.get('repeatPassword') ?? '');
             setPasswordError('');
             setPasswordNotice('');
-            if (!currentPassword) {
-              setPasswordError('Введите текущий пароль.');
-              return;
-            }
-            const input = changePasswordSchema.safeParse({ currentPassword, newPassword });
-            if (!input.success) {
-              setPasswordError(
-                currentPassword === newPassword
-                  ? 'Новый пароль должен отличаться от текущего.'
-                  : 'Пароль должен содержать от 8 до 128 символов.',
-              );
-              return;
-            }
             if (newPassword !== repeatPassword) {
               setPasswordError('Новые пароли не совпадают.');
               return;
@@ -194,27 +181,21 @@ export function ProfilePage() {
                 body: { currentPassword, newPassword },
               });
               form.reset();
-              setCurrentPassword('');
               setPasswordNotice('Пароль изменён. Остальные активные сессии завершены.');
             } catch (cause) {
-              setPasswordError(actionErrorMessage(cause));
+              setPasswordError(errorMessage(cause));
             } finally {
               setPasswordBusy(false);
             }
           }}
         >
           <div className="password-change-grid">
-            <PasswordField
-              label="Текущий пароль"
-              name="currentPassword"
-              value={currentPassword}
-              onChange={(event) => setCurrentPassword(event.target.value)}
-            />
+            <PasswordField label="Текущий пароль" name="currentPassword" />
             <PasswordField label="Новый пароль" name="newPassword" newPassword />
             <PasswordField label="Повторите новый пароль" name="repeatPassword" newPassword />
           </div>
           <div className="form-bottom">
-            <Button type="submit" disabled={passwordBusy || !currentPassword} variant="secondary">
+            <Button type="submit" disabled={passwordBusy} variant="secondary">
               <Icon name="lock" size={17} />
               {passwordBusy ? 'Сохраняем…' : 'Изменить пароль'}
             </Button>
@@ -231,9 +212,20 @@ export function ProfilePage() {
         <div className="panel-heading">
           <h2>История практики</h2>
         </div>
-        {historyError && <p role="status">История временно недоступна.</p>}
+        {historyError && (
+          <p role="alert">
+            {historyError}{' '}
+            <Button variant="outline" onClick={() => setRetry((n) => n + 1)}>
+              Повторить
+            </Button>
+          </p>
+        )}
         {!history && !historyError && <p role="status">Загружаем историю…</p>}
-        {history?.total === 0 && <p>История пока пуста. Выберите сценарий и начните тренировку.</p>}
+        {history?.total === 0 && (
+          <p>
+            История пока пуста. <Link to="/scenarios">Выберите сценарий</Link> и начните тренировку.
+          </p>
+        )}
         <div className="history-list">
           {history?.rows.map((row) => (
             <article className="history-row" key={row.id}>
@@ -255,6 +247,10 @@ export function ProfilePage() {
                 <strong>{row.penalties}</strong>
                 <span> штрафов</span>
               </div>
+              <Link className="review-link" to={`/attempts/${row.id}`}>
+                {row.status === 'completed' ? 'Разбор' : 'История'}{' '}
+                <Icon name="upRight" size={18} />
+              </Link>
             </article>
           ))}
         </div>

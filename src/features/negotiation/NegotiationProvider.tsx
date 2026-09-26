@@ -15,7 +15,7 @@ interface ContextValue {
   loading: boolean;
   error: string;
   reload: () => Promise<void>;
-  ensure: (id: string, refresh?: boolean) => Promise<Entry>;
+  ensure: (id: string) => Promise<Entry>;
   submit: (id: string, nodeId: string, answerId: string) => Promise<ScenarioAttempt>;
   restart: (id: string) => Promise<void>;
   saveFeedback: (
@@ -87,9 +87,9 @@ export function NegotiationProvider({ children }: { children: ReactNode }) {
         loading,
         error,
         reload,
-        ensure: async (id, refresh = false) => {
+        ensure: async (id) => {
           const existing = latest.current.get(id);
-          if (existing && !refresh) return existing;
+          if (existing) return existing;
           const running = pending.current.get(id);
           if (running) return running;
           const promise = api<AttemptDetail>(`/scenarios/${encodeURIComponent(id)}/attempts`, {

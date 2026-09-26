@@ -1,8 +1,6 @@
-import { useRef, useState } from 'react';
-import { api, actionErrorMessage } from '../api/client.ts';
-import { Link, useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useCatalog } from '../app/DataProvider.tsx';
-import { Button } from '../components/ui/Button.tsx';
+import { ButtonLink } from '../components/ui/Button.tsx';
 import { Icon } from '../components/ui/Icon.tsx';
 import { ScenarioArt } from '../components/scenarios/ScenarioArt.tsx';
 import { ScenarioMeta } from '../components/scenarios/ScenarioMeta.tsx';
@@ -10,15 +8,11 @@ import { useNegotiation } from '../features/negotiation/NegotiationProvider.tsx'
 import { ErrorPage } from './ErrorPage.tsx';
 
 export function ScenarioPage() {
-  const { findScenario, findNegotiation, user } = useCatalog();
+  const { findScenario, findNegotiation } = useCatalog();
   const { scenarioId } = useParams();
   const scenario = findScenario(scenarioId);
   const negotiation = findNegotiation(scenarioId);
-  const { entries, ensure } = useNegotiation();
-  const navigate = useNavigate();
-  const lock = useRef(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  const { entries } = useNegotiation();
   const attempt = entries.get(scenarioId ?? '')?.attempt;
   const completed = attempt?.status === 'completed';
   const canResume = attempt?.status === 'in-progress' && attempt.history.length > 0;
@@ -94,30 +88,8 @@ export function ScenarioPage() {
           <div className="counterpart-bottom">
             <p className="eyebrow">Ваша роль</p>
             <strong>{scenario.role}</strong>
-            <Button
-              disabled={busy}
-              onClick={async () => {
-                if (lock.current) return;
-                lock.current = true;
-                setBusy(true);
-                setError('');
-                try {
-                  if (!user) {
-                    await api('/health');
-                    navigate(`/login?next=${encodeURIComponent(`/scenarios/${scenario.id}/play`)}`);
-                  } else {
-                    const value = await ensure(scenario.id, true);
-                    navigate(
-                      `/scenarios/${scenario.id}/${value.attempt.status === 'completed' ? 'result' : 'play'}`,
-                    );
-                  }
-                } catch (cause) {
-                  setError(actionErrorMessage(cause));
-                } finally {
-                  lock.current = false;
-                  setBusy(false);
-                }
-              }}
+            <ButtonLink
+              to={`/scenarios/${scenario.id}/${completed ? 'result' : 'play'}`}
               className="button--full"
             >
               {negotiation
@@ -128,12 +100,7 @@ export function ScenarioPage() {
                     : 'Начать переговоры'
                 : 'Открыть диалог'}{' '}
               <Icon name="arrow" size={18} />
-            </Button>
-            {error && (
-              <p role="alert" className="field-error">
-                {error}
-              </p>
-            )}
+            </ButtonLink>
             <p className="subtle-caption">
               {negotiation ? 'Можно сделать паузу и вернуться' : 'Демонстрация экрана переговоров'}
             </p>

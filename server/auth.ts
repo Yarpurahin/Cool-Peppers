@@ -35,8 +35,6 @@ export function publicUser(row: {
   email: string;
   role: UserRole;
   created_at: Date;
-  is_super_admin: boolean;
-  avatar_data: string | null;
 }): User {
   return {
     id: row.id,
@@ -44,8 +42,6 @@ export function publicUser(row: {
     email: row.email,
     role: row.role,
     createdAt: row.created_at.toISOString(),
-    isSuperAdmin: row.is_super_admin === true,
-    avatar: row.avatar_data ?? null,
   };
 }
 export async function newSession(db: Database, userId: string, req: Request, res: Response) {
@@ -96,12 +92,6 @@ export function admin(res: Response): User {
   const currentUser = user(res);
   if (currentUser.role !== 'admin')
     throw new ApiError(403, 'Доступ к редактору сценариев разрешён только администратору');
-  return currentUser;
-}
-export function superAdmin(res: Response): User {
-  const currentUser = admin(res);
-  if (!currentUser.isSuperAdmin)
-    throw new ApiError(403, 'Создавать администраторов может только главный администратор');
   return currentUser;
 }
 export { randomUUID };
