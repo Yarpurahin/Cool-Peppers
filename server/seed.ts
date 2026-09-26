@@ -12,6 +12,10 @@ import { documentSchema, normalizeDocument } from './validation.ts';
 async function ensureBootstrapAdmin(client: PoolClient) {
   if (!config.bootstrapAdmin) return;
 
+  // The principal is identified by a stored flag, never by a client-supplied role or email.
+  // Renaming the root account must not let another user acquire its privileges.
+  const root = await client.query('SELECT id FROM app_users WHERE is_super_admin');
+  if (root.rowCount) return;
   const input = registerSchema.parse(config.bootstrapAdmin);
   const existing = await client.query(
     'SELECT id, role FROM app_users WHERE email = $1 FOR UPDATE',
@@ -19,19 +23,17 @@ async function ensureBootstrapAdmin(client: PoolClient) {
   );
 
   if (existing.rowCount) {
-    if (existing.rows[0].role !== 'admin') {
-      await client.query(
-        "UPDATE app_users SET role = 'admin', updated_at = now() WHERE id = $1",
-        [existing.rows[0].id],
-      );
-    }
+    await client.query(
+      "UPDATE app_users SET role = 'admin', is_super_admin = true, updated_at = now() WHERE id = $1",
+      [existing.rows[0].id],
+    );
     return;
   }
 
   const passwordHash = await hashPassword(input.password);
   await client.query(
-    `INSERT INTO app_users(id, name, email, password_hash, role)
-     VALUES ($1, $2, $3, $4, 'admin')`,
+    `INSERT INTO app_users(id, name, email, password_hash, role, is_super_admin)
+     VALUES ($1, $2, $3, $4, 'admin', true)`,
     [randomUUID(), input.name, input.email, passwordHash],
   );
 }

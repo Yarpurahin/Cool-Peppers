@@ -111,8 +111,8 @@ input,
 select,
 textarea {
   color: var(--ink);
-  background: #fff;
-  border: 1px solid #d6ddd4;
+  background: var(--surface);
+  border: 1px solid var(--tone-border, #d6ddd4);
   border-radius: 9px;
   width: 100%;
   min-width: 0;
@@ -129,7 +129,7 @@ textarea {
 }
 input::placeholder,
 textarea::placeholder {
-  color: #818980;
+  color: var(--tone-muted, #818980);
   opacity: 1;
 }
 input:focus,
@@ -162,7 +162,7 @@ main:focus {
   outline: none;
 }
 ::selection {
-  background: #d8e5cf;
+  background: var(--tone-soft, #d8e5cf);
 }
 [hidden] {
   display: none !important;
@@ -280,8 +280,8 @@ main:focus {
 }
 .field-error {
   padding: 12px;
-  background: #fcece6;
-  color: #a43319;
+  background: var(--tone-soft, #fcece6);
+  color: var(--tone-orange, #a43319);
   border-radius: 8px;
   font-size: 13px;
 }
@@ -307,7 +307,7 @@ main:focus {
   top: -100px;
   left: 20px;
   z-index: 100;
-  background: white;
+  background: var(--surface);
   border: 2px solid var(--orange);
   padding: 12px 20px;
   border-radius: 6px;

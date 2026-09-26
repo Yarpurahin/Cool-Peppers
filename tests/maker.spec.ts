@@ -11,7 +11,7 @@ test('maker: create, connect, validate, test, save positions, publish and play',
   await page.goto('/admin/scenarios');
   await page.getByLabel('Основа сценария').selectOption('');
   await page.getByLabel('Название сценария', { exact: true }).fill('Переговоры о зарплате — maker');
-  await page.getByRole('button', { name: 'Создать и открыть конструктор' }).click();
+  await page.getByRole('button', { name: 'Создать сценарий', exact: true }).click();
   await expect(page.locator('.maker-card')).toBeVisible();
   const scenarioId = page.url().split('/').at(-1)!;
   await page.getByRole('button', { name: 'Основное', exact: true }).click();
@@ -20,7 +20,6 @@ test('maker: create, connect, validate, test, save positions, publish and play',
   await page.getByLabel('Реплика персонажа').fill('Какую зарплату вы ожидаете?');
   await page.getByRole('button', { name: 'Добавить реакцию', exact: true }).click();
   await page.getByLabel('Название реакции').fill('Назвать сумму');
-  await page.getByLabel('Intent', { exact: true }).fill('salary_offer');
   await page.getByRole('button', { name: 'Добавить пример', exact: true }).click();
   await page.getByLabel('Пример фразы 1').fill('Рассчитываю на 200 тысяч');
   await page.getByRole('button', { name: 'Проверить', exact: true }).click();
@@ -51,6 +50,8 @@ test('maker: create, connect, validate, test, save positions, publish and play',
   const initial = await (await page.request.get(`/api/editor/${scenarioId}`)).json();
   const endId = initial.definition.endings[0].id;
   const endCard = page.locator(`[data-id="${endId}"].react-flow__node`);
+  await page.getByRole('button', { name: 'Показать весь граф' }).click();
+  await expect(endCard).toBeInViewport();
   const rect = (await endCard.boundingBox())!;
   await page.mouse.move(rect.x + rect.width / 2, rect.y + 20);
   await page.mouse.down();
@@ -83,7 +84,7 @@ test('maker: create, connect, validate, test, save positions, publish and play',
   await page.getByRole('button', { name: 'Закрыть свойства' }).click();
   await page.screenshot({ path: 'test-results/maker-mobile.png' });
   await page.goto(`/scenarios/${scenarioId}`);
-  await page.getByRole('link', { name: 'Начать переговоры', exact: true }).click();
+  await page.getByRole('button', { name: 'Начать переговоры', exact: true }).click();
   await expect(page.locator('.dialogue-message')).toContainText('Какую зарплату вы ожидаете?');
   await page.getByRole('radio').first().check();
   await page.getByRole('button', { name: 'Ответить', exact: true }).click();
