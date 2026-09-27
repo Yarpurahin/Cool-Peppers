@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { api, errorMessage } from '../api/client.ts';
 import { Button, ButtonLink } from '../components/ui/Button.tsx';
+import { AccordionItem } from '../components/ui/AccordionItem.tsx';
 import { Icon } from '../components/ui/Icon.tsx';
 import { contactSchema, contactTopics, type ContactInput } from '../types/contact.ts';
 
@@ -168,7 +169,6 @@ export function ContactPage() {
                   <p className="eyebrow">Ваш опыт делает нас лучше</p>
                   <h2 id="contact-form-title">Напишите нам</h2>
                 </div>
-                <Icon name="edit" size={22} />
               </div>
               <p className="contact-form-intro" id="contact-required">
                 Все три поля обязательны.
@@ -299,11 +299,7 @@ export function ContactPage() {
           </Link>
         </div>
         <div className="contact-faq-list">
-          <details>
-            <summary>
-              С чего начать тренировку?
-              <Icon name="plus" size={18} />
-            </summary>
+          <AccordionItem title="С чего начать тренировку?">
             <p>
               Откройте{' '}
               <Link to="/scenarios" className="inline-link">
@@ -312,27 +308,19 @@ export function ContactPage() {
               и выберите доступную тренировку. Для прохождения войдите в аккаунт — так история и
               результаты сохранятся.
             </p>
-          </details>
-          <details>
-            <summary>
-              Можно предложить свой сценарий?
-              <Icon name="plus" size={18} />
-            </summary>
+          </AccordionItem>
+          <AccordionItem title="Можно предложить свой сценарий?">
             <p>
               Да. Выберите в форме тему «Идея или новый сценарий» и опишите ситуацию: кто участвует,
               о чём договариваются и в чём сложность.
             </p>
-          </details>
-          <details>
-            <summary>
-              Где оставить отзыв о тренировке?
-              <Icon name="plus" size={18} />
-            </summary>
+          </AccordionItem>
+          <AccordionItem title="Где оставить отзыв о тренировке?">
             <p>
               После завершения тренировки на странице результата есть форма отзыва. А замечания о
               проекте в целом можно отправить здесь.
             </p>
-          </details>
+          </AccordionItem>
         </div>
       </section>
     </div>

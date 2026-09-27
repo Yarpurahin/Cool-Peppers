@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { createPortal } from 'react-dom';
 import {
   dismissServiceProblem,
   getServiceProblem,
@@ -9,15 +10,34 @@ import { Icon } from './Icon.tsx';
 export function ServiceNotice() {
   const problem = useSyncExternalStore(subscribeServiceProblem, getServiceProblem, () => null);
   const [closing, setClosing] = useState(false);
+  const [host, setHost] = useState<Element | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => {
     clearTimeout(timer.current);
     setClosing(false);
     return () => clearTimeout(timer.current);
   }, [problem]);
+  useEffect(() => {
+    if (!problem) return;
+    // Native modal dialogs live above every z-index and make the rest of the
+    // document inert. Keep our single notification visible and dismissible there.
+    const syncHost = () => {
+      const dialogs = document.querySelectorAll('dialog[open]');
+      setHost(dialogs.item(dialogs.length - 1) ?? document.body);
+    };
+    syncHost();
+    const observer = new MutationObserver(syncHost);
+    observer.observe(document.body, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ['open'],
+    });
+    return () => observer.disconnect();
+  }, [problem]);
   if (!problem) return null;
   const connection = problem.kind === 'connection';
-  return (
+  const notice = (
     <aside
       className={`service-notice ${closing ? 'is-closing' : ''}`}
       role="alert"
@@ -48,4 +68,5 @@ export function ServiceNotice() {
       </button>
     </aside>
   );
+  return host ? createPortal(notice, host) : notice;
 }

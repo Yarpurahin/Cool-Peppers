@@ -209,13 +209,13 @@ export function ScenarioBuilderPage() {
     },
     [replace, persist],
   );
-  const select = useCallback((value: Selection, focus = false) => {
+  const select = useCallback((value: Selection, focus = false, reveal = true) => {
     if (focus) setFocusToken((token) => token + 1);
     history.current.breakGroup();
     setSelection((currentSelection) =>
       sameSelection(currentSelection, value) ? currentSelection : value,
     );
-    setInspectorOpen(true);
+    if (reveal) setInspectorOpen(true);
     setSidebarOpen(false);
     setBranch(null);
   }, []);
@@ -659,7 +659,6 @@ export function ScenarioBuilderPage() {
             <Icon name="reset" size={18} style={{ transform: 'scaleX(-1)' }} />
           </button>
         </div>
-        <ThemeToggle />
         <div className="maker-header-actions">
           <button
             type="button"
@@ -688,6 +687,7 @@ export function ScenarioBuilderPage() {
             Опубликовать
           </button>
         </div>
+        <ThemeToggle />
       </header>
       {storageError && (
         <p role="alert" className="maker-notice is-error">

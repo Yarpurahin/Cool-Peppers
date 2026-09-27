@@ -102,15 +102,18 @@ test('system theme, explicit choice, responsive pages and hero fallback', async 
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await expect(page.locator('.hero-image-fallback')).toBeVisible();
   await expect(page.locator('.visual-index')).toHaveCount(0);
-  const theme = page.getByRole('combobox', { name: 'Тема оформления' });
-  await theme.selectOption('light');
+  const theme = async (name: string) => {
+    await page.getByRole('button', { name: /^Тема оформления:/ }).click();
+    await page.getByRole('menuitemradio', { name, exact: true }).click();
+  };
+  await theme('Светлая');
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  await theme.selectOption('system');
+  await theme('Системная');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await page.emulateMedia({ colorScheme: 'light' });
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  await theme.selectOption('dark');
+  await theme('Тёмная');
   for (const width of [320, 390, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
@@ -140,7 +143,7 @@ test('root creates an admin without switching their own session', async ({ page 
   await page.getByLabel('Электронная почта').fill(email);
   await page.getByLabel('Пароль', { exact: true }).fill('New-admin-password');
   await page.getByRole('button', { name: 'Создать администратора' }).click();
-  await expect(page.getByRole('status')).toContainText(email);
+  await expect(page.locator('.account-notice')).toContainText(email);
   expect((await (await page.request.get('/api/auth/me')).json()).isSuperAdmin).toBe(true);
 });
 

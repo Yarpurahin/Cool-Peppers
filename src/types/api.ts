@@ -16,6 +16,13 @@ export interface User {
   avatar: string | null;
   createdAt: string;
 }
+export interface AdminAccount {
+  id: string;
+  name: string;
+  email: string;
+  createdAt: string;
+  scenarioCount: number;
+}
 export interface ScenarioDocument {
   preview: ScenarioPreview;
   definition: ScenarioDefinition | null;

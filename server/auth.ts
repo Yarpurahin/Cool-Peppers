@@ -101,7 +101,7 @@ export function admin(res: Response): User {
 export function superAdmin(res: Response): User {
   const currentUser = admin(res);
   if (!currentUser.isSuperAdmin)
-    throw new ApiError(403, 'Создавать администраторов может только главный администратор');
+    throw new ApiError(403, 'Управлять администраторами может только главный администратор');
   return currentUser;
 }
 export { randomUUID };

@@ -25,7 +25,7 @@
   border-bottom: 1px solid var(--line);
   background: var(--tone-soft, #fafaf6);
   min-height: 84px;
-  z-index: 6;
+  z-index: 20;
 }
 .maker-back,
 .maker-text-button {
@@ -1844,33 +1844,40 @@
 .maker-validation-resize:focus-visible {
   outline-offset: -2px;
 }
-.maker-header .theme-toggle {
+.maker-header .theme-trigger {
   width: 38px;
   height: 38px;
+  min-height: 38px;
   padding: 8px;
 }
-.maker-header .theme-toggle select {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  width: 100%;
-  height: 100%;
+.maker-header .theme-trigger-label,
+.maker-header .theme-trigger > svg:last-child {
+  display: none;
+}
+@media (max-width: 1000px) {
+  .maker-header-actions {
+    order: 1;
+    flex: 0 0 100%;
+  }
+  .maker-header .theme-toggle {
+    margin-left: auto;
+  }
 }
 :root[data-theme='dark'] .maker-page {
   --xy-background-color: var(--bg);
   --xy-background-pattern-dots-color: var(--line);
   --xy-minimap-background-color: var(--surface);
-  --xy-minimap-mask-background-color: rgb(17 27 23 / 60%);
+  --xy-minimap-mask-background-color: rgb(17 17 17 / 60%);
   --xy-controls-button-background-color: var(--surface);
   --xy-controls-button-background-color-hover: var(--sage);
   --xy-controls-button-color: var(--ink);
   --xy-controls-button-border-color: var(--line);
   --xy-node-background-color: var(--surface);
-  --minimap-mask: rgb(17 27 23 / 65%);
-  --route-edge: #6f8d7a;
-  --route-edge-dimmed: #647169;
-  --route-edge-focus: #89aa94;
-  --route-edge-active: #a4cdb0;
+  --minimap-mask: rgb(17 17 17 / 65%);
+  --route-edge: #7b7b7b;
+  --route-edge-dimmed: #606060;
+  --route-edge-focus: #30a46c;
+  --route-edge-active: #3dd68c;
 }
 :root[data-theme='dark'] .maker-canvas-controls,
 :root[data-theme='dark'] .maker-canvas-count {

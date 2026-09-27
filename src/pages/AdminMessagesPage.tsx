@@ -75,21 +75,23 @@ export function AdminMessagesPage() {
           </div>
         </>
       )}
-      <nav className="button-row contact-pagination" aria-label="Страницы обращений">
+      <nav className="contact-pagination" aria-label="Страницы обращений">
         <Button
           variant="outline"
           disabled={loading || offset === 0}
           onClick={() => setOffset((value) => Math.max(0, value - 30))}
         >
-          Назад
+          <Icon name="back" size={16} /> Назад
         </Button>
-        <span>Страница {Math.floor(offset / 30) + 1}</span>
+        <span className="contact-page-number" aria-current="page">
+          Страница {Math.floor(offset / 30) + 1}
+        </span>
         <Button
           variant="outline"
           disabled={loading || Boolean(error) || !inbox.hasMore}
           onClick={() => setOffset((value) => value + 30)}
         >
-          Далее
+          Далее <Icon name="arrow" size={16} />
         </Button>
       </nav>
     </div>

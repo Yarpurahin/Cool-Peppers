@@ -6,6 +6,7 @@ import type { Pool } from 'pg';
 import { z, ZodError } from 'zod';
 import { avatarSchema } from './avatar.ts';
 import { registerContactRoutes } from './contact.ts';
+import { registerAccountRoutes } from './accounts.ts';
 import { config } from './config.ts';
 import { transaction } from './db.ts';
 import {
@@ -108,6 +109,7 @@ export function createApp(pool: Pool) {
   });
   app.use('/api', authenticate(pool));
   registerContactRoutes(app, pool);
+  registerAccountRoutes(app, pool);
 
   // Single-process development limit. For multiple instances use a shared gateway limiter.
   const authAttempts = new Map<string, { count: number; expires: number }>();
@@ -141,8 +143,16 @@ export function createApp(pool: Pool) {
       found.rows[0]?.password_hash ?? `scrypt:00000000000000000000000000000000:${'0'.repeat(128)}`;
     const valid = await checkPassword(input.password, stored);
     if (!found.rowCount || !valid) throw new ApiError(401, 'Неверная почта или пароль');
-    await transaction(pool, (client) => newSession(client, found.rows[0].id, req, res));
-    res.json(publicUser(found.rows[0]));
+    const current = await transaction(pool, async (client) => {
+      // A login and an access revocation serialize on the account. A new login
+      // after revocation receives the current user role, not a stale admin role.
+      const account = await client.query('SELECT * FROM app_users WHERE id = $1 FOR SHARE', [
+        found.rows[0].id,
+      ]);
+      await newSession(client, account.rows[0].id, req, res);
+      return publicUser(account.rows[0]);
+    });
+    res.json(current);
   });
   app.get('/api/auth/me', (_req, res) => res.json(res.locals.user ?? null));
   app.post('/api/auth/logout', async (req, res) => {
@@ -436,6 +446,12 @@ export function createApp(pool: Pool) {
       ])
       .parse(req.body);
     const result = await transaction(pool, async (client) => {
+      // Serialize creation with access revocation, so no scenario can be left
+      // under the former administrator after ownership has been transferred.
+      const owner = await client.query('SELECT role FROM app_users WHERE id = $1 FOR SHARE', [
+        userId,
+      ]);
+      if (owner.rows[0]?.role !== 'admin') throw new ApiError(403, 'Права администратора отозваны');
       const id = `custom-${randomUUID()}`;
       let doc: AuthoringDocument;
       if ('sourceId' in input) {

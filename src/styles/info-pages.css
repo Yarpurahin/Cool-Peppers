@@ -1,43 +1,6 @@
-/* Public information pages share the shell, tokens, buttons, panels and form fields. */
+/* Information pages share the application palette and shell. */
 .info-page {
   padding-bottom: 76px;
-}
-.about-hero {
-  gap: 56px;
-  padding-block: 58px 62px;
-}
-.about-hero h1 {
-  font-size: clamp(34px, 3.55vw, 50px);
-}
-.about-hero .hero-description {
-  max-width: 440px;
-  font-size: 15px;
-}
-.about-hero-note {
-  margin-top: 13px;
-  color: var(--muted);
-  font-size: 12px;
-}
-.about-visual {
-  align-self: center;
-}
-.about-purpose {
-  display: grid;
-  grid-template-columns: 0.9fr 1.1fr;
-  gap: 64px;
-  padding-block: 38px;
-  border-block: 1px solid var(--line);
-}
-.about-purpose h2 {
-  margin-top: 14px;
-  font-size: 30px;
-}
-.about-purpose-copy {
-  display: grid;
-  gap: 14px;
-  color: var(--muted);
-  font-size: 14px;
-  line-height: 1.85;
 }
 .info-section {
   margin-top: 64px;
@@ -45,106 +8,34 @@
 .info-section .section-heading h2 {
   font-size: 30px;
 }
-.about-card-grid,
-.about-steps {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 22px;
+.about-page {
+  max-width: 840px;
 }
-.about-card {
-  padding: 28px;
-}
-.about-card:nth-child(2) .icon-tile {
-  background: var(--peach);
-  color: var(--orange);
-}
-.about-card:nth-child(3) .icon-tile {
-  background: var(--sand);
-}
-.about-card h3 {
-  margin-block: 23px 12px;
-}
-.about-card p,
-.about-steps p {
-  color: var(--muted);
-  line-height: 1.8;
-  font-size: 13px;
-}
-.about-steps {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  gap: 34px;
-}
-.about-steps li {
-  padding-block: 0 22px;
+.about-heading {
+  padding-block: 12px 34px;
   border-bottom: 1px solid var(--line);
 }
-.about-step-number {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--tone-border, #cbd5c7);
-  border-radius: 50%;
-  width: 42px;
-  height: 42px;
-  color: var(--green);
-  background: var(--sage);
-  font-size: 13px;
-  font-weight: 750;
+.about-heading h1 {
+  margin-block: 20px 24px;
+  font-size: clamp(32px, 3.5vw, 46px);
 }
-.about-steps h3 {
-  margin-block: 19px 10px;
-}
-.about-practice-note {
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
+.about-lead {
+  font-size: 18px;
+  line-height: 1.8;
   color: var(--muted);
-  font-size: 12px;
-  margin-top: 20px;
 }
-.about-practice-note svg {
-  margin-top: 2px;
+.about-prose {
+  font-size: 15px;
+  line-height: 1.9;
+  color: var(--muted);
 }
-.about-invitation {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 30px;
-  padding: 42px 46px;
-  border-radius: var(--radius);
-  background: var(--green);
-  color: var(--on-accent);
-  margin-top: 60px;
+.about-prose h2 {
+  margin-block: 38px 18px;
+  font-size: 25px;
+  color: var(--ink);
 }
-.about-invitation .eyebrow {
-  color: var(--on-accent);
-}
-.about-invitation h2 {
-  font-size: 34px;
-  margin-block: 16px;
-}
-.about-invitation p:not(.eyebrow) {
-  color: var(--on-accent);
-}
-.about-invitation-actions {
-  display: grid;
-  justify-items: center;
-  gap: 10px;
-  flex-shrink: 0;
-}
-.about-invitation .text-link {
-  color: var(--on-accent);
-}
-.about-invitation .text-link:hover,
-.about-invitation .text-link:focus-visible {
-  color: var(--on-accent);
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
-.about-invitation :focus-visible {
-  outline-color: var(--on-accent);
+.about-prose p + p {
+  margin-top: 16px;
 }
 .contact-heading {
   margin-bottom: 36px;
@@ -293,35 +184,60 @@
 .contact-faq h2 {
   margin-block: 12px;
 }
-.contact-faq-list details {
+.accordion-item {
   border-bottom: 1px solid var(--line);
 }
-.contact-faq-list summary {
-  cursor: pointer;
-  list-style: none;
+.accordion-item h3 {
+  margin: 0;
+}
+.accordion-item h3 > button {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  width: 100%;
   min-height: 58px;
   gap: 20px;
-  padding-block: 16px;
+  padding: 16px 4px;
+  text-align: left;
   font-weight: 700;
   font-size: 13px;
+  line-height: 1.6;
+  border-radius: 6px;
 }
-.contact-faq-list summary::-webkit-details-marker {
-  display: none;
-}
-.contact-faq-list summary:hover,
-.contact-faq-list summary:focus-visible {
+.accordion-item h3 > button:hover,
+.accordion-item h3 > button:focus-visible {
   color: var(--orange);
+  background: transparent;
 }
-.contact-faq-list details[open] summary > svg {
+.accordion-item h3 svg {
+  transition: transform 280ms ease;
+}
+.accordion-item.is-open h3 svg {
   transform: rotate(45deg);
 }
-.contact-faq-list details p {
+.accordion-content {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    grid-template-rows 280ms ease,
+    opacity 200ms ease,
+    visibility 280ms;
+}
+.accordion-item.is-open .accordion-content {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  visibility: visible;
+}
+.accordion-content-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+.accordion-content p {
   color: var(--muted);
   font-size: 13px;
-  padding-bottom: 20px;
+  padding: 0 4px 20px;
   line-height: 1.8;
 }
 .contact-success {
@@ -371,23 +287,46 @@
   margin-bottom: 14px;
 }
 .contact-pagination {
-  margin-top: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 18px;
+  padding: 22px 0 0;
+  margin-top: 28px;
+  border-top: 1px solid var(--line);
 }
+.contact-pagination .button {
+  min-width: 120px;
+  background: var(--surface);
+  border-color: var(--line);
+}
+.contact-pagination .button:not(:disabled):hover {
+  border-color: var(--green);
+  background: var(--sage);
+}
+.contact-pagination .button:disabled {
+  color: var(--muted);
+  opacity: 0.55;
+}
+.contact-page-number {
+  display: grid;
+  place-items: center;
+  min-height: 42px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  background: var(--sage);
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
 .brand:hover,
 .brand:focus-visible {
   color: var(--green);
 }
 
 @media (max-width: 1000px) {
-  .about-hero {
-    gap: 30px;
-  }
-  .about-purpose {
-    gap: 36px;
-  }
-  .about-card {
-    padding: 23px;
-  }
   .contact-grid,
   .contact-faq {
     gap: 24px;
@@ -396,106 +335,35 @@
   .contact-form-panel {
     padding: 26px;
   }
-  .about-invitation {
-    padding: 34px;
-  }
 }
 @media (max-width: 850px) {
-  .about-hero h1 {
-    font-size: 36px;
-  }
-  .about-hero .hero-description {
-    font-size: 13px;
-  }
-  .about-card-grid {
-    gap: 14px;
-  }
-  .about-card {
-    padding: 20px;
-  }
   .contact-grid {
-    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
     gap: 20px;
   }
   .contact-team,
   .contact-form-panel {
     padding: 23px;
   }
-  .about-invitation h2 {
-    font-size: 28px;
-  }
 }
 @media (max-width: 700px) {
   .info-page {
     padding-bottom: 48px;
   }
-  .about-hero {
-    padding-block: 34px 36px;
-    gap: 30px;
-  }
-  .about-hero h1 {
-    font-size: clamp(30px, 7.4vw, 44px);
-  }
-  .about-hero .hero-description {
-    font-size: 14px;
-  }
-  .about-visual {
-    width: 100%;
-  }
-  .about-purpose {
-    grid-template-columns: 1fr;
-    gap: 20px;
-    padding-block: 28px;
-  }
-  .about-purpose h2 {
-    font-size: 27px;
-  }
-  .about-card-grid,
-  .about-steps {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-  .about-card {
-    padding: 24px;
-  }
-  .about-card h3 {
-    margin-top: 18px;
-  }
   .info-section {
     margin-top: 40px;
   }
-  .info-section .section-heading h2 {
-    font-size: 27px;
+  .about-heading {
+    padding-top: 0;
   }
-  .about-practice .section-heading {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 8px;
+  .about-lead {
+    font-size: 16px;
   }
-  .about-steps {
-    gap: 22px;
+  .about-prose {
+    font-size: 14px;
   }
-  .about-steps li {
-    padding-left: 58px;
-    position: relative;
-    min-height: 86px;
-  }
-  .about-step-number {
-    position: absolute;
-    top: 0;
-    left: 0;
-  }
-  .about-steps h3 {
-    margin-top: 0;
-  }
-  .about-invitation {
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 28px;
-    margin-top: 38px;
-  }
-  .about-invitation-actions {
-    justify-items: start;
+  .about-prose h2 {
+    font-size: 23px;
+    margin-top: 30px;
   }
   .contact-heading h1 {
     font-size: clamp(29px, 7.2vw, 42px);
@@ -533,17 +401,27 @@
     align-items: flex-start;
     gap: 8px;
   }
+  .contact-pagination {
+    gap: 8px;
+    justify-content: space-between;
+  }
+  .contact-pagination .button {
+    min-width: 0;
+    padding: 10px 12px;
+    gap: 6px;
+  }
+  .contact-page-number {
+    padding: 8px 10px;
+    white-space: nowrap;
+  }
 }
 @media (max-width: 380px) {
   .contact-team,
-  .contact-form-panel,
-  .about-invitation {
+  .contact-form-panel {
     padding: 20px;
   }
-  .contact-form-panel .panel-heading > svg {
-    display: none;
-  }
-  .about-invitation h2 {
-    font-size: 26px;
+  .contact-pagination .button {
+    font-size: 11px;
+    padding: 10px 8px;
   }
 }

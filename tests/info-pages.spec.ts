@@ -42,7 +42,9 @@ test('footer navigation updates metadata and moves keyboard focus', async ({ pag
   );
   await page.getByText('Можно предложить свой сценарий?', { exact: true }).focus();
   await page.keyboard.press('Enter');
-  await expect(page.locator('details').nth(1)).toHaveAttribute('open', '');
+  await expect(
+    page.getByRole('button', { name: 'Можно предложить свой сценарий?' }),
+  ).toHaveAttribute('aria-expanded', 'true');
   await page.goBack();
   await expect(page).toHaveTitle('О проекте — Арена переговоров');
 });
@@ -125,7 +127,7 @@ test('prerender hydrates with a saved theme and preserves metadata on subsequent
   for (const path of ['/about', '/feedback']) {
     await page.goto(path);
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-    await expect(page.getByRole('combobox', { name: 'Тема оформления' })).toHaveValue('dark');
+    await expect(page.getByRole('button', { name: 'Тема оформления: Тёмная' })).toBeVisible();
     await expect(page.locator('#page-structured-data')).toHaveCount(1);
     await page.screenshot({ path: `test-results/info-${path.slice(1)}-dark.png`, fullPage: true });
   }
