@@ -7,6 +7,7 @@ import { z, ZodError } from 'zod';
 import { avatarSchema } from './avatar.ts';
 import { registerContactRoutes } from './contact.ts';
 import { registerAccountRoutes } from './accounts.ts';
+import { awardCompletedAttempt, registerGamificationRoutes } from './gamification.ts';
 import { config } from './config.ts';
 import { transaction } from './db.ts';
 import {
@@ -110,6 +111,7 @@ export function createApp(pool: Pool) {
   app.use('/api', authenticate(pool));
   registerContactRoutes(app, pool);
   registerAccountRoutes(app, pool);
+  registerGamificationRoutes(app, pool);
 
   // Single-process development limit. For multiple instances use a shared gateway limiter.
   const authAttempts = new Map<string, { count: number; expires: number }>();
@@ -231,8 +233,10 @@ export function createApp(pool: Pool) {
     const result = await pool.query(
       `SELECT a.*, v.preview->>'title' AS title,
       (SELECT count(*)::int FROM attempt_answers h WHERE h.attempt_id = a.id) AS answers,
-      (SELECT e->>'title' FROM jsonb_array_elements(v.definition->'endings') e WHERE e->>'id' = a.ending_id LIMIT 1) AS outcome
+      (SELECT e->>'title' FROM jsonb_array_elements(v.definition->'endings') e WHERE e->>'id' = a.ending_id LIMIT 1) AS outcome,
+      r.xp_earned, r.mastery_stars
       FROM attempts a JOIN scenario_versions v ON (v.scenario_id,v.version) = (a.scenario_id,a.scenario_version)
+      LEFT JOIN attempt_rewards r ON r.attempt_id = a.id
       WHERE a.user_id = $1 ORDER BY a.started_at DESC, a.id DESC LIMIT $2 OFFSET $3`,
       [id, limit, offset],
     );
@@ -258,6 +262,8 @@ export function createApp(pool: Pool) {
         penalties: row.penalties,
         answers: row.answers,
         outcome: row.outcome,
+        xpEarned: row.xp_earned == null ? undefined : Number(row.xp_earned),
+        masteryStars: row.mastery_stars == null ? undefined : Number(row.mastery_stars),
       })),
     });
   });
@@ -396,6 +402,8 @@ export function createApp(pool: Pool) {
           next.status === 'completed' ? now : null,
         ],
       );
+      if (updated.rows[0].status === 'completed')
+        await awardCompletedAttempt(client, userId, updated.rows[0], scenario.definition);
       return detail(client, updated.rows[0]);
     });
     res.json(result);

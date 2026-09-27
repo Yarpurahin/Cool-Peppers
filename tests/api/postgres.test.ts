@@ -103,7 +103,7 @@ test('PostgreSQL API integration', { timeout: 120000 }, async (t) => {
       );
       assert.equal(
         (await pool.query('SELECT count(*)::int AS n FROM schema_migrations')).rows[0].n,
-        5,
+        6,
       );
     });
     await t.test('registration, normalized unique email and safe stored credentials', async () => {
@@ -321,6 +321,24 @@ test('PostgreSQL API integration', { timeout: 120000 }, async (t) => {
       assert.equal((await b.request('/me/history')).data.total, 0);
       const current = await a.request('/attempts/current');
       assert.equal(current.data[0].attempt.status, 'completed');
+
+      const reward = attempt.reward;
+      assert.ok(reward, 'Completed attempt should contain gamification reward');
+      assert.ok(reward.xpEarned > 0);
+      assert.ok(reward.masteryStars >= 1);
+      assert.equal(reward.rewardReason, 'first_completion');
+
+      const gamification = await a.request('/me/gamification');
+      assert.equal(gamification.status, 200);
+      assert.equal(gamification.data.totalXp, reward.xpEarned);
+      assert.equal(gamification.data.completedAttempts, 1);
+      assert.ok(
+        gamification.data.achievements.some(
+          (item: { code: string; unlocked: boolean }) =>
+            item.code === 'first_round' && item.unlocked,
+        ),
+      );
+      assert.equal(gamification.data.mastery[0].bestStars, reward.masteryStars);
     });
     await t.test(
       'draft creation, admin authorization, optimistic locking and publication',
@@ -356,6 +374,49 @@ test('PostgreSQL API integration', { timeout: 120000 }, async (t) => {
         assert.equal(custom.attempt.scenarioVersion, 1);
       },
     );
+    await t.test('admin achievements are retroactive and archiving preserves earned rewards', async () => {
+      const before = await a.request('/admin/achievements');
+      assert.equal(before.status, 200);
+      assert.equal(before.data.length, 8);
+
+      const created = await a.request('/admin/achievements', 'POST', {
+        title: 'Ретроактивная проверка',
+        description: 'Выдаётся после первого завершённого сценария.',
+        icon: 'award',
+        conditionType: 'completed_attempts',
+        conditionValue: 1,
+        conditionParam: null,
+        isActive: true,
+      });
+      assert.equal(created.status, 201);
+      assert.equal(created.data.unlockedUsers, 1);
+
+      const afterCreate = await a.request('/me/gamification');
+      const unlocked = afterCreate.data.achievements.find(
+        (item: { id: string }) => item.id === created.data.id,
+      );
+      assert.ok(unlocked?.unlocked);
+
+      const archived = await a.request(`/admin/achievements/${created.data.id}`, 'PATCH', {
+        title: created.data.title,
+        description: created.data.description,
+        icon: created.data.icon,
+        conditionType: created.data.conditionType,
+        conditionValue: created.data.conditionValue,
+        conditionParam: created.data.conditionParam,
+        isActive: false,
+      });
+      assert.equal(archived.status, 200);
+      assert.equal(archived.data.isActive, false);
+
+      const afterArchive = await a.request('/me/gamification');
+      const preserved = afterArchive.data.achievements.find(
+        (item: { id: string }) => item.id === created.data.id,
+      );
+      assert.ok(preserved?.unlocked);
+      assert.equal(preserved.active, false);
+    });
+
     await t.test(
       'new publication preserves started version and published snapshots are immutable',
       async () => {

@@ -4,6 +4,7 @@ import type {
   ScenarioDefinition,
 } from '../features/negotiation/model/types.ts';
 import type { ScenarioPreview } from './scenario.ts';
+import type { AchievementConditionType, AchievementIconName, RewardReason } from '../features/gamification/model.ts';
 
 export type UserRole = 'user' | 'admin';
 
@@ -47,6 +48,7 @@ export interface AttemptDetail {
   attempt: ScenarioAttempt;
   definition: ScenarioDefinition;
   feedback?: Feedback;
+  reward?: AttemptReward;
   isCurrent: boolean;
   abandonedAt: string | null;
 }
@@ -63,4 +65,102 @@ export interface HistoryRow {
   penalties: number;
   answers: number;
   outcome: string | null;
+  xpEarned?: number;
+  masteryStars?: 1 | 2 | 3;
+}
+
+export interface UnlockedAchievement {
+  id: string;
+  code: string;
+  title: string;
+  description: string;
+  icon: AchievementIconName;
+}
+
+export interface AttemptReward {
+  attemptId: string;
+  xpEarned: number;
+  skillXpEarned: number;
+  masteryStars: 1 | 2 | 3;
+  endingType: 'success' | 'neutral' | 'failure';
+  skill: string;
+  rewardReason: RewardReason;
+  breakdown: {
+    baseXp: number;
+    endingPercent: number;
+    penaltyXp: number;
+    repeatPercent: number;
+  };
+  achievementsUnlocked: UnlockedAchievement[];
+}
+
+export interface GamificationSkill {
+  key: string;
+  name: string;
+  xp: number;
+  attempts: number;
+  level: number;
+  levelTitle: string;
+  progressPercent: number;
+  earnedInLevel: number;
+  neededInLevel: number;
+}
+
+export interface GamificationAchievement {
+  id: string;
+  code: string;
+  title: string;
+  description: string;
+  icon: AchievementIconName;
+  unlocked: boolean;
+  unlockedAt: string | null;
+  active: boolean;
+  progress: number;
+  target: number;
+  progressPercent: number;
+}
+
+export interface ScenarioMastery {
+  scenarioId: string;
+  title: string;
+  bestStars: 1 | 2 | 3;
+  completedAttempts: number;
+  bestXp: number;
+}
+
+export interface GamificationSummary {
+  totalXp: number;
+  level: number;
+  levelTitle: string;
+  progressPercent: number;
+  earnedInLevel: number;
+  neededInLevel: number;
+  completedAttempts: number;
+  successfulAttempts: number;
+  perfectAttempts: number;
+  weeklyGoal: {
+    target: number;
+    completed: number;
+    startsAt: string;
+    endsAt: string;
+  };
+  skills: GamificationSkill[];
+  achievements: GamificationAchievement[];
+  mastery: ScenarioMastery[];
+}
+
+export interface AdminAchievement {
+  id: string;
+  code: string;
+  title: string;
+  description: string;
+  icon: AchievementIconName;
+  conditionType: AchievementConditionType;
+  conditionValue: number;
+  conditionParam: string | null;
+  isActive: boolean;
+  unlockedUsers: number;
+  unlockedPercent: number;
+  createdAt: string;
+  updatedAt: string;
 }

@@ -9,6 +9,7 @@ import { ResultView } from '../features/negotiation/ui/ResultView.tsx';
 import { FeedbackForm } from '../features/negotiation/ui/FeedbackForm.tsx';
 import { DemoResultPage } from '../features/negotiation/ui/DemoResultPage.tsx';
 import { ErrorPage } from './ErrorPage.tsx';
+import { RewardPanel } from '../features/gamification/RewardPanel.tsx';
 
 export function ResultPage() {
   const { scenarioId } = useParams();
@@ -61,6 +62,7 @@ function ActiveResult({ id }: { id: string }) {
           : undefined
       }
       notice={error ? <p role="alert">{error}</p> : undefined}
+      reward={value.reward ? <RewardPanel reward={value.reward} /> : undefined}
       feedback={
         scenario.definition.settings.collectFeedback ? (
           <FeedbackForm

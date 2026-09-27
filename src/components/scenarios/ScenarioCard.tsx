@@ -2,8 +2,18 @@ import { Link } from 'react-router-dom';
 import type { ScenarioPreview } from '../../types/scenario.ts';
 import { ScenarioArt } from './ScenarioArt.tsx';
 import { Icon } from '../ui/Icon.tsx';
+import type { ScenarioMastery } from '../../types/api.ts';
+import { MasteryStars } from '../../features/gamification/MasteryStars.tsx';
 
-export function ScenarioCard({ scenario, index }: { scenario: ScenarioPreview; index: number }) {
+export function ScenarioCard({
+  scenario,
+  index,
+  mastery,
+}: {
+  scenario: ScenarioPreview;
+  index: number;
+  mastery?: ScenarioMastery;
+}) {
   return (
     <article className="scenario-card">
       <Link to={`/scenarios/${scenario.id}`} aria-label={`${scenario.title} — открыть сценарий`}>
@@ -19,6 +29,12 @@ export function ScenarioCard({ scenario, index }: { scenario: ScenarioPreview; i
             <span>{scenario.skill}</span>
           </div>
           <h3>{scenario.title}</h3>
+          {mastery && (
+            <div className="scenario-mastery">
+              <MasteryStars value={mastery.bestStars} compact />
+              <span>{mastery.completedAttempts} прохожд.</span>
+            </div>
+          )}
           <p>{scenario.description}</p>
           <div className="card-bottom">
             <span>

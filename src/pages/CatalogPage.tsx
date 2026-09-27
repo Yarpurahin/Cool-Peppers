@@ -4,9 +4,11 @@ import { useCatalog } from '../app/DataProvider.tsx';
 import { ScenarioCard } from '../components/scenarios/ScenarioCard.tsx';
 import { Button } from '../components/ui/Button.tsx';
 import { Icon } from '../components/ui/Icon.tsx';
+import { useGamification } from '../features/gamification/GamificationProvider.tsx';
 
 export function CatalogPage() {
   const { scenarios, catalogStatus, catalogError } = useCatalog();
+  const { masteryFor } = useGamification();
   const [params, setParams] = useSearchParams();
   const query = params.get('q') ?? '';
   const category = params.get('category') ?? '';
@@ -120,6 +122,7 @@ export function CatalogPage() {
               key={scenario.id}
               scenario={scenario}
               index={scenarios.indexOf(scenario)}
+              mastery={masteryFor(scenario.id)}
             />
           ))}
         </div>

@@ -8,6 +8,7 @@ import { ResultView } from '../features/negotiation/ui/ResultView.tsx';
 import { FeedbackForm } from '../features/negotiation/ui/FeedbackForm.tsx';
 import { ButtonLink } from '../components/ui/Button.tsx';
 import { useCatalog } from '../app/DataProvider.tsx';
+import { RewardPanel } from '../features/gamification/RewardPanel.tsx';
 
 export function AttemptPage() {
   const { attemptId } = useParams();
@@ -67,6 +68,7 @@ export function AttemptPage() {
     <ResultView
       model={toResultView(scenario, attempt)}
       notice={<p>Сохранённая попытка · версия сценария {attempt.scenarioVersion}</p>}
+      reward={data.reward ? <RewardPanel reward={data.reward} /> : undefined}
       feedback={
         scenario.definition.settings.collectFeedback ? (
           <FeedbackForm

@@ -9,11 +9,13 @@ export function ResultView({
   onRestart,
   notice,
   feedback,
+  reward,
 }: {
   model: ResultViewModel;
   onRestart?: () => void;
   notice?: ReactNode;
   feedback?: ReactNode;
+  reward?: ReactNode;
 }) {
   return (
     <div className="container page result-page negotiation-result">
@@ -46,6 +48,7 @@ export function ResultView({
           </div>
         </div>
       </section>
+      {reward}
       {model.note && <p className="negotiation-notice">{model.note}</p>}
       <div className={`result-grid ${feedback ? '' : 'result-grid--single'}`}>
         <div className="result-content">

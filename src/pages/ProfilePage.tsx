@@ -8,6 +8,9 @@ import type { HistoryRow, User } from '../types/api.ts';
 import { Button } from '../components/ui/Button.tsx';
 import { Icon } from '../components/ui/Icon.tsx';
 import { PasswordField } from '../components/ui/PasswordField.tsx';
+import { useGamification } from '../features/gamification/GamificationProvider.tsx';
+import { GamificationProfile } from '../features/gamification/GamificationProfile.tsx';
+import { MasteryStars } from '../features/gamification/MasteryStars.tsx';
 
 interface History {
   total: number;
@@ -17,6 +20,7 @@ interface History {
 }
 export function ProfilePage() {
   const { user, setUser, logout } = useCatalog();
+  const gamification = useGamification();
   const [history, setHistory] = useState<History | null>(null);
   const [offset, setOffset] = useState(0);
   const [error, setError] = useState('');
@@ -83,6 +87,11 @@ export function ProfilePage() {
           <p>По завершённым попыткам</p>
         </div>
       </div>
+      <GamificationProfile
+        summary={gamification.summary}
+        loading={gamification.loading}
+        error={gamification.error}
+      />
       <section className="panel personal-panel">
         <div className="panel-heading">
           <h2>Личные данные</h2>
@@ -252,6 +261,8 @@ export function ProfilePage() {
                 </p>
               </div>
               <div className="history-score">
+                {row.masteryStars ? <MasteryStars value={row.masteryStars} compact /> : null}
+                {row.xpEarned != null && <span className="history-xp">+{row.xpEarned} XP</span>}
                 <strong>{row.penalties}</strong>
                 <span> штрафов</span>
               </div>

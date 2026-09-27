@@ -1391,3 +1391,38 @@
     padding: 24px;
   }
 }
+
+/* Gamification: reusable progress accents. */
+.mastery-stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+.mastery-stars-icons {
+  display: inline-flex;
+  gap: 2px;
+  color: var(--line);
+  letter-spacing: 0.02em;
+}
+.mastery-stars-icons > .is-filled { color: var(--orange); }
+.mastery-stars small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+.mastery-stars--compact .mastery-stars-icons { font-size: 12px; }
+.scenario-mastery {
+  min-height: 25px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: -2px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.account-gamification-line {
+  color: var(--green);
+  font-size: 10px;
+  font-weight: 700;
+}

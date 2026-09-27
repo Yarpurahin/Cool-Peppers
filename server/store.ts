@@ -4,6 +4,7 @@ import type { AttemptDetail } from '../src/types/api.ts';
 import type { AuthoringDocument } from '../src/features/maker/model/types.ts';
 import { compileScenario } from '../src/features/negotiation/model/engine.ts';
 import { fromPreview } from '../src/features/maker/model/adapter.ts';
+import { getAttemptReward } from './gamification.ts';
 
 export type Database = Pick<Pool, 'query'>;
 export interface AttemptRow {
@@ -83,6 +84,7 @@ export async function detail(db: Database, row: AttemptRow): Promise<AttemptDeta
     definition: compileScenario(document.definition!).definition,
     isCurrent: row.is_current,
     abandonedAt: row.abandoned_at?.toISOString() ?? null,
+    reward: await getAttemptReward(db, row.id),
     feedback: feedback.rowCount
       ? {
           attemptId: row.id,
