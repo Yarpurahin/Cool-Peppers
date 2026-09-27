@@ -7,7 +7,7 @@ import {
 import { Icon } from './Icon.tsx';
 
 export function ServiceNotice() {
-  const problem = useSyncExternalStore(subscribeServiceProblem, getServiceProblem);
+  const problem = useSyncExternalStore(subscribeServiceProblem, getServiceProblem, () => null);
   const [closing, setClosing] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => {

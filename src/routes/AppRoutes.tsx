@@ -19,6 +19,9 @@ import { AdminAccountsPage } from '../pages/AdminAccountsPage.tsx';
 import { ErrorPage } from '../pages/ErrorPage.tsx';
 import { RequireAdmin, RequireAuth, useCatalog } from '../app/DataProvider.tsx';
 import { AttemptPage } from '../pages/AttemptPage.tsx';
+import { AboutPage } from '../pages/AboutPage.tsx';
+import { ContactPage } from '../pages/ContactPage.tsx';
+import { AdminMessagesPage } from '../pages/AdminMessagesPage.tsx';
 
 // Unknown scenario IDs receive a genuine not-found screen, never another scenario.
 function ValidScenario() {
@@ -47,6 +50,8 @@ export function AppRoutes() {
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<HomePage />} />
+          <Route path="about" element={<AboutPage />} />
+          <Route path="feedback" element={<ContactPage />} />
           <Route path="scenarios" element={<CatalogPage />} />
           <Route path="register" element={<AuthPage key="register" mode="register" />} />
           <Route path="login" element={<AuthPage key="login" mode="login" />} />
@@ -77,6 +82,7 @@ export function AppRoutes() {
           >
             <Route index element={<AdminDashboardPage />} />
             <Route path="accounts" element={<AdminAccountsPage />} />
+            <Route path="messages" element={<AdminMessagesPage />} />
             <Route path="scenarios" element={<EditorListPage />} />
           </Route>
 

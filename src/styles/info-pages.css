@@ -1,0 +1,549 @@
+/* Public information pages share the shell, tokens, buttons, panels and form fields. */
+.info-page {
+  padding-bottom: 76px;
+}
+.about-hero {
+  gap: 56px;
+  padding-block: 58px 62px;
+}
+.about-hero h1 {
+  font-size: clamp(34px, 3.55vw, 50px);
+}
+.about-hero .hero-description {
+  max-width: 440px;
+  font-size: 15px;
+}
+.about-hero-note {
+  margin-top: 13px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.about-visual {
+  align-self: center;
+}
+.about-purpose {
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  gap: 64px;
+  padding-block: 38px;
+  border-block: 1px solid var(--line);
+}
+.about-purpose h2 {
+  margin-top: 14px;
+  font-size: 30px;
+}
+.about-purpose-copy {
+  display: grid;
+  gap: 14px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.85;
+}
+.info-section {
+  margin-top: 64px;
+}
+.info-section .section-heading h2 {
+  font-size: 30px;
+}
+.about-card-grid,
+.about-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+}
+.about-card {
+  padding: 28px;
+}
+.about-card:nth-child(2) .icon-tile {
+  background: var(--peach);
+  color: var(--orange);
+}
+.about-card:nth-child(3) .icon-tile {
+  background: var(--sand);
+}
+.about-card h3 {
+  margin-block: 23px 12px;
+}
+.about-card p,
+.about-steps p {
+  color: var(--muted);
+  line-height: 1.8;
+  font-size: 13px;
+}
+.about-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  gap: 34px;
+}
+.about-steps li {
+  padding-block: 0 22px;
+  border-bottom: 1px solid var(--line);
+}
+.about-step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--tone-border, #cbd5c7);
+  border-radius: 50%;
+  width: 42px;
+  height: 42px;
+  color: var(--green);
+  background: var(--sage);
+  font-size: 13px;
+  font-weight: 750;
+}
+.about-steps h3 {
+  margin-block: 19px 10px;
+}
+.about-practice-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 20px;
+}
+.about-practice-note svg {
+  margin-top: 2px;
+}
+.about-invitation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 30px;
+  padding: 42px 46px;
+  border-radius: var(--radius);
+  background: var(--green);
+  color: var(--on-accent);
+  margin-top: 60px;
+}
+.about-invitation .eyebrow {
+  color: var(--on-accent);
+}
+.about-invitation h2 {
+  font-size: 34px;
+  margin-block: 16px;
+}
+.about-invitation p:not(.eyebrow) {
+  color: var(--on-accent);
+}
+.about-invitation-actions {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.about-invitation .text-link {
+  color: var(--on-accent);
+}
+.about-invitation .text-link:hover,
+.about-invitation .text-link:focus-visible {
+  color: var(--on-accent);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.about-invitation :focus-visible {
+  outline-color: var(--on-accent);
+}
+.contact-heading {
+  margin-bottom: 36px;
+}
+.contact-heading h1 {
+  font-size: clamp(32px, 3.6vw, 46px);
+}
+.contact-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 32px;
+  align-items: start;
+}
+.contact-aside {
+  display: grid;
+  gap: 22px;
+}
+.contact-team {
+  background: var(--sage);
+  border: 1px solid var(--tone-border, #dce4d8);
+  padding: 30px;
+  border-radius: var(--radius);
+}
+.contact-team > .icon-tile {
+  width: 52px;
+  height: 52px;
+  background: var(--surface);
+  margin-bottom: 24px;
+}
+.contact-team > .eyebrow {
+  color: var(--green);
+}
+.contact-team h2 {
+  margin-block: 8px 14px;
+}
+.contact-team > p:not(.eyebrow),
+.contact-reasons {
+  color: var(--tone-muted, #526357);
+  font-size: 13px;
+  line-height: 1.8;
+}
+.contact-reasons {
+  list-style: none;
+  padding: 0;
+  margin-block: 25px;
+  display: grid;
+  gap: 20px;
+}
+.contact-reasons li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.contact-reasons svg {
+  color: var(--green);
+  margin-top: 3px;
+}
+.contact-reasons strong {
+  display: block;
+  color: var(--ink);
+  margin-bottom: 3px;
+}
+.contact-team-note {
+  border-top: 1px solid var(--tone-border, #ccd8c7);
+  padding-top: 20px;
+}
+.contact-tip {
+  display: flex;
+  gap: 12px;
+  padding: 4px 12px;
+}
+.contact-tip > svg {
+  color: var(--orange);
+}
+.contact-tip h3 {
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+.contact-tip p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+}
+.contact-form-panel {
+  padding: 32px;
+}
+.contact-form-panel .panel-heading {
+  margin-bottom: 12px;
+}
+.contact-form-intro {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 24px;
+}
+.contact-form-panel .field {
+  font-size: 13px;
+}
+.contact-form-panel textarea {
+  min-height: 166px;
+}
+.contact-field-hint,
+.contact-message-meta {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 450;
+}
+.contact-message-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+}
+.contact-message-meta > span {
+  font-variant-numeric: tabular-nums;
+}
+.contact-field-error {
+  color: var(--tone-orange, #a43319);
+  font-weight: 600;
+  font-size: 12px;
+}
+.contact-form-panel [aria-invalid='true'] {
+  border-color: var(--tone-orange, #a43319);
+  background: var(--tone-soft, #fffaf8);
+}
+.contact-privacy {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.8;
+}
+.contact-privacy svg {
+  margin-top: 1px;
+}
+.contact-submit {
+  justify-self: start;
+}
+.contact-faq {
+  border-top: 1px solid var(--line);
+  padding-top: 34px;
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 32px;
+}
+.contact-faq h2 {
+  margin-block: 12px;
+}
+.contact-faq-list details {
+  border-bottom: 1px solid var(--line);
+}
+.contact-faq-list summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 58px;
+  gap: 20px;
+  padding-block: 16px;
+  font-weight: 700;
+  font-size: 13px;
+}
+.contact-faq-list summary::-webkit-details-marker {
+  display: none;
+}
+.contact-faq-list summary:hover,
+.contact-faq-list summary:focus-visible {
+  color: var(--orange);
+}
+.contact-faq-list details[open] summary > svg {
+  transform: rotate(45deg);
+}
+.contact-faq-list details p {
+  color: var(--muted);
+  font-size: 13px;
+  padding-bottom: 20px;
+  line-height: 1.8;
+}
+.contact-success {
+  min-height: 580px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 20px;
+}
+.contact-success-icon {
+  display: grid;
+  place-items: center;
+  width: 70px;
+  height: 70px;
+  background: var(--sage);
+  color: var(--green);
+  border-radius: 50%;
+}
+.contact-success > p:not(.eyebrow) {
+  color: var(--muted);
+}
+.contact-receipt {
+  font-size: 11px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.contact-receipt strong {
+  display: block;
+  font-weight: 600;
+}
+.contact-inbox {
+  display: grid;
+  gap: 20px;
+}
+.contact-inbox-message {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.contact-inbox-message time {
+  color: var(--muted);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.contact-inbox-text {
+  white-space: pre-wrap;
+  margin-bottom: 14px;
+}
+.contact-pagination {
+  margin-top: 24px;
+}
+.brand:hover,
+.brand:focus-visible {
+  color: var(--green);
+}
+
+@media (max-width: 1000px) {
+  .about-hero {
+    gap: 30px;
+  }
+  .about-purpose {
+    gap: 36px;
+  }
+  .about-card {
+    padding: 23px;
+  }
+  .contact-grid,
+  .contact-faq {
+    gap: 24px;
+  }
+  .contact-team,
+  .contact-form-panel {
+    padding: 26px;
+  }
+  .about-invitation {
+    padding: 34px;
+  }
+}
+@media (max-width: 850px) {
+  .about-hero h1 {
+    font-size: 36px;
+  }
+  .about-hero .hero-description {
+    font-size: 13px;
+  }
+  .about-card-grid {
+    gap: 14px;
+  }
+  .about-card {
+    padding: 20px;
+  }
+  .contact-grid {
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+    gap: 20px;
+  }
+  .contact-team,
+  .contact-form-panel {
+    padding: 23px;
+  }
+  .about-invitation h2 {
+    font-size: 28px;
+  }
+}
+@media (max-width: 700px) {
+  .info-page {
+    padding-bottom: 48px;
+  }
+  .about-hero {
+    padding-block: 34px 36px;
+    gap: 30px;
+  }
+  .about-hero h1 {
+    font-size: clamp(30px, 7.4vw, 44px);
+  }
+  .about-hero .hero-description {
+    font-size: 14px;
+  }
+  .about-visual {
+    width: 100%;
+  }
+  .about-purpose {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding-block: 28px;
+  }
+  .about-purpose h2 {
+    font-size: 27px;
+  }
+  .about-card-grid,
+  .about-steps {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .about-card {
+    padding: 24px;
+  }
+  .about-card h3 {
+    margin-top: 18px;
+  }
+  .info-section {
+    margin-top: 40px;
+  }
+  .info-section .section-heading h2 {
+    font-size: 27px;
+  }
+  .about-practice .section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .about-steps {
+    gap: 22px;
+  }
+  .about-steps li {
+    padding-left: 58px;
+    position: relative;
+    min-height: 86px;
+  }
+  .about-step-number {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+  .about-steps h3 {
+    margin-top: 0;
+  }
+  .about-invitation {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 28px;
+    margin-top: 38px;
+  }
+  .about-invitation-actions {
+    justify-items: start;
+  }
+  .contact-heading h1 {
+    font-size: clamp(29px, 7.2vw, 42px);
+  }
+  .contact-heading > p:last-child {
+    font-size: 14px;
+  }
+  .contact-grid,
+  .contact-faq {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .contact-team > .icon-tile {
+    float: right;
+    margin: 0 0 12px 12px;
+  }
+  .contact-reasons {
+    gap: 15px;
+    margin-block: 20px;
+  }
+  .contact-form-panel {
+    padding: 24px;
+  }
+  .contact-submit {
+    width: 100%;
+  }
+  .contact-success {
+    min-height: 430px;
+  }
+  .contact-faq {
+    padding-top: 26px;
+  }
+  .contact-inbox-message .panel-heading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
+@media (max-width: 380px) {
+  .contact-team,
+  .contact-form-panel,
+  .about-invitation {
+    padding: 20px;
+  }
+  .contact-form-panel .panel-heading > svg {
+    display: none;
+  }
+  .about-invitation h2 {
+    font-size: 26px;
+  }
+}

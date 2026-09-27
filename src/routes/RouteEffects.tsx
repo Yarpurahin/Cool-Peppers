@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useCatalog } from '../app/DataProvider.tsx';
+import { getPublicMetadata, getSiteUrl, pageStructuredData } from './metadata.ts';
 
 const description =
   'Арена — тренажёр переговоров: практические ситуации, разные стратегии общения и разбор решений. Учитесь договариваться в своём темпе.';
@@ -23,18 +24,22 @@ export function RouteEffects() {
     const moved = previous.current !== pathname;
     previous.current = pathname;
     let scrolled = !moved;
+    const path = pathname.replace(/\/$/, '') || '/';
+    const metadata = getPublicMetadata(path);
+    const siteUrl = getSiteUrl() || window.location.origin;
     const scenario = scenarios.find((item) => pathname === `/scenarios/${item.id}`);
-    const isPublic = pathname === '/' || pathname === '/scenarios' || !!scenario;
+    const isPublic = path === '/' || path === '/scenarios' || !!scenario || !!metadata;
     const pageDescription =
+      metadata?.description ||
       scenario?.description ||
       (pathname === '/scenarios'
         ? 'Сценарии переговоров: обсуждение сроков, условий работы и сотрудничества. Выберите ситуацию и потренируйтесь вести диалог.'
         : description);
-    const url = new URL(pathname, window.location.origin).href;
+    const url = new URL(path, siteUrl).href;
     const update = () => {
       const heading = document.querySelector('h1');
       const title = scenario?.title || heading?.textContent?.trim() || 'Практика переговоров';
-      document.title = `${title} — Арена`;
+      document.title = metadata?.title ?? `${title} — Арена`;
       setMeta('name', 'description', pageDescription.slice(0, 300));
       setMeta('name', 'robots', isPublic ? 'index,follow' : 'noindex,nofollow');
       setMeta('property', 'og:title', document.title);
@@ -55,9 +60,19 @@ export function RouteEffects() {
         }
         canonical.href = url;
       } else canonical?.remove();
+      document.getElementById('page-structured-data')?.remove();
+      const structuredData = pageStructuredData(path, siteUrl);
+      if (structuredData) {
+        const script = document.createElement('script');
+        script.id = 'page-structured-data';
+        script.type = 'application/ld+json';
+        script.textContent = JSON.stringify(structuredData);
+        document.head.append(script);
+      }
       if (!scrolled) {
         scrolled = true;
         window.scrollTo({ top: 0, behavior: 'instant' });
+        document.querySelector<HTMLElement>('#main-content')?.focus({ preventScroll: true });
       }
     };
     update();

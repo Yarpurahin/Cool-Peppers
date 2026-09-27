@@ -1,8 +1,7 @@
 import { Logo } from './Logo.tsx';
-import { useDemoMessage } from '../../app/DemoProvider.tsx';
+import { NavLink } from 'react-router-dom';
 
 export function Footer() {
-  const show = useDemoMessage();
   return (
     <footer className="site-footer">
       <div className="container footer-inner">
@@ -10,31 +9,11 @@ export function Footer() {
           <Logo />
           <p>Навык, который остаётся с вами.</p>
         </div>
-        <div className="footer-links">
-          <button
-            type="button"
-            onClick={() =>
-              show(
-                'О проекте',
-                'Арена — тренажёр переговоров: практика сложных разговоров, разные подходы и разбор решений. Зарегистрируйтесь, чтобы сохранять историю тренировок.',
-              )
-            }
-          >
-            О проекте
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              show(
-                'Обратная связь',
-                'Форма связи с командой появится позже. Сейчас отправка сообщений недоступна.',
-              )
-            }
-          >
-            Обратная связь
-          </button>
+        <nav className="footer-links" aria-label="О проекте и связь с командой">
+          <NavLink to="/about">О проекте</NavLink>
+          <NavLink to="/feedback">Обратная связь</NavLink>
           <span>© Арена, 2026</span>
-        </div>
+        </nav>
       </div>
     </footer>
   );

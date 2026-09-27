@@ -26,6 +26,10 @@ export function AdminLayout() {
             <Icon name="book" size={18} />
             <span>Сценарии</span>
           </NavLink>
+          <NavLink to="/admin/messages">
+            <Icon name="message" size={18} />
+            <span>Обращения</span>
+          </NavLink>
           {user?.isSuperAdmin && (
             <NavLink to="/admin/accounts">
               <Icon name="shield" size={18} />

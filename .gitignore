@@ -1,5 +1,6 @@
 node_modules/
 dist/
+.prerender/
 test-results/
 playwright-report/
 *.local

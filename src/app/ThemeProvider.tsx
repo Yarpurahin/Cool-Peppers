@@ -10,22 +10,29 @@ const readPreference = (): ThemePreference => {
     return 'system';
   }
 };
-const systemDark = () => window.matchMedia('(prefers-color-scheme: dark)').matches;
+const systemDark = () =>
+  typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
 const applyTheme = (preference: ThemePreference, dark: boolean) => {
   document.documentElement.dataset.theme =
     preference === 'system' ? (dark ? 'dark' : 'light') : preference;
 };
 // Runs before React's first paint, including on direct links to the editor and errors.
-applyTheme(readPreference(), systemDark());
+if (typeof document !== 'undefined') applyTheme(readPreference(), systemDark());
 const ThemeContext = createContext<{
   preference: ThemePreference;
   setPreference: (value: ThemePreference) => void;
 } | null>(null);
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [preference, setPreference] = useState(readPreference);
-  const [dark, setDark] = useState(systemDark);
+  // The first React render matches the generated HTML. The early initialization
+  // above already applies the saved palette before hydration starts.
+  const [preference, setPreference] = useState<ThemePreference>('system');
+  const [dark, setDark] = useState(false);
+  const [ready, setReady] = useState(false);
   useEffect(() => {
     const media = window.matchMedia('(prefers-color-scheme: dark)');
+    setPreference(readPreference());
+    setDark(media.matches);
+    setReady(true);
     const change = () => setDark(media.matches);
     const storage = (event: StorageEvent) => {
       if (event.key === key || event.key === null) setPreference(readPreference());
@@ -37,7 +44,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('storage', storage);
     };
   }, []);
-  useEffect(() => applyTheme(preference, dark), [preference, dark]);
+  useEffect(() => {
+    if (ready) applyTheme(preference, dark);
+  }, [preference, dark, ready]);
   return (
     <ThemeContext.Provider
       value={{
