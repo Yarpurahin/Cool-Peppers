@@ -314,12 +314,24 @@
   font-size: 11px;
   color: var(--muted);
 }
-.footer-links button {
+.footer-links button,
+.footer-links a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
   padding: 10px 0;
   font-size: inherit;
 }
-.footer-links button:hover {
+.footer-links button:hover,
+.footer-links a:hover,
+.footer-links a:focus-visible {
   color: var(--orange);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.footer-links a.active {
+  color: var(--green);
+  font-weight: 750;
 }
 
 /* Scenarios */

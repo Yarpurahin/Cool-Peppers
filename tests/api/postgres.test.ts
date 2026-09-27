@@ -103,7 +103,7 @@ test('PostgreSQL API integration', { timeout: 120000 }, async (t) => {
       );
       assert.equal(
         (await pool.query('SELECT count(*)::int AS n FROM schema_migrations')).rows[0].n,
-        4,
+        5,
       );
     });
     await t.test('registration, normalized unique email and safe stored credentials', async () => {
@@ -586,6 +586,67 @@ test('PostgreSQL API integration', { timeout: 120000 }, async (t) => {
         const fresh = (await a.request('/editor', 'POST', { title: 'Удаляемый черновик' })).data.id;
         assert.equal((await a.request(`/editor/${fresh}`, 'DELETE')).status, 204);
         assert.equal((await a.request(`/editor/${fresh}`, 'DELETE')).status, 404);
+      },
+    );
+    await t.test(
+      'contact messages are validated, persisted once and visible only to admins',
+      async () => {
+        const input = {
+          requestId: randomUUID(),
+          topic: 'idea',
+          email: '  USER@EXAMPLE.TEST  ',
+          message: 'Хочу предложить сценарий разговора о смене команды.',
+        };
+        assert.equal(
+          (await guest.request('/contact', 'POST', input, { Origin: 'https://untrusted.example' }))
+            .status,
+          403,
+        );
+        assert.equal(
+          (await guest.request('/contact', 'POST', { ...input, email: 'wrong' })).status,
+          422,
+        );
+        assert.equal(
+          (await guest.request('/contact', 'POST', { ...input, message: '   ' })).status,
+          422,
+        );
+        assert.equal(
+          (await guest.request('/contact', 'POST', { ...input, message: 'я'.repeat(3001) })).status,
+          422,
+        );
+        const saved = await guest.request('/contact', 'POST', input);
+        assert.equal(saved.status, 201);
+        assert.equal(saved.data.id, input.requestId);
+        assert.equal((await guest.request('/contact', 'POST', input)).status, 201);
+        const stored = await pool.query('SELECT * FROM contact_messages WHERE id=$1', [
+          input.requestId,
+        ]);
+        assert.equal(stored.rowCount, 1);
+        assert.equal(stored.rows[0].email, 'user@example.test');
+        assert.equal(stored.rows[0].message, input.message);
+        assert.equal((await guest.request('/admin/messages')).status, 401);
+        const player = actor();
+        assert.equal(
+          (
+            await player.request('/auth/register', 'POST', {
+              name: 'Участник',
+              email: `contact-player-${randomUUID()}@example.test`,
+              password,
+            })
+          ).status,
+          201,
+        );
+        assert.equal((await player.request('/admin/messages')).status, 403);
+        const inbox = await a.request('/admin/messages');
+        assert.equal(inbox.status, 200);
+        assert.equal(inbox.data.messages[0].id, input.requestId);
+        assert.equal(inbox.data.hasMore, false);
+        assert.equal((await a.request('/admin/messages?offset=30')).data.messages.length, 0);
+        assert.equal((await a.request('/admin/messages?offset=-1')).status, 422);
+        assert.equal(
+          (await guest.request('/contact', 'POST', { ...input, requestId: randomUUID() })).status,
+          429,
+        );
       },
     );
     await t.test('logout revokes session and login restores persisted account data', async () => {

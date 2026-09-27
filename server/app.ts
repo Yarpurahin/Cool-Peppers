@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import type { Pool } from 'pg';
 import { z, ZodError } from 'zod';
 import { avatarSchema } from './avatar.ts';
+import { registerContactRoutes } from './contact.ts';
 import { config } from './config.ts';
 import { transaction } from './db.ts';
 import {
@@ -106,6 +107,7 @@ export function createApp(pool: Pool) {
     res.json({ status: 'ok', database: 'postgresql' });
   });
   app.use('/api', authenticate(pool));
+  registerContactRoutes(app, pool);
 
   // Single-process development limit. For multiple instances use a shared gateway limiter.
   const authAttempts = new Map<string, { count: number; expires: number }>();
@@ -590,6 +592,10 @@ export function createApp(pool: Pool) {
   });
   const dist = fileURLToPath(new URL('../dist/', import.meta.url));
   if (existsSync(dist)) {
+    for (const path of ['/about', '/feedback']) {
+      const page = `${dist}${path}/index.html`;
+      if (existsSync(page)) app.get([path, `${path}/`], (_req, res) => res.sendFile(page));
+    }
     app.use(express.static(dist));
     app.get('/{*path}', (req, res) => {
       if (

@@ -31,18 +31,24 @@ function SessionApp() {
   );
 }
 
-export function App() {
+export function AppContent() {
   return (
     <ThemeProvider>
-      <BrowserRouter>
-        <ServiceNotice />
-        <DemoProvider>
-          <DataProvider>
-            <RouteEffects />
-            <SessionApp />
-          </DataProvider>
-        </DemoProvider>
-      </BrowserRouter>
+      <ServiceNotice />
+      <DemoProvider>
+        <DataProvider>
+          <RouteEffects />
+          <SessionApp />
+        </DataProvider>
+      </DemoProvider>
     </ThemeProvider>
+  );
+}
+
+export function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
   );
 }
