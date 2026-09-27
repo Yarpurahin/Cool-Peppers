@@ -7,7 +7,7 @@ import { createApp } from '../../server/app.ts';
 import { migrate } from '../../server/migrate.ts';
 import { seed } from '../../server/seed.ts';
 import { config } from '../../server/config.ts';
-import type { User } from '../../src/types/api.ts';
+import type { AdminAccount, AttemptDetail, User } from '../../src/types/api.ts';
 
 const png =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==';
@@ -27,7 +27,7 @@ test('root account, admin creation and private avatar persistence', async () => 
   const base = `http://127.0.0.1:${address.port}/api`;
   const actor = () => {
     let cookie = '';
-    return async (path: string, method = 'GET', body?: unknown) => {
+    return async <T = User>(path: string, method = 'GET', body?: unknown) => {
       const response = await fetch(base + path, {
         method,
         headers: {
@@ -41,8 +41,7 @@ test('root account, admin creation and private avatar persistence', async () => 
       cookie = response.headers.get('set-cookie')?.split(';')[0] ?? cookie;
       return {
         status: response.status,
-        data:
-          response.status === 204 ? null : ((await response.json()) as User & { error?: string }),
+        data: response.status === 204 ? null : ((await response.json()) as T & { error?: string }),
       };
     };
   };
@@ -132,6 +131,113 @@ test('root account, admin creation and private avatar persistence', async () => 
       422,
     );
     assert.equal((await ordinary('/me/avatar', 'PATCH', { avatar: null })).data?.avatar, null);
+
+    // A revocation transfers every draft/version, preserves practice and expires every session.
+    const rootId = (await root('/auth/me')).data!.id;
+    const adminId = saved.data.id;
+    assert.equal((await guest('/admin/accounts')).status, 403);
+    assert.equal((await actor()('/admin/accounts')).status, 401);
+    assert.equal((await created('/admin/accounts')).status, 403);
+    const otherSession = actor();
+    await otherSession('/auth/login', 'POST', { email: input.email, password: input.password });
+    const scenario = (await created<{ id: string }>('/editor', 'POST', { sourceId: 'terms' }))
+      .data!;
+    assert.equal(
+      (await created(`/editor/${scenario.id}/publish`, 'POST', { revision: 1 })).status,
+      200,
+    );
+    await created(`/editor/${scenario.id}/archive`, 'POST');
+    const deleted = (
+      await created<{ id: string }>('/editor', 'POST', { title: 'Удалённый черновик' })
+    ).data!;
+    await created(`/editor/${deleted.id}`, 'DELETE');
+    let practice = (await created<AttemptDetail>('/scenarios/terms/attempts', 'POST')).data!;
+    while (practice.attempt.status === 'in-progress') {
+      const currentNodeId = practice.attempt.currentNodeId;
+      const node = practice.definition.nodes.find((node) => node.id === currentNodeId)!;
+      practice = (
+        await created<AttemptDetail>(`/attempts/${practice.attempt.id}/answers`, 'POST', {
+          nodeId: node.id,
+          answerId: node.answers[0].id,
+          expectedAnswers: practice.attempt.history.length,
+        })
+      ).data!;
+    }
+    await created(`/attempts/${practice.attempt.id}/feedback`, 'PUT', {
+      helpful: true,
+      comment: 'Сохранить отзыв',
+    });
+    const versionsBefore = (
+      await pool.query('SELECT * FROM scenario_versions WHERE scenario_id = $1', [scenario.id])
+    ).rows;
+    const attemptBefore = (await pool.query('SELECT * FROM attempts WHERE user_id = $1', [adminId]))
+      .rows;
+    const list = (await root<AdminAccount[]>('/admin/accounts')).data!;
+    assert.equal(list.length, 1);
+    assert.equal(list[0].id, adminId);
+    assert.equal(list[0].scenarioCount, 1);
+    assert.equal('password_hash' in list[0], false);
+    assert.equal((await root(`/admin/accounts/${rootId}`, 'DELETE')).status, 403);
+    assert.equal((await ordinary(`/admin/accounts/${adminId}`, 'DELETE')).status, 403);
+    assert.equal((await created(`/admin/accounts/${rootId}`, 'DELETE')).status, 403);
+    assert.equal((await actor()(`/admin/accounts/${adminId}`, 'DELETE')).status, 401);
+    assert.equal((await root('/admin/accounts/not-a-uuid', 'DELETE')).status, 422);
+    assert.equal(
+      (await root('/admin/accounts/00000000-0000-4000-8000-000000000099', 'DELETE')).status,
+      404,
+    );
+    // A failed transaction must leave both access and ownership unchanged.
+    await pool.query(`CREATE FUNCTION prevent_test_transfer() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN RAISE EXCEPTION 'test rollback'; END; $$;
+      CREATE TRIGGER prevent_transfer BEFORE UPDATE OF owner_id ON scenarios
+      FOR EACH ROW EXECUTE FUNCTION prevent_test_transfer();`);
+    assert.equal((await root(`/admin/accounts/${adminId}`, 'DELETE')).status, 500);
+    assert.equal((await created('/auth/me')).data?.role, 'admin');
+    assert.equal((await created(`/editor/${scenario.id}`)).status, 200);
+    await pool.query(
+      'DROP TRIGGER prevent_transfer ON scenarios; DROP FUNCTION prevent_test_transfer();',
+    );
+    assert.equal((await root(`/admin/accounts/${adminId}`, 'DELETE')).status, 204);
+    assert.equal((await root(`/admin/accounts/${adminId}`, 'DELETE')).status, 204);
+    assert.equal((await root<AdminAccount[]>('/admin/accounts')).data!.length, 0);
+    assert.equal((await created('/auth/me')).data, null);
+    assert.equal((await otherSession('/auth/me')).data, null);
+    assert.equal((await otherSession('/editor', 'POST', { title: 'Недоступный' })).status, 401);
+    const login = await created('/auth/login', 'POST', {
+      email: input.email,
+      password: input.password,
+    });
+    assert.equal(login.data?.role, 'user');
+    assert.equal(login.data?.id, adminId);
+    assert.equal((await created('/editor')).status, 403);
+    assert.deepEqual(
+      (await pool.query('SELECT * FROM attempts WHERE user_id = $1', [adminId])).rows,
+      attemptBefore,
+    );
+    assert.equal(
+      (await created<AttemptDetail>(`/attempts/${practice.attempt.id}`)).data!.feedback?.comment,
+      'Сохранить отзыв',
+    );
+    assert.equal((await root(`/editor/${scenario.id}`)).status, 200);
+    assert.equal(
+      (
+        await pool.query('SELECT count(*)::int AS count FROM scenarios WHERE owner_id = $1', [
+          adminId,
+        ])
+      ).rows[0].count,
+      0,
+    );
+    assert.equal(
+      (await pool.query('SELECT owner_id FROM scenarios WHERE id = $1', [deleted.id])).rows[0]
+        .owner_id,
+      rootId,
+    );
+    assert.deepEqual(
+      (await pool.query('SELECT * FROM scenario_versions WHERE scenario_id = $1', [scenario.id]))
+        .rows,
+      versionsBefore,
+    );
+    assert.equal((await root('/auth/me')).data?.isSuperAdmin, true);
   } finally {
     server.closeAllConnections();
     await new Promise<void>((resolve) => server.close(() => resolve()));

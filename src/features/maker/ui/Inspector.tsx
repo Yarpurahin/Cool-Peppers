@@ -118,8 +118,8 @@ function ScenarioJsonTools({
           <Icon name="upload" size={15} />
           {importing ? 'Импортируем…' : 'Импортировать JSON'}
         </button>
-        <button type="button" className="maker-text-button" onClick={onExport}>
-          <Icon name="save" size={14} />
+        <button type="button" className="maker-secondary" onClick={onExport}>
+          <Icon name="save" size={15} />
           Скачать JSON
         </button>
       </div>
@@ -134,10 +134,6 @@ function ScenarioJsonTools({
           if (file) void importFile(file);
         }}
       />
-      <small>
-        Поддерживаются Arena JSON v1, JSON из предыдущего экспорта и чистая definition со
-        schemaVersion 2. ID текущего сценария при импорте не меняется.
-      </small>
       {error && (
         <p className="maker-json-import-error" role="alert">
           {error.split('\n').map((line, index) => (

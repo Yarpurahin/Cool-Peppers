@@ -178,13 +178,16 @@ function DialogueCard({ id, data }: NodeProps<CardNode>) {
             <button
               type="button"
               className="nodrag nopan"
+              onPointerDown={(event) => event.stopPropagation()}
               onClick={(event) => {
                 event.stopPropagation();
-                data.selectReaction?.(r.id);
+                // Keep the canvas stationary between the two pointer clicks.
+                // Keyboard activation opens the inspector immediately.
+                data.selectReaction?.(r.id, event.detail === 0);
               }}
               onMouseEnter={() => data.hoverReaction?.(r.id)}
               onMouseLeave={() => data.hoverReaction?.(null)}
-              onDoubleClick={(event) => {
+              onDoubleClickCapture={(event) => {
                 event.preventDefault();
                 event.stopPropagation();
                 data.selectReaction?.(r.id, true);
@@ -302,7 +305,7 @@ export function ScenarioCanvas({
   selection: Selection;
   issues: GraphIssue[];
   disabled: boolean;
-  onSelect: (selection: Selection, focus?: boolean) => void;
+  onSelect: (selection: Selection, focus?: boolean, reveal?: boolean) => void;
   onBlockSelection: (ids: string[]) => void;
   onPositions: (positions: Record<string, { x: number; y: number }>) => void;
   onViewport: (viewport: { x: number; y: number; zoom: number }) => void;
@@ -447,6 +450,10 @@ export function ScenarioCanvas({
     ({ nodes: selectedNodes, edges: selectedEdges }) => {
       if (selectedEdges.length === 1 && selectedNodes.length === 0) {
         const edge = selectedEdges[0];
+        const current = selectionRef.current;
+        // A reaction click also updates the controlled edge selection. That store
+        // echo must not open the drawer before the second pointer click arrives.
+        if (current.type === 'reaction' && current.id === edge.id) return;
         runtime.current.onSelect({ type: 'reaction', nodeId: edge.source, id: edge.id });
         return;
       }
@@ -614,7 +621,7 @@ export function ScenarioCanvas({
               targetTitle: targetTitleById.get(reaction.nextNodeId || reaction.endingId || ''),
             })),
             selectReaction: (id: string, focus = false) =>
-              runtime.current.onSelect({ type: 'reaction', id, nodeId: node.id }, focus),
+              runtime.current.onSelect({ type: 'reaction', id, nodeId: node.id }, focus, focus),
             hoverReaction: setHoveredReactionId,
           },
         } satisfies CardNode;

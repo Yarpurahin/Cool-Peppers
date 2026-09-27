@@ -39,18 +39,6 @@ export function Header() {
         <div onClick={closeMenus}>
           <Logo />
         </div>
-        <ThemeToggle />
-        <button
-          ref={toggle}
-          type="button"
-          className="icon-button menu-toggle"
-          aria-expanded={open}
-          aria-controls="site-navigation"
-          aria-label={open ? 'Закрыть меню' : 'Открыть меню'}
-          onClick={() => setOpen(!open)}
-        >
-          <Icon name={open ? 'close' : 'menu'} />
-        </button>
         <nav
           id="site-navigation"
           aria-label="Основная навигация"
@@ -125,6 +113,20 @@ export function Header() {
             )}
           </div>
         </nav>
+        <div className="header-tools">
+          <ThemeToggle />
+          <button
+            ref={toggle}
+            type="button"
+            className="icon-button menu-toggle"
+            aria-expanded={open}
+            aria-controls="site-navigation"
+            aria-label={open ? 'Закрыть меню' : 'Открыть меню'}
+            onClick={() => setOpen(!open)}
+          >
+            <Icon name={open ? 'close' : 'menu'} />
+          </button>
+        </div>
       </div>
     </header>
   );
