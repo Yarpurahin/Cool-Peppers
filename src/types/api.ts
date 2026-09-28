@@ -1,8 +1,5 @@
-import type {
-  Feedback,
-  ScenarioAttempt,
-  ScenarioDefinition,
-} from '../features/negotiation/model/types.ts';
+import type { Feedback, ScenarioAttempt } from '../features/negotiation/model/types.ts';
+import type { MakerDefinition } from '../features/maker/model/types.ts';
 import type { ScenarioPreview } from './scenario.ts';
 import type { AchievementConditionType, AchievementIconName, RewardReason } from '../features/gamification/model.ts';
 
@@ -26,7 +23,7 @@ export interface AdminAccount {
 }
 export interface ScenarioDocument {
   preview: ScenarioPreview;
-  definition: ScenarioDefinition | null;
+  definition: MakerDefinition;
 }
 export interface ScenarioDraft extends ScenarioDocument {
   revision: number;
@@ -46,7 +43,7 @@ export interface AdminScenarioSummary {
 }
 export interface AttemptDetail {
   attempt: ScenarioAttempt;
-  definition: ScenarioDefinition;
+  definition: MakerDefinition;
   feedback?: Feedback;
   reward?: AttemptReward;
   isCurrent: boolean;

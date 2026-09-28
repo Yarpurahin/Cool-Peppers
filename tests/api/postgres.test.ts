@@ -229,12 +229,12 @@ test('PostgreSQL API integration', { timeout: 120000 }, async (t) => {
         const first = attempt.definition.nodes.find(
           (n) => n.id === attempt.definition.startNodeId,
         )!;
-        const body = { nodeId: first.id, answerId: first.answers[0].id, expectedAnswers: 0 };
+        const body = { nodeId: first.id, answerId: first.reactions[0].id, expectedAnswers: 0 };
         const results = await Promise.all([
           a.request(`/attempts/${attempt.attempt.id}/answers`, 'POST', body),
           a.request(`/attempts/${attempt.attempt.id}/answers`, 'POST', {
             ...body,
-            answerId: first.answers[1].id,
+            answerId: first.reactions[1].id,
           }),
         ]);
         assert.deepEqual(results.map((r) => r.status).sort(), [200, 409]);
@@ -283,7 +283,7 @@ test('PostgreSQL API integration', { timeout: 120000 }, async (t) => {
         )!;
         const result = await a.request(`/attempts/${attempt.attempt.id}/answers`, 'POST', {
           nodeId: node.id,
-          answerId: node.answers[0].id,
+          answerId: node.reactions[0].id,
           expectedAnswers: attempt.attempt.history.length,
         });
         assert.equal(result.status, 200);
@@ -353,7 +353,7 @@ test('PostgreSQL API integration', { timeout: 120000 }, async (t) => {
         customId = (await a.request('/editor', 'POST', { sourceId: 'terms' })).data.id;
         assert.equal((await b.request(`/editor/${customId}`)).status, 403);
         draft = (await a.request(`/editor/${customId}`)).data;
-        draft.definition!.metadata.title = 'Проверка версий';
+        draft.definition.metadata.title = 'Проверка версий';
         const body = {
           preview: draft.preview,
           definition: draft.definition,
@@ -422,7 +422,7 @@ test('PostgreSQL API integration', { timeout: 120000 }, async (t) => {
       async () => {
         draft = (await a.request(`/editor/${customId}`)).data;
         assert.equal(draft.hasUnpublishedChanges, false);
-        draft.definition!.nodes[0].text = 'Новая первая реплика';
+        draft.definition.nodes[0].text = 'Новая первая реплика';
         const saved = await a.request(`/editor/${customId}`, 'PUT', {
           preview: draft.preview,
           definition: draft.definition,
@@ -479,10 +479,8 @@ test('PostgreSQL API integration', { timeout: 120000 }, async (t) => {
       'invalid graph stays a draft and cannot replace the published version',
       async () => {
         draft = (await a.request(`/editor/${customId}`)).data;
-        draft.definition!.nodes[0].answers[0].next = {
-          type: 'node',
-          nodeId: draft.definition!.startNodeId,
-        };
+        draft.definition.nodes[0].reactions[0].nextNodeId = draft.definition.startNodeId;
+        delete draft.definition.nodes[0].reactions[0].endingId;
         const saved = await a.request(`/editor/${customId}`, 'PUT', {
           preview: draft.preview,
           definition: draft.definition,
@@ -560,6 +558,7 @@ test('PostgreSQL API integration', { timeout: 120000 }, async (t) => {
             intent: 'salary_offer',
             label: 'Назвать сумму',
             examples: ['Хочу 200 тысяч'],
+            evaluation: { grade: 'strong', penalty: 0, feedback: 'Конкретный ориентир.' },
             endingId: 'finish',
           },
         ];
@@ -595,7 +594,7 @@ test('PostgreSQL API integration', { timeout: 120000 }, async (t) => {
         );
         const started = await b.request(`/scenarios/${id}/attempts`, 'POST');
         assert.equal(started.status, 200);
-        assert.equal(started.data.definition.settings.failure.rule, 'none');
+        assert.equal(started.data.definition.settings.failureRule, undefined);
         const completed = await b.request(`/attempts/${started.data.attempt.id}/answers`, 'POST', {
           nodeId: 'node_1',
           answerId: 'reaction_offer',

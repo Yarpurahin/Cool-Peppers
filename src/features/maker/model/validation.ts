@@ -58,6 +58,10 @@ export function validateMaker(def: MakerDefinition): GraphIssue[] {
           reaction.id,
         );
       intents.add(reaction.intent);
+      if (!Number.isInteger(reaction.evaluation.penalty) || reaction.evaluation.penalty < 0)
+        error('evaluation-penalty', 'Штраф реакции должен быть целым неотрицательным числом.', node.id, reaction.id);
+      if (reaction.evaluation.feedback.length > 10000)
+        error('evaluation-feedback', 'Обратная связь реакции слишком длинная.', node.id, reaction.id);
       if (Boolean(reaction.nextNodeId) === Boolean(reaction.endingId))
         error('target', 'У реакции должен быть ровно один переход.', node.id, reaction.id);
       if (reaction.nextNodeId && !nodes.has(reaction.nextNodeId))
@@ -77,11 +81,11 @@ export function validateMaker(def: MakerDefinition): GraphIssue[] {
     if (!ending.title.trim() || !ending.description.trim())
       error('ending-text', 'Заполните название и описание финала.', ending.id);
   }
-  const failure = def.settings.legacyFailure;
+  const failure = def.settings.failureRule;
   if (failure && endings.get(failure.endingId)?.type !== 'failure')
     error(
-      'legacy-failure',
-      'Унаследованное правило оценки ссылается на отсутствующий финал отказа.',
+      'failure-rule',
+      'Правило оценки ссылается на отсутствующий финал отказа.',
       failure.endingId,
     );
   const reachable = new Set<string>();

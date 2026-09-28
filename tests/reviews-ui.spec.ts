@@ -19,7 +19,7 @@ test('review confirms only a successful save, survives reload and appears in the
         headers,
         data: {
           nodeId: node.id,
-          answerId: node.answers[0].id,
+          answerId: node.reactions[0].id,
           expectedAnswers: detail.attempt.history.length,
         },
       })

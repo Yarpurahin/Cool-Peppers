@@ -26,7 +26,7 @@ export function ScenarioPage() {
   const completed = attempt?.status === 'completed';
   const canResume = attempt?.status === 'in-progress' && attempt.history.length > 0;
   const mastery = masteryFor(scenarioId ?? '');
-  if (!scenario) return <ErrorPage />;
+  if (!scenario || !negotiation) return <ErrorPage />;
   return (
     <div className="container page scenario-page">
       <Link to="/scenarios" className="back-link">
@@ -68,11 +68,10 @@ export function ScenarioPage() {
             <hr />
             <h2>Как пройдёт разговор</h2>
             <p>
-              {negotiation
-                ? 'Выбирайте реплики и подтверждайте ответ. Ваш выбор меняет ход разговора. После завершения вы получите разбор своих решений. Прогресс сохраняется в вашем аккаунте.'
-                : 'В готовом тренажёре вы сможете выбирать реплики и пробовать разные подходы, а затем разобрать свои решения. Сейчас можно посмотреть демонстрационный экран диалога.'}
+              Выбирайте реплики и подтверждайте ответ. Ваш выбор меняет ход разговора. После
+              завершения вы получите разбор своих решений. Прогресс сохраняется в вашем аккаунте.
             </p>
-            {negotiation && negotiation.definition.settings.failure.rule !== 'none' && (
+            {negotiation && Boolean(negotiation.definition.settings.failureRule) && (
               <p className="negotiation-rules">
                 {negotiation.definition.settings.assessmentNote} Порог провала —{' '}
                 {negotiation.failureThreshold} штрафных баллов: половина всех{' '}

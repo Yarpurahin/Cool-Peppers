@@ -158,21 +158,6 @@
 .panel-heading > svg {
   color: var(--muted);
 }
-.demo-notice {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  background: var(--tone-soft, #eeefe6);
-  color: var(--tone-green, #58634f);
-  border: 1px solid var(--tone-border, #dee1d3);
-  border-radius: 9px;
-  padding: 12px 15px;
-  font-size: 12px;
-  line-height: 1.65;
-}
-.demo-notice > svg {
-  margin-top: 1px;
-}
 .subtle-caption {
   text-align: center;
   color: var(--muted);

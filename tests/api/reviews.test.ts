@@ -99,7 +99,7 @@ test('scenario reviews enforce ownership, preserve version history and paginate/
         detail = (
           await player<AttemptDetail>(`/attempts/${detail.attempt.id}/answers`, 'POST', {
             nodeId: node.id,
-            answerId: node.answers[0].id,
+            answerId: node.reactions[0].id,
             expectedAnswers: detail.attempt.history.length,
           })
         ).data!;

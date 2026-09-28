@@ -4,6 +4,14 @@ import { compileMaker, startMaker, submitIntent } from '../model/engine.ts';
 import { getReview, questionText } from '../../negotiation/model/engine.ts';
 import { Icon } from '../../../components/ui/Icon.tsx';
 
+
+function evaluationLabel(grade: 'strong' | 'acceptable' | 'weak' | 'critical') {
+  if (grade === 'strong') return 'Сильный ответ';
+  if (grade === 'weak') return 'Слабый ответ';
+  if (grade === 'critical') return 'Критическая ошибка';
+  return 'Допустимый ответ';
+}
+
 export function TestScenarioDrawer({
   definition,
   onClose,
@@ -35,7 +43,6 @@ export function TestScenarioDrawer({
     attempt.status === 'in-progress'
       ? engine.definition.nodes.find((n) => n.id === attempt.currentNodeId)
       : undefined;
-  const runtimeNode = node ? engine.runtime.nodes.get(node.id) : undefined;
   const character = node
     ? engine.definition.characters.find((c) => c.id === node.characterId)
     : undefined;
@@ -94,26 +101,43 @@ export function TestScenarioDrawer({
         Проверка текущего черновика. Результат не попадёт в историю тренировок.
       </p>
       <div className="maker-test-conversation" aria-live="polite">
-        {getReview(engine.runtime, attempt).map((entry, i) => (
-          <div className="maker-test-turn" key={i}>
-            <div className="maker-test-speech">
-              <small>
-                {
-                  engine.runtime.definition.characters.find((c) => c.id === entry.node.speakerId)
-                    ?.name
-                }
-              </small>
-              <p>{entry.question}</p>
+        {getReview(engine.runtime, attempt).map((entry, i) => {
+          const grade = entry.reaction.evaluation.grade;
+          const showEvaluation =
+            definition.settings.feedbackMode === 'immediate' &&
+            (entry.reaction.evaluation.feedback ||
+              entry.reaction.evaluation.penalty > 0 ||
+              grade !== 'acceptable');
+          return (
+            <div className="maker-test-turn" key={i}>
+              <div className="maker-test-speech">
+                <small>
+                  {
+                    engine.runtime.definition.characters.find((c) => c.id === entry.node.characterId)
+                      ?.name
+                  }
+                </small>
+                <p>{entry.question}</p>
+              </div>
+              <p className="maker-test-answer">{entry.reaction.label}</p>
+              {showEvaluation && (
+                <div className={`maker-test-evaluation maker-test-evaluation--${grade}`}>
+                  <strong>{evaluationLabel(grade)}</strong>
+                  {entry.reaction.evaluation.feedback && <p>{entry.reaction.evaluation.feedback}</p>}
+                  {entry.reaction.evaluation.penalty > 0 && (
+                    <small>Штраф: {entry.reaction.evaluation.penalty}</small>
+                  )}
+                </div>
+              )}
             </div>
-            <p className="maker-test-answer">{entry.answer.text}</p>
-          </div>
-        ))}
-        {node && runtimeNode && (
+          );
+        })}
+        {node && (
           <div className="maker-test-speech">
             <small>
               {character?.name} · {character?.role}
             </small>
-            <p>{questionText(runtimeNode, attempt)}</p>
+            <p>{questionText(node, attempt)}</p>
           </div>
         )}
         {ending && (
@@ -123,9 +147,28 @@ export function TestScenarioDrawer({
             <h3>{ending.title}</h3>
             <p>{ending.description}</p>
             {ending.nextStep && <p>{ending.nextStep}</p>}
+            {definition.settings.feedbackMode === 'summary' && (
+              <div className="maker-test-summary">
+                {getReview(engine.runtime, attempt).map((entry, index) => {
+                  const evaluation = entry.reaction.evaluation;
+                  if (
+                    !evaluation.feedback &&
+                    evaluation.penalty === 0 &&
+                    evaluation.grade === 'acceptable'
+                  )
+                    return null;
+                  return (
+                    <div key={`${entry.node.id}-${index}`}>
+                      <strong>{evaluationLabel(evaluation.grade)}</strong>
+                      {evaluation.feedback && <p>{evaluation.feedback}</p>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             <small>
               Выбрано реакций: {attempt.history.length}
-              {definition.settings.legacyFailure ? ` · Штрафы: ${attempt.penalties}` : ''}
+              {attempt.penalties > 0 ? ` · Штрафы: ${attempt.penalties}` : ''}
             </small>
           </section>
         )}

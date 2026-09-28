@@ -38,7 +38,7 @@ X-Arena-Request: 1
 | `POST /editor/:id/publish`          | Владелец сценария            | `{ revision }` → новая неизменяемая версия и новая редакция черновика            |
 | `POST /editor/:id/archive`          | Владелец сценария            | Убирает карточку из публичного каталога                                          |
 
-`definition: null` означает демонстрационный макет. Создать оцениваемую попытку для него нельзя.
+Каждый опубликованный сценарий содержит непустой канонический `definition: MakerDefinition`. Preview-only публикации больше не создаются.
 
 ## Ответ на подтверждение реплики
 
@@ -55,7 +55,7 @@ X-Arena-Request: 1
 ```typescript
 interface AttemptDetail {
   attempt: ScenarioAttempt;
-  definition: ScenarioDefinition;
+  definition: MakerDefinition;
   feedback?: Feedback;
   isCurrent: boolean;
   abandonedAt: string | null;
@@ -112,10 +112,10 @@ interface AttemptDetail {
 ## Дополнение 0.4.0: динамический maker
 
 - `POST /api/editor`: прежнее `{ "sourceId": "terms" }` создаёт копию; новое `{ "title": "Переговоры о зарплате" }` создаёт пустой черновик v2. Ответ: `{ "id": "custom-..." }`.
-- `GET /api/editor/:id`: возвращает `preview`, `definition`, `editor`, `revision`, `publishedVersion`, `archivedAt`, `hasUnpublishedChanges`. Старый definition допускается; клиент применяет чистый адаптер в `toMakerDraft`.
+- `GET /api/editor/:id`: возвращает канонические `preview`, `definition`, `editor`, `revision`, `publishedVersion`, `archivedAt`, `hasUnpublishedChanges`. Старые документы при чтении нормализуются серверным compatibility-layer.
 - `PUT /api/editor/:id`: `preview`, `definition`, `editor`, `revision`. Формат v2 — `features/maker/model/types.ts`. Незавершённый граф можно сохранить. Если старый клиент не прислал editor, его предыдущее значение в базе сохраняется. Координаты, масштаб и примеры проходят проверку типов и ограничений размера.
 - `POST /api/editor/:id/publish`: прежнее `{ "revision": 2 }`; для v2 сервер повторяет проверку графа. При 422 поле `details` содержит `{ severity, code, message, nodeId?, reactionId? }`. Публикация сохраняет v2, но не editor.
-- `GET /api/scenarios` и ответы с попытками сохраняют совместимый публичный формат проигрывателя (`answers / next`). Примеры, intent и editor в него не попадают. Для новых сценариев `settings.failure.rule = "none"`, для адаптированных старых сохраняется исходная оценка.
+- `GET /api/scenarios` и ответы с попытками возвращают тот же канонический `MakerDefinition`, который был опубликован. `editor` в опубликованную версию не входит; `intent` и `examples` остаются частью графа для будущего AI.
 - Тестовый режим maker локален: он не вызывает endpoints создания попыток и не меняет базу.
 
 Версия definition (`metadata.version`) относится к публикации; revision — к черновику; schemaVersion: 2 — к формату графа. Это три разных счётчика/идентификатора. Начатые попытки остаются на прежней опубликованной версии.

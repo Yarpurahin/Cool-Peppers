@@ -3,7 +3,7 @@ import type { ScenarioAttempt } from '../src/features/negotiation/model/types.ts
 import type { AttemptDetail } from '../src/types/api.ts';
 import type { AuthoringDocument } from '../src/features/maker/model/types.ts';
 import { compileScenario } from '../src/features/negotiation/model/engine.ts';
-import { fromPreview } from '../src/features/maker/model/adapter.ts';
+import { documentSchema } from './validation.ts';
 import { getAttemptReward } from './gamification.ts';
 
 export type Database = Pick<Pool, 'query'>;
@@ -41,10 +41,7 @@ export async function getVersion(
     [id, version],
   );
   if (!result.rowCount) throw new ApiError(404, 'Версия сценария не найдена');
-  const document = result.rows[0] as AuthoringDocument;
-  return document.definition
-    ? document
-    : { ...document, definition: fromPreview(document.preview) };
+  return documentSchema.parse(result.rows[0]) as AuthoringDocument;
 }
 export async function readAttempt(db: Database, row: AttemptRow): Promise<ScenarioAttempt> {
   const answers = await db.query<{ node_id: string; answer_id: string; answered_at: Date }>(
@@ -81,7 +78,7 @@ export async function detail(db: Database, row: AttemptRow): Promise<AttemptDeta
   );
   return {
     attempt: await readAttempt(db, row),
-    definition: compileScenario(document.definition!).definition,
+    definition: compileScenario(document.definition).definition,
     isCurrent: row.is_current,
     abandonedAt: row.abandoned_at?.toISOString() ?? null,
     reward: await getAttemptReward(db, row.id),

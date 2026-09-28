@@ -1,7 +1,7 @@
 import type { Express } from 'express';
 import type { Pool } from 'pg';
 import { z } from 'zod';
-import type { ScenarioDefinition } from '../src/features/negotiation/model/types.ts';
+import type { MakerDefinition } from '../src/features/maker/model/types.ts';
 import {
   ACHIEVEMENT_ICON_NAMES,
   calculateReward,
@@ -295,7 +295,7 @@ export async function awardCompletedAttempt(
   db: Database,
   userId: string,
   row: AttemptRow,
-  definition: ScenarioDefinition,
+  definition: MakerDefinition,
 ): Promise<AttemptReward> {
   const existing = await getAttemptReward(db, row.id);
   if (existing) return existing;

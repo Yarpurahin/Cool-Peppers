@@ -1,4 +1,4 @@
-import { Route, Routes, Outlet, useParams } from 'react-router-dom';
+import { Navigate, Route, Routes, Outlet, useParams } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import { Layout } from '../components/layout/Layout.tsx';
 import { AdminLayout } from '../components/admin/AdminLayout.tsx';
@@ -90,15 +90,7 @@ export function AppRoutes() {
             <Route path="scenarios" element={<EditorListPage />} />
           </Route>
 
-          {/* Legacy editor URLs are intentionally kept while the admin area is introduced. */}
-          <Route
-            path="editor"
-            element={
-              <RequireAdmin>
-                <EditorListPage />
-              </RequireAdmin>
-            }
-          />
+          <Route path="editor" element={<Navigate to="/admin/scenarios" replace />} />
         </Route>
         {/* The maker has its own full-height workspace, matching the design reference. */}
         <Route

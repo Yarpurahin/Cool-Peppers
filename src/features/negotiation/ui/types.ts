@@ -11,6 +11,12 @@ export interface PlayViewModel {
   step: number;
   stages: readonly { id: string; title: string; state: 'past' | 'current' | 'future' }[];
   history: readonly { id: string; question: string; answer: string }[];
+  evaluation?: {
+    grade: 'strong' | 'acceptable' | 'weak' | 'critical';
+    title: string;
+    text: string;
+    penalty: number;
+  };
 }
 
 export interface ResultViewModel {
@@ -29,6 +35,7 @@ export interface ResultViewModel {
     quote: string;
     question?: string;
     penalty: number;
+    grade?: 'strong' | 'acceptable' | 'weak' | 'critical';
   }[];
 }
 

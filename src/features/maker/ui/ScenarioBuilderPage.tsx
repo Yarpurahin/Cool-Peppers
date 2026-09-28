@@ -481,7 +481,7 @@ export function ScenarioBuilderPage() {
     });
   }
   function showIssue(issue: GraphIssue) {
-    if (issue.code === 'legacy-failure' || issue.code === 'start') {
+    if (issue.code === 'failure-rule' || issue.code === 'start') {
       select({ type: 'settings' });
       return;
     }

@@ -653,14 +653,18 @@
   display: flex;
   gap: 7px;
 }
-.maker-legacy {
+.maker-context-variants,
+.maker-assessment-rule,
+.maker-evaluation-editor {
   background: var(--tone-soft, #f7f6ef);
   padding: 14px;
   border-radius: 10px;
   font-size: 10px;
   line-height: 1.7;
 }
-.maker-legacy .field {
+.maker-context-variants .field,
+.maker-assessment-rule .field,
+.maker-evaluation-editor .field {
   margin: 12px 0;
 }
 .maker-block-actions {
@@ -1136,7 +1140,7 @@
 }
 .maker-page button:focus-visible,
 .maker-test-drawer button:focus-visible,
-.maker-legacy summary:focus-visible {
+.maker-context-variants summary:focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 2px;
 }
@@ -1147,10 +1151,10 @@
 .maker-card-reaction button:focus-visible {
   background: var(--sage);
 }
-.maker-legacy summary {
+.maker-context-variants summary {
   cursor: pointer;
 }
-.maker-legacy summary:hover {
+.maker-context-variants summary:hover {
   color: var(--orange);
 }
 .maker-primary:disabled:hover {
@@ -1353,7 +1357,7 @@
 }
 .maker-page button:focus-visible,
 .maker-test-drawer button:focus-visible,
-.maker-legacy summary:focus-visible,
+.maker-context-variants summary:focus-visible,
 .maker-canvas .react-flow__controls-button:focus-visible,
 .maker-card-reaction button:focus-visible {
   outline: 2px solid var(--focus);
@@ -2045,4 +2049,85 @@
   stroke-width: 1.4;
   opacity: .11;
   filter: none;
+}
+
+
+/* Reaction evaluation */
+.maker-evaluation-editor {
+  display: grid;
+  gap: 11px;
+  background: color-mix(in srgb, var(--surface) 92%, var(--sage));
+  border: 1px solid var(--line);
+}
+.maker-evaluation-editor .maker-section-heading {
+  margin: 0;
+}
+.maker-evaluation-preview {
+  display: grid;
+  gap: 6px;
+  padding: 12px 13px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.maker-evaluation-preview > span {
+  color: var(--muted);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.maker-evaluation-preview > strong {
+  font-size: 12px;
+}
+.maker-evaluation-preview > p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.55;
+}
+.maker-evaluation-preview > small {
+  color: var(--tone-orange, #b54228);
+  font-weight: 700;
+}
+.maker-evaluation-preview--strong {
+  border-color: color-mix(in srgb, var(--green) 45%, var(--line));
+}
+.maker-evaluation-preview--weak,
+.maker-evaluation-preview--critical {
+  border-color: color-mix(in srgb, var(--tone-orange, #b54228) 48%, var(--line));
+}
+.maker-assessment-rule {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+}
+.maker-assessment-rule > p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.maker-test-evaluation,
+.maker-test-summary {
+  display: grid;
+  gap: 5px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  font-size: 11px;
+}
+.maker-test-evaluation p,
+.maker-test-summary p {
+  margin: 0;
+  line-height: 1.5;
+}
+.maker-test-evaluation small {
+  color: var(--muted);
+  font-weight: 700;
+}
+.maker-test-summary {
+  margin: 10px 0;
+}
+.maker-test-summary > div + div {
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
 }

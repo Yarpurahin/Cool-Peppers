@@ -48,7 +48,7 @@ export function AttemptPage() {
           {getReview(scenario, attempt).map((row) => (
             <li key={row.node.id}>
               <p>{row.question}</p>
-              <blockquote>{row.answer.text}</blockquote>
+              <blockquote>{row.reaction.label}</blockquote>
             </li>
           ))}
         </ol>

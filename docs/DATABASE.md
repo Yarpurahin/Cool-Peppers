@@ -2,7 +2,7 @@
 
 ## Решение
 
-Схема гибридная. Пользователи, сессии, сценарии, версии, попытки, ответы и отзывы — отдельные связанные таблицы. Полное описание графа диалога хранится как `jsonb` внутри **неизменяемой версии**. Его структура соответствует `ScenarioDefinition` из исходного проекта; персонажи, этапы, варианты реплик, штрафы и концовки не теряются.
+Схема гибридная. Пользователи, сессии, сценарии, версии, попытки, ответы и отзывы — отдельные связанные таблицы. Полное описание графа диалога хранится как `jsonb` внутри **неизменяемой версии**. Его структура соответствует каноническому `MakerDefinition` (`schemaVersion: 2`); персонажи, этапы, реакции, evaluation, варианты реплик и концовки не теряются.
 
 Граф публикуется и загружается целиком, поэтому хранение одного документа на версию сохраняет текущую архитектуру без сборки сценария из десятков запросов. История действий, права и связи с пользователем остаются реляционными. JSON проверяется схемой Zod; перед публикацией `compileScenario` дополнительно проверяет переходы, уникальность ID, персонажей, этапы, отсутствие циклов, достижимость вопросов и концовку провала.
 
@@ -35,29 +35,32 @@ erDiagram
     attempts ||--o| feedback : feedback
 ```
 
-## Соответствие существующих TypeScript-типов
+## Соответствие текущей модели TypeScript
 
-| Тип из исходного проекта   | Представление в PostgreSQL                                                                                |
-| -------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `ScenarioId`               | `scenarios.id`, `text`; строковые ID сохранены (`terms`, `feedback`, `new-deadline`)                      |
-| `ScenarioMetadata`         | `scenario_versions.definition.metadata`; номер версии также в отдельной колонке `version`                 |
-| `ScenarioDefinition`       | `scenario_versions.definition`, `jsonb`; у черновика — `scenario_drafts.definition`                       |
-| `Character`, `CharacterId` | `definition.characters`; ID персонажа связывается со `speakerId` вопроса при валидации                    |
-| Этап `{ id, title }`       | `definition.stages`; `stageId` вопроса проверяется при публикации                                         |
-| `DialogueNode`, `NodeId`   | `definition.nodes`, включая `textVariants`                                                                |
-| `AnswerOption`, `AnswerId` | `definition.nodes[].answers`, включая `penalty`, `feedback`, `next`                                       |
-| `Transition`               | `next.type = node / ending`, целевой `nodeId` или `endingId`                                              |
-| `Ending`, `EndingId`       | `definition.endings`, включая `success / neutral / failure` и следующий шаг                               |
-| `ScenarioAttempt`          | `attempts` + упорядоченные строки `attempt_answers`                                                       |
-| `AnswerHistoryItem`        | `attempt_answers.node_id`, `answer_id`, `answered_at`; `sequence` сохраняет порядок                       |
-| `Feedback`                 | `feedback.attempt_id`, `helpful`, `comment`, `created_at`                                                 |
-| `ScenarioPreview`          | `scenario_versions.preview`, `jsonb`; поля исполняемой карточки вычисляются из определения при публикации |
-| `ScenarioArt`              | `preview.art`, ограничен Zod: `calendar / conversation / agreement`                                       |
-| `DemoDialogueNode`         | `preview.dialogue`, только для демонстрационных данных                                                    |
-| Демонстрационный профиль   | Не импортируется; реальные данные — `app_users`                                                           |
-| Демонстрационная история   | Не импортируется; реальная история строится из `attempts`                                                 |
+| Тип / поле | Представление в PostgreSQL |
+| --- | --- |
+| `MakerDefinition` | `scenario_versions.definition` и `scenario_drafts.definition`, `jsonb` |
+| `ScenarioMetadata` | `definition.metadata`; ID и версия дополнительно зафиксированы ключами версии |
+| `Character` | `definition.characters`; реплика ссылается через `characterId` |
+| Этап | `definition.stages`; реплика ссылается через необязательный `stageId` |
+| Реплика | `definition.nodes`, включая `textVariants` |
+| `UserReaction` | `definition.nodes[].reactions`; содержит `intent`, `examples`, `evaluation` и переход |
+| `ReactionEvaluation` | `reaction.evaluation.grade / penalty / feedback` |
+| Переход | ровно один из `nextNodeId` или `endingId` |
+| Финал | `definition.endings` (`success / neutral / failure`) |
+| `ScenarioPreview` | `scenario_versions.preview`; только данные каталога/карточки, не исполняемая логика |
+| `ScenarioAttempt` | `attempts` + упорядоченные `attempt_answers` |
+| `Feedback` | таблица `feedback` |
 
-`ScenarioPreview.level` дополнен значением «Продвинутый» для уже существующего `difficulty: hard`.
+Старые структуры `speakerId / answers / next`, `preview.dialogue` и `reaction.legacy` не являются рабочей схемой БД. Они принимаются compatibility-parser только при чтении старых данных и преобразуются в `MakerDefinition`.
+
+### Нормализация старых документов
+
+```bash
+npm run db:normalize-scenarios
+```
+
+Команда обновляет только JSON-представление старых сценариев и черновиков. Для `scenario_versions` она временно отключает пользовательский trigger неизменяемости внутри одной транзакции, сохраняет те же `(scenario_id, version)`, затем включает trigger обратно. Если транзакция падает, PostgreSQL откатывает и данные, и состояние trigger. Уже канонические JSON не переписываются.
 
 ## SQL-типы
 

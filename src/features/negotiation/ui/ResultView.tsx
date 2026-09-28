@@ -63,11 +63,11 @@ export function ResultView({
             <h2>Разбор ваших решений</h2>
             {model.reviews.map((item, index) => (
               <article
-                className={`review-item ${item.penalty > 0 ? 'review-item--penalty' : ''}`}
+                className={`review-item ${item.penalty > 0 ? 'review-item--penalty' : ''} ${item.grade ? `review-item--${item.grade}` : ''}`}
                 key={item.id}
               >
                 <span className="review-number" aria-hidden="true">
-                  <Icon name={item.penalty > 0 ? 'bulb' : 'check'} size={16} />
+                  <Icon name={item.penalty > 0 || item.grade === 'weak' || item.grade === 'critical' ? 'bulb' : 'check'} size={16} />
                 </span>
                 <div>
                   <h3>

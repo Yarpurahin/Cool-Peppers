@@ -1,9 +1,14 @@
-import type {
-  Character,
-  ScenarioDefinition,
-  ScenarioMetadata,
-} from '../../negotiation/model/types.ts';
+import type { Character, ScenarioMetadata } from '../../negotiation/model/types.ts';
 import type { ScenarioPreview } from '../../../types/scenario.ts';
+
+export type ReactionGrade = 'strong' | 'acceptable' | 'weak' | 'critical';
+export type FeedbackMode = 'immediate' | 'summary' | 'hidden';
+
+export interface ReactionEvaluation {
+  grade: ReactionGrade;
+  penalty: number;
+  feedback: string;
+}
 
 export interface UserReaction {
   id: string;
@@ -12,8 +17,7 @@ export interface UserReaction {
   examples: string[];
   nextNodeId?: string;
   endingId?: string;
-  /** Only imported scenarios carry the old assessment. New reactions have none. */
-  legacy?: { penalty: number; feedback: string };
+  evaluation: ReactionEvaluation;
 }
 
 export interface DialogueNode {
@@ -45,7 +49,8 @@ export interface MakerDefinition {
   settings: {
     allowRestart: boolean;
     collectFeedback: boolean;
-    legacyFailure?: { rule: 'half-all-questions'; endingId: string };
+    feedbackMode: FeedbackMode;
+    failureRule?: { rule: 'half-all-questions'; endingId: string };
     assessmentNote?: string;
   };
 }
@@ -58,7 +63,7 @@ export interface ScenarioEditorState {
 /** The stored document has exactly one authoritative graph, plus editor-only data. */
 export interface AuthoringDocument {
   preview: ScenarioPreview;
-  definition: ScenarioDefinition | MakerDefinition | null;
+  definition: MakerDefinition;
   editor?: ScenarioEditorState;
 }
 export interface AuthoringDraft extends AuthoringDocument {

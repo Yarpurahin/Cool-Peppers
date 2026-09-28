@@ -653,9 +653,6 @@
 .play-page .back-link {
   margin-bottom: 17px;
 }
-.play-page > .demo-notice {
-  margin-bottom: 25px;
-}
 .play-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 305px;
@@ -808,9 +805,6 @@
 }
 
 /* Result */
-.result-page > .demo-notice {
-  margin-bottom: 22px;
-}
 .result-hero {
   display: flex;
   justify-content: space-between;

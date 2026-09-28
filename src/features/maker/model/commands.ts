@@ -43,7 +43,13 @@ export function addReaction(def: MakerDefinition, nodeId: string): UserReaction 
   const node = def.nodes.find((n) => n.id === nodeId);
   if (!node || node.reactions.length >= 30) return;
   const id = newId('reaction');
-  const reaction = { id, intent: id, label: 'Новая реакция', examples: [] };
+  const reaction: UserReaction = {
+    id,
+    intent: id,
+    label: 'Новая реакция',
+    examples: [],
+    evaluation: { grade: 'acceptable', penalty: 0, feedback: '' },
+  };
   node.reactions.push(reaction);
   return reaction;
 }
@@ -78,7 +84,7 @@ export function removeBlocks(doc: MakerDocument, ids: readonly string[]) {
       if (r.endingId && removing.has(r.endingId)) delete r.endingId;
     }
   if (removing.has(doc.definition.startNodeId)) doc.definition.startNodeId = '';
-  // A removed legacy failure ending remains an explicit validation error until the rule is disabled/reassigned.
+  // A removed assessment failure ending remains an explicit validation error until the rule is disabled/reassigned.
   for (const id of ids) delete doc.editor.positions[id];
   cleanVariants(doc.definition);
 }

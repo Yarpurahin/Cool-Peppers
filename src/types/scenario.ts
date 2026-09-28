@@ -1,12 +1,6 @@
-// Catalogue presentation and legacy editor/demo fixtures; executable types live in features/negotiation/model/types.ts.
 export type ScenarioArt = 'calendar' | 'conversation' | 'agreement';
 
-export interface DemoDialogueNode {
-  title: string;
-  speech: string;
-  answers: { text: string; next: number }[];
-}
-
+/** Catalogue projection. Executable dialogue exists only in MakerDefinition. */
 export interface ScenarioPreview {
   id: string;
   title: string;
@@ -22,11 +16,4 @@ export interface ScenarioPreview {
   art: ScenarioArt;
   coverImage?: { src: string; alt: string };
   person: { name: string; initials: string; role: string; character: string; quote: string };
-  dialogue: DemoDialogueNode[];
-  example: {
-    score: number;
-    outcome: string;
-    nextStep: string;
-    observations: { title: string; text: string; quote: string }[];
-  };
 }

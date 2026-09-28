@@ -6,19 +6,18 @@ import { Button, ButtonLink } from '../components/ui/Button.tsx';
 import { useNegotiation } from '../features/negotiation/NegotiationProvider.tsx';
 import { toPlayView } from '../features/negotiation/presentation.ts';
 import { PlayView } from '../features/negotiation/ui/PlayView.tsx';
-import { DemoPlayPage } from '../features/negotiation/ui/DemoPlayPage.tsx';
 import { ErrorPage } from './ErrorPage.tsx';
 
 export function PlayPage() {
   const { scenarioId } = useParams();
-  const { findNegotiation, findScenario } = useCatalog();
+  const { findNegotiation } = useCatalog();
   if (findNegotiation(scenarioId))
     return (
       <RequireAuth>
         <ActivePlay id={scenarioId!} key={scenarioId} />
       </RequireAuth>
     );
-  return findScenario(scenarioId) ? <DemoPlayPage /> : <ErrorPage />;
+  return <ErrorPage />;
 }
 function ActivePlay({ id }: { id: string }) {
   const { entries, ensure, submit, restart, loading, error: loadError, reload } = useNegotiation();

@@ -60,6 +60,29 @@ export function PlayView({
             </div>
             <span className="badge">Шаг {model.step}</span>
           </div>
+          {model.evaluation && (
+            <section
+              className={`reaction-feedback reaction-feedback--${model.evaluation.grade}`}
+              aria-live="polite"
+              aria-label="Обратная связь по предыдущему ответу"
+            >
+              <div>
+                <Icon
+                  name={
+                    model.evaluation.grade === 'strong' || model.evaluation.grade === 'acceptable'
+                      ? 'check'
+                      : 'bulb'
+                  }
+                  size={17}
+                />
+                <strong>{model.evaluation.title}</strong>
+              </div>
+              {model.evaluation.text && <p>{model.evaluation.text}</p>}
+              {model.evaluation.penalty > 0 && (
+                <small>Штраф: {model.evaluation.penalty}</small>
+              )}
+            </section>
+          )}
           {model.history.length > 0 && (
             <details className="dialogue-history">
               <summary>История разговора · {model.history.length}</summary>

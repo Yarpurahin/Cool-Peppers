@@ -129,7 +129,7 @@ test('maker: duplicate, delete, undo and reaction editing preserve IDs', async (
   await expect(page.locator('.maker-notice')).toHaveText('Черновик сохранён.');
   const saved = await (await page.request.get(`/api/editor/${id}`)).json();
   expect(saved.definition.schemaVersion).toBe(2);
-  expect(saved.definition.nodes[0].reactions[0].legacy).toBeDefined();
+  expect(saved.definition.nodes[0].reactions[0].evaluation).toBeDefined();
   await page.getByRole('button', { name: 'Тестировать', exact: true }).click();
   await expect(page.locator('.maker-test-drawer')).toBeVisible();
   await page.keyboard.press('Escape');

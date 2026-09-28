@@ -8,15 +8,8 @@ import {
   questionText,
   startAttempt,
 } from '../../src/features/negotiation/model/engine.ts';
-import type {
-  ScenarioAttempt,
-  ScenarioDefinition,
-} from '../../src/features/negotiation/model/types.ts';
-import {
-  attemptKey,
-  createAttemptRepository,
-  restoreAttempt,
-} from '../../src/features/negotiation/storage/attemptRepository.ts';
+import type { ScenarioAttempt } from '../../src/features/negotiation/model/types.ts';
+import type { MakerDefinition } from '../../src/features/maker/model/types.ts';
 import { toPlayView, toResultView } from '../../src/features/negotiation/presentation.ts';
 
 const scenario = compileScenario(employmentScenario);
@@ -26,30 +19,29 @@ const answer = (attempt: ScenarioAttempt, index: number) => {
   assert.equal(attempt.status, 'in-progress');
   if (attempt.status !== 'in-progress') throw new Error('Unexpected ending');
   const node = scenario.nodes.get(attempt.currentNodeId)!;
-  return answerQuestion(scenario, attempt, node.id, node.answers[index].id, now);
+  return answerQuestion(scenario, attempt, node.id, node.reactions[index].id, now);
 };
-const saved = (attempt: ScenarioAttempt) => ({ schemaVersion: 1, attempt });
 
-function linear(count: number): ScenarioDefinition {
+function linear(count: number): MakerDefinition {
   return {
-    ...employmentScenario,
+    ...structuredClone(employmentScenario),
     startNodeId: 'linear-0',
     nodes: Array.from({ length: count }, (_, index) => ({
       id: `linear-${index}`,
       stageId: 'stage-1',
       title: 'Вопрос',
-      speakerId: 'employer',
+      characterId: 'employer',
       text: 'Реплика',
-      answers: [
+      reactions: [
         {
           id: `answer-${index}`,
-          text: 'Ответ',
-          feedback: 'Разбор',
-          penalty: 1,
-          next:
-            index === count - 1
-              ? { type: 'ending', endingId: 'agreed' }
-              : { type: 'node', nodeId: `linear-${index + 1}` },
+          intent: `answer_${index}`,
+          label: 'Ответ',
+          examples: [],
+          evaluation: { grade: 'weak', penalty: 1, feedback: 'Разбор' },
+          ...(index === count - 1
+            ? { endingId: 'agreed' }
+            : { nextNodeId: `linear-${index + 1}` }),
         },
       ],
     })),
@@ -61,8 +53,8 @@ test('counts all 11 questions, not 12 contextual variants or four visited steps'
   assert.equal(scenario.failureThreshold, 6);
   assert.equal(scenario.nodes.get('q3')!.textVariants!.length, 12);
   for (const node of scenario.nodes.values()) {
-    assert.equal(node.answers.filter((item) => item.penalty === 1).length, 1);
-    assert.ok(node.answers.every((item) => item.penalty === 0 || item.penalty === 1));
+    assert.equal(node.reactions.filter((item) => item.evaluation.penalty === 1).length, 1);
+    assert.ok(node.reactions.every((item) => item.evaluation.penalty === 0 || item.evaluation.penalty === 1));
   }
 });
 
@@ -71,7 +63,6 @@ test('all 180 paths terminate correctly, replay exactly and preserve every reply
     success = 0,
     neutral = 0;
   function visit(attempt: ScenarioAttempt) {
-    assert.deepEqual(restoreAttempt(scenario, saved(attempt)), attempt);
     if (attempt.status === 'completed') {
       total++;
       assert.equal(attempt.history.length, 4);
@@ -86,7 +77,7 @@ test('all 180 paths terminate correctly, replay exactly and preserve every reply
       }
       const review = getReview(scenario, attempt);
       assert.equal(
-        review.reduce((sum, item) => sum + item.answer.penalty, 0),
+        review.reduce((sum, item) => sum + item.reaction.evaluation.penalty, 0),
         attempt.penalties,
       );
       assert.ok(review[2].question.includes('Спасибо, зафиксировал:'));
@@ -94,7 +85,7 @@ test('all 180 paths terminate correctly, replay exactly and preserve every reply
     }
     const node = scenario.nodes.get(attempt.currentNodeId)!;
     assert.equal(toPlayView(scenario, attempt).step, attempt.history.length + 1);
-    for (let index = 0; index < node.answers.length; index++) visit(answer(attempt, index));
+    for (let index = 0; index < node.reactions.length; index++) visit(answer(attempt, index));
   }
   visit(fresh());
   assert.deepEqual({ total, success, neutral }, { total: 180, success: 60, neutral: 120 });
@@ -107,7 +98,7 @@ test('stage three uses the exact variant for all 12 preceding choices', () => {
       assert.equal(attempt.status, 'in-progress');
       const node = scenario.nodes.get('q3')!;
       const expected = node.textVariants!.find(
-        (variant) => variant.afterAnswerId === attempt.history.at(-1)!.answerId,
+        (variant) => variant.afterReactionId === attempt.history.at(-1)!.answerId,
       )!;
       assert.equal(questionText(node, attempt), expected.text);
     }
@@ -115,18 +106,17 @@ test('stage three uses the exact variant for all 12 preceding choices', () => {
 
 test('penalties cannot change the normal question route', () => {
   for (const node of scenario.nodes.values())
-    for (const option of node.answers) {
-      // The graph, not accumulated penalties, selects the next question below the failure threshold.
+    for (const reaction of node.reactions) {
       const attempt: ScenarioAttempt = {
         ...fresh(),
         status: 'in-progress',
         currentNodeId: node.id,
         penalties: 3,
       };
-      const next = answerQuestion(scenario, attempt, node.id, option.id, now);
-      if (option.next.type === 'node') {
+      const next = answerQuestion(scenario, attempt, node.id, reaction.id, now);
+      if (reaction.nextNodeId) {
         assert.equal(next.status, 'in-progress');
-        if (next.status === 'in-progress') assert.equal(next.currentNodeId, option.next.nodeId);
+        if (next.status === 'in-progress') assert.equal(next.currentNodeId, reaction.nextNodeId);
       }
     }
 });
@@ -159,118 +149,51 @@ test('rejects unknown answers, stale/double clicks and answers after completion 
   assert.throws(() => answerQuestion(scenario, complete, 'q4a', 'q4a-a1', now));
 });
 
-test('invalid graphs fail before playback', () => {
-  const missing: ScenarioDefinition = structuredClone(employmentScenario);
+test('invalid graphs fail before playback while loops with an exit are allowed', () => {
+  const missing: MakerDefinition = structuredClone(employmentScenario);
   missing.startNodeId = 'missing';
   assert.throws(() => compileScenario(missing));
   assert.throws(() =>
     compileScenario({
-      ...employmentScenario,
-      nodes: [...employmentScenario.nodes, employmentScenario.nodes[0]],
+      ...structuredClone(employmentScenario),
+      nodes: [...structuredClone(employmentScenario.nodes), structuredClone(employmentScenario.nodes[0])],
     }),
   );
   assert.throws(() =>
     compileScenario({
-      ...employmentScenario,
-      nodes: [
-        ...employmentScenario.nodes,
-        {
-          ...employmentScenario.nodes[0],
-          id: 'orphan',
-          answers: [{ ...employmentScenario.nodes[0].answers[0], id: 'orphan-answer' }],
-        },
-      ],
-    }),
-  );
-  const cycle = linear(1);
-  const first = cycle.nodes[0];
-  assert.throws(() =>
-    compileScenario({
-      ...cycle,
-      nodes: [
-        { ...first, answers: [{ ...first.answers[0], next: { type: 'node', nodeId: first.id } }] },
-      ],
-    }),
-  );
-  assert.throws(() =>
-    compileScenario({
-      ...employmentScenario,
-      nodes: employmentScenario.nodes.map((node, i) =>
-        i
-          ? node
+      ...structuredClone(employmentScenario),
+      nodes: employmentScenario.nodes.map((node, index) =>
+        index
+          ? structuredClone(node)
           : {
-              ...node,
-              answers: [{ ...node.answers[0], next: { type: 'node', nodeId: 'missing' } }],
+              ...structuredClone(node),
+              reactions: [
+                {
+                  ...structuredClone(node.reactions[0]),
+                  nextNodeId: 'missing',
+                  endingId: undefined,
+                },
+              ],
             },
       ),
     }),
   );
-  assert.throws(() =>
-    compileScenario({
-      ...employmentScenario,
-      nodes: employmentScenario.nodes.map((node, i) => (i ? node : { ...node, answers: [] })),
-    }),
-  );
-});
+  const closedLoop = linear(1);
+  closedLoop.settings.failureRule = undefined;
+  closedLoop.nodes[0].reactions[0].nextNodeId = closedLoop.nodes[0].id;
+  delete closedLoop.nodes[0].reactions[0].endingId;
+  assert.throws(() => compileScenario(closedLoop));
 
-test('restore recalculates penalties and ignores forged derived state', () => {
-  const attempt = answer(fresh(), 3);
-  const forged = {
-    ...attempt,
-    penalties: 999,
-    currentNodeId: 'q4a',
-    status: 'completed',
+  const loopWithExit = structuredClone(closedLoop);
+  loopWithExit.nodes[0].reactions.push({
+    id: 'finish-loop',
+    intent: 'finish_loop',
+    label: 'Завершить',
+    examples: [],
+    evaluation: { grade: 'acceptable', penalty: 0, feedback: '' },
     endingId: 'agreed',
-  };
-  assert.deepEqual(restoreAttempt(scenario, saved(forged as ScenarioAttempt)), attempt);
-  assert.throws(() => restoreAttempt(scenario, saved({ ...attempt, scenarioVersion: 99 })));
-  assert.throws(() => restoreAttempt(scenario, { schemaVersion: 8, attempt }));
-  assert.throws(() =>
-    restoreAttempt(
-      scenario,
-      saved({ ...attempt, history: [{ nodeId: 'q4a', answerId: 'q4a-a1', answeredAt: now }] }),
-    ),
-  );
-  assert.throws(() =>
-    restoreAttempt(scenario, { schemaVersion: 1, attempt: { ...attempt, history: [null] } }),
-  );
-});
-
-test('repository handles malformed storage and unavailable/quota-limited storage', () => {
-  const memory = new Map<string, string>();
-  const storage = {
-    getItem: (key: string) => memory.get(key) ?? null,
-    setItem: (key: string, value: string) => {
-      memory.set(key, value);
-    },
-  };
-  const repository = createAttemptRepository(() => storage);
-  const attempt = answer(fresh(), 0);
-  repository.save(attempt);
-  assert.deepEqual(repository.load(scenario).attempt, attempt);
-  memory.set(attemptKey('terms'), '{bad json');
-  assert.ok(repository.load(scenario).warning);
-  assert.equal(repository.load(scenario).attempt, undefined);
-  repository.saveFeedback('terms', {
-    attemptId: 'test-attempt',
-    helpful: false,
-    comment: 'Полезно',
-    createdAt: now,
   });
-  assert.equal(repository.loadFeedback('terms', 'test-attempt')?.helpful, false);
-  assert.equal(repository.loadFeedback('terms', 'different-attempt'), undefined);
-  const blocked = createAttemptRepository(() => {
-    throw new Error('denied');
-  });
-  assert.ok(blocked.load(scenario).warning);
-  assert.throws(() => blocked.save(attempt));
-  const full = createAttemptRepository(() => ({
-    getItem: storage.getItem,
-    setItem: () => {
-      throw new Error('quota');
-    },
-  }));
-  assert.throws(() => full.save(attempt));
+  assert.doesNotThrow(() => compileScenario(loopWithExit));
 });
 
 test('a new attempt clears history and cannot expose a previous result', () => {

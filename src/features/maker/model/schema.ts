@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import type { MakerDefinition } from './types.ts';
+
 const text = (max = 10000) =>
   z
     .string()
@@ -6,6 +8,7 @@ const text = (max = 10000) =>
     .refine((s) => !s.includes('\u0000'), 'Недопустимый символ');
 const id = z.string().regex(/^[a-zA-Z0-9_-]{1,100}$/);
 const reference = z.union([id, z.literal('')]);
+
 export const editorStateSchema = z
   .object({
     positions: z.record(
@@ -23,7 +26,9 @@ export const editorStateSchema = z
       .optional(),
   })
   .strict();
-export const makerDefinitionSchema = z
+
+/** Current canonical Arena graph. Compatibility formats are parsed elsewhere. */
+export const makerDefinitionSchema: z.ZodType<MakerDefinition> = z
   .object({
     schemaVersion: z.literal(2),
     metadata: z
@@ -71,13 +76,16 @@ export const makerDefinitionSchema = z
                     id,
                     intent: text(100),
                     label: text(),
-                    examples: z.array(text()).max(100).default([]),
+                    examples: z.array(text()).max(100),
                     nextNodeId: reference.optional(),
                     endingId: reference.optional(),
-                    legacy: z
-                      .object({ penalty: z.number().int().min(0).max(10000), feedback: text() })
-                      .strict()
-                      .optional(),
+                    evaluation: z
+                      .object({
+                        grade: z.enum(['strong', 'acceptable', 'weak', 'critical']),
+                        penalty: z.number().int().min(0).max(10000),
+                        feedback: text(),
+                      })
+                      .strict(),
                   })
                   .strict(),
               )
@@ -103,8 +111,9 @@ export const makerDefinitionSchema = z
       .object({
         allowRestart: z.boolean(),
         collectFeedback: z.boolean(),
+        feedbackMode: z.enum(['immediate', 'summary', 'hidden']),
         assessmentNote: text().optional(),
-        legacyFailure: z
+        failureRule: z
           .object({ rule: z.literal('half-all-questions'), endingId: id })
           .strict()
           .optional(),

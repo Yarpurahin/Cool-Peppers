@@ -4,6 +4,7 @@ import { documentSchema } from '../../../types/validation.ts';
 import { toMakerDraft } from './adapter.ts';
 import { layoutGraph } from './commands.ts';
 import { editorStateSchema, makerDefinitionSchema } from './schema.ts';
+import { legacyMakerDefinitionSchema } from './legacySchema.ts';
 import type { AuthoringDraft, MakerDocument, MakerDraft } from './types.ts';
 
 const coverImageSchema = z
@@ -160,11 +161,17 @@ export function parseScenarioFile(input: unknown, current: MakerDraft): ParsedSc
   }
 
   const rawDefinition = makerDefinitionSchema.safeParse(input);
-  if (rawDefinition.success) {
+  const oldMakerDefinition = rawDefinition.success ? null : legacyMakerDefinitionSchema.safeParse(input);
+  const parsedDefinition = rawDefinition.success
+    ? rawDefinition.data
+    : oldMakerDefinition?.success
+      ? oldMakerDefinition.data
+      : null;
+  if (parsedDefinition) {
     const file: ScenarioFile = {
       format: 'arena-scenario',
       formatVersion: 1,
-      definition: rawDefinition.data,
+      definition: parsedDefinition,
     };
     return { document: fromPortable(file, current), source: 'definition' };
   }
@@ -174,7 +181,7 @@ export function parseScenarioFile(input: unknown, current: MakerDraft): ParsedSc
     object?.format === 'arena-scenario'
       ? zodMessage(portable.error)
       : object?.schemaVersion === 2
-        ? zodMessage(rawDefinition.error)
+        ? zodMessage(rawDefinition.success ? portable.error : rawDefinition.error)
         : object && ('preview' in object || 'definition' in object)
           ? zodMessage(exported.error)
           : zodMessage(portable.error);

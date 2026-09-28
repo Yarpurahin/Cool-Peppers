@@ -53,7 +53,12 @@
               "Какие условия вы предлагаете?",
               "Расскажите подробнее об условиях"
             ],
-            "nextNodeId": "node_offer"
+            "nextNodeId": "node_offer",
+            "evaluation": {
+              "grade": "strong",
+              "penalty": 0,
+              "feedback": "Вы уточняете условия до того, как принимать решение."
+            }
           },
           {
             "id": "reaction_close",
@@ -62,7 +67,12 @@
             "examples": [
               "Спасибо, я подумаю"
             ],
-            "endingId": "ending_neutral"
+            "endingId": "ending_neutral",
+            "evaluation": {
+              "grade": "acceptable",
+              "penalty": 0,
+              "feedback": "Вы корректно откладываете решение и завершаете разговор."
+            }
           }
         ]
       },
@@ -81,7 +91,12 @@
               "Да, меня устраивает",
               "Согласен"
             ],
-            "endingId": "ending_success"
+            "endingId": "ending_success",
+            "evaluation": {
+              "grade": "strong",
+              "penalty": 0,
+              "feedback": "Вы прямо фиксируете согласие с предложением."
+            }
           },
           {
             "id": "reaction_reject",
@@ -90,7 +105,12 @@
             "examples": [
               "Нет, мне не подходит"
             ],
-            "endingId": "ending_failure"
+            "endingId": "ending_failure",
+            "evaluation": {
+              "grade": "weak",
+              "penalty": 1,
+              "feedback": "Отказ завершает переговоры; перед ним можно было уточнить альтернативы."
+            }
           }
         ]
       }
@@ -120,7 +140,8 @@
     ],
     "settings": {
       "allowRestart": true,
-      "collectFeedback": true
+      "collectFeedback": true,
+      "feedbackMode": "summary"
     }
   }
 }

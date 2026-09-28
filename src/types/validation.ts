@@ -2,6 +2,15 @@ import { z } from 'zod';
 import { compileScenario } from '../features/negotiation/model/engine.ts';
 import type { AuthoringDocument } from '../features/maker/model/types.ts';
 import { makerDefinitionSchema, editorStateSchema } from '../features/maker/model/schema.ts';
+import { legacyMakerDefinitionSchema } from '../features/maker/model/legacySchema.ts';
+import {
+  definitionFromLegacyPreview,
+  stripLegacyPreview,
+  upgradeLegacyDefinition,
+  type LegacyScenarioDefinition,
+  type LegacyScenarioPreview,
+} from '../features/maker/model/compatibility.ts';
+import { previewFromDefinition } from '../features/maker/model/adapter.ts';
 
 const text = (max = 10000) =>
   z
@@ -30,10 +39,50 @@ export const changePasswordSchema = z
     message: 'Новый пароль должен отличаться от текущего',
     path: ['newPassword'],
   });
-const answer = z
+
+const coverImageSchema = z
+  .object({
+    src: z
+      .string()
+      .max(710000)
+      .regex(/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/),
+    alt: text(250),
+  })
+  .strict();
+
+export const previewSchema = z
+  .object({
+    id: idSchema,
+    title: required(200),
+    category: required(100),
+    level: z.enum(['Начальный', 'Средний', 'Продвинутый']),
+    duration: required(100),
+    skill: required(200),
+    description: required(),
+    context: required(),
+    goal: required(),
+    tip: required(),
+    role: required(200),
+    art: z.enum(['calendar', 'conversation', 'agreement']),
+    coverImage: coverImageSchema.optional(),
+    person: z
+      .object({
+        name: required(100),
+        initials: required(8),
+        role: required(200),
+        character: required(),
+        quote: required(),
+      })
+      .strict(),
+  })
+  .strict();
+
+// Compatibility schemas are kept at the serialization boundary only. New code never emits them.
+const legacyAnswerSchema = z
   .object({
     id: idSchema,
     text: required(),
+    grade: z.enum(['strong', 'acceptable', 'weak', 'critical']).optional(),
     penalty: z.number().int().min(0).max(10000),
     feedback: text(),
     next: z.discriminatedUnion('type', [
@@ -42,7 +91,8 @@ const answer = z
     ]),
   })
   .strict();
-const definitionSchema = z
+
+const legacyDefinitionSchema = z
   .object({
     metadata: z
       .object({
@@ -70,6 +120,7 @@ const definitionSchema = z
         ]),
         navigation: z.literal('graph').optional(),
         assessmentNote: text().optional(),
+        feedbackMode: z.enum(['immediate', 'summary', 'hidden']).optional(),
       })
       .strict(),
     startNodeId: idSchema,
@@ -87,10 +138,7 @@ const definitionSchema = z
       )
       .min(1)
       .max(100),
-    stages: z
-      .array(z.object({ id: idSchema, title: required(200) }).strict())
-      .min(1)
-      .max(100),
+    stages: z.array(z.object({ id: idSchema, title: required(200) }).strict()).min(1).max(100),
     nodes: z
       .array(
         z
@@ -104,7 +152,7 @@ const definitionSchema = z
               .array(z.object({ afterAnswerId: idSchema, text: required() }).strict())
               .max(1000)
               .optional(),
-            answers: z.array(answer).min(1).max(30),
+            answers: z.array(legacyAnswerSchema).min(1).max(30),
           })
           .strict(),
       )
@@ -127,39 +175,9 @@ const definitionSchema = z
   })
   .strict();
 
-export const previewSchema = z
-  .object({
-    id: idSchema,
-    title: required(200),
-    category: required(100),
-    level: z.enum(['Начальный', 'Средний', 'Продвинутый']),
-    duration: required(100),
-    skill: required(200),
-    description: required(),
-    context: required(),
-    goal: required(),
-    tip: required(),
-    role: required(200),
-    art: z.enum(['calendar', 'conversation', 'agreement']),
-    coverImage: z
-      .object({
-        src: z
-          .string()
-          .max(710000)
-          .regex(/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/),
-        alt: text(250),
-      })
-      .strict()
-      .optional(),
-    person: z
-      .object({
-        name: required(100),
-        initials: required(8),
-        role: required(200),
-        character: required(),
-        quote: required(),
-      })
-      .strict(),
+const legacyPreviewSchema = previewSchema
+  .omit({})
+  .extend({
     dialogue: z
       .array(
         z
@@ -187,14 +205,35 @@ export const previewSchema = z
       .strict(),
   })
   .strict();
-export const documentSchema = z
+
+const rawDocumentSchema = z
   .object({
-    preview: previewSchema,
-    definition: z.union([makerDefinitionSchema, definitionSchema]).nullable(),
+    preview: z.union([previewSchema, legacyPreviewSchema]),
+    definition: z.union([makerDefinitionSchema, legacyMakerDefinitionSchema, legacyDefinitionSchema]).nullable(),
     editor: editorStateSchema.optional(),
   })
   .strict();
-export const saveDraftSchema = documentSchema.extend({ revision: z.number().int().positive() });
+
+function canonicalDocument(input: z.infer<typeof rawDocumentSchema>): AuthoringDocument {
+  const rawPreview = input.preview;
+  const definition = input.definition
+    ? 'schemaVersion' in input.definition
+      ? input.definition
+      : upgradeLegacyDefinition(input.definition as LegacyScenarioDefinition)
+    : 'dialogue' in rawPreview
+      ? definitionFromLegacyPreview(rawPreview as LegacyScenarioPreview)
+      : null;
+  if (!definition)
+    throw new Error('У сценария отсутствует исполняемый граф. Откройте и сохраните его в конструкторе.');
+  const compiled = compileScenario(definition).definition;
+  const preview = previewFromDefinition(compiled, stripLegacyPreview(rawPreview as LegacyScenarioPreview));
+  return { preview, definition: compiled, ...(input.editor ? { editor: input.editor } : {}) };
+}
+
+export const documentSchema = rawDocumentSchema.transform(canonicalDocument);
+export const saveDraftSchema = rawDocumentSchema
+  .extend({ revision: z.number().int().positive() })
+  .transform((input) => ({ ...canonicalDocument(input), revision: input.revision }));
 export const publishSchema = z.object({ revision: z.number().int().positive() }).strict();
 export const answerSchema = z
   .object({
@@ -210,54 +249,12 @@ export const feedbackSchema = z
   .object({ helpful: z.boolean(), comment: text(2000).transform((s) => s.trim()) })
   .strict();
 
-/** Definition is authoritative; catalogue data for executable scenarios is a projection. */
+/** Revalidates and synchronizes catalogue projection from the one authoritative graph. */
 export function normalizeDocument(input: AuthoringDocument): AuthoringDocument {
-  const { definition, preview } = input;
-  if (!definition) {
-    for (const node of preview.dialogue)
-      for (const option of node.answers)
-        if (option.next >= preview.dialogue.length)
-          throw new Error('Неизвестный переход в демонстрационном сценарии');
-    return input;
-  }
-  const def = compileScenario(definition).definition;
-  const first = def.nodes.find((n) => n.id === def.startNodeId)!;
-  const person = def.characters.find((c) => c.id === first.speakerId)!;
-  const m = def.metadata;
+  const definition = compileScenario(input.definition).definition;
   return {
     ...input,
-    preview: {
-      ...preview,
-      id: m.id,
-      title: m.title,
-      category: m.category || 'Другое',
-      level:
-        m.difficulty === 'easy' ? 'Начальный' : m.difficulty === 'hard' ? 'Продвинутый' : 'Средний',
-      duration: m.duration || 'Без ограничения',
-      skill: m.skill || 'Ведение диалога',
-      description: m.description,
-      context: m.context || m.description,
-      goal: m.goal || 'Пройдите разговор до финала.',
-      tip: m.tip || 'Выбирайте реакцию, которая отражает ваш подход.',
-      role: m.playerRole || 'Участник',
-      person: {
-        name: person.name,
-        initials: person.initials || person.name.slice(0, 1),
-        role: person.role || 'Собеседник',
-        character: person.description || 'Участник переговоров',
-        quote: first.text,
-      },
-      dialogue: def.nodes.map((node, index) => ({
-        title: node.title || `Реплика ${index + 1}`,
-        speech: node.text,
-        answers: node.answers.map((a) => ({
-          text: a.text,
-          next:
-            a.next.type === 'ending'
-              ? -1
-              : def.nodes.findIndex((n) => a.next.type === 'node' && n.id === a.next.nodeId),
-        })),
-      })),
-    },
+    definition,
+    preview: previewFromDefinition(definition, input.preview),
   };
 }

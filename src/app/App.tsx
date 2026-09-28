@@ -4,7 +4,6 @@ import { Component } from 'react';
 import type { ReactNode } from 'react';
 import { ErrorPage } from '../pages/ErrorPage.tsx';
 import { BrowserRouter, useLocation } from 'react-router-dom';
-import { DemoProvider } from './DemoProvider.tsx';
 import { AppRoutes } from '../routes/AppRoutes.tsx';
 import { NegotiationProvider } from '../features/negotiation/NegotiationProvider.tsx';
 import { DataProvider, useCatalog } from './DataProvider.tsx';
@@ -38,12 +37,10 @@ export function AppContent() {
   return (
     <ThemeProvider>
       <ServiceNotice />
-      <DemoProvider>
-        <DataProvider>
-          <RouteEffects />
-          <SessionApp />
-        </DataProvider>
-      </DemoProvider>
+      <DataProvider>
+        <RouteEffects />
+        <SessionApp />
+      </DataProvider>
     </ThemeProvider>
   );
 }

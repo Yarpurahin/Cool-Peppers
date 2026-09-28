@@ -74,6 +74,13 @@ function Select({
 
 const DURATION_OPTIONS = ['3–5 минут', '5–10 минут', '10–15 минут', '15–20 минут', '20+ минут'];
 
+const REACTION_GRADE_LABELS = {
+  strong: 'Сильный ответ',
+  acceptable: 'Допустимый ответ',
+  weak: 'Слабый ответ',
+  critical: 'Критическая ошибка',
+} as const;
+
 function ScenarioJsonTools({
   onExport,
   onImport,
@@ -355,9 +362,9 @@ export function Inspector({
               Добавить реакцию
             </button>
             {!!node.textVariants?.length && (
-              <details className="maker-legacy">
-                <summary>Унаследованные варианты реплики · {node.textVariants.length}</summary>
-                <p>Применяются после конкретного ответа. Сохранены из исходного сценария.</p>
+              <details className="maker-context-variants">
+                <summary>Варианты реплики по предыдущему ответу · {node.textVariants.length}</summary>
+                <p>Позволяют менять формулировку этой реплики в зависимости от предыдущего выбора участника.</p>
                 {node.textVariants.map((v, i) => (
                   <Field
                     key={v.afterReactionId}
@@ -483,14 +490,74 @@ export function Inspector({
             <p className="maker-hint">
               Можно также перетащить точку у реакции к другой карточке или в пустое место.
             </p>
-            {reaction.legacy && (
-              <div className="maker-legacy">
-                <strong>Оценка из исходного сценария</strong>
-                <p>
-                  Штраф: {reaction.legacy.penalty}. {reaction.legacy.feedback}
-                </p>
+            <section className="maker-evaluation-editor" aria-labelledby="maker-evaluation-title">
+              <div className="maker-section-heading">
+                <h3 id="maker-evaluation-title">Оценка ответа</h3>
+                <span>{REACTION_GRADE_LABELS[reaction.evaluation.grade]}</span>
               </div>
-            )}
+              <p className="maker-hint">
+                Используется для учебной обратной связи и итоговой оценки. Intent и примеры фраз
+                остаются отдельными данными для будущего AI-распознавания.
+              </p>
+              <Select
+                label="Качество ответа"
+                value={reaction.evaluation.grade}
+                onChange={(v) =>
+                  mutateReaction((r) => {
+                    r.evaluation.grade = v as typeof r.evaluation.grade;
+                    if (v === 'strong' || v === 'acceptable') r.evaluation.penalty = 0;
+                    if (v === 'weak' && r.evaluation.penalty === 0) r.evaluation.penalty = 1;
+                    if (v === 'critical' && r.evaluation.penalty < 2) r.evaluation.penalty = 2;
+                  })
+                }
+              >
+                <option value="strong">Сильный ответ</option>
+                <option value="acceptable">Допустимый ответ</option>
+                <option value="weak">Слабый ответ</option>
+                <option value="critical">Критическая ошибка</option>
+              </Select>
+              <Select
+                label="Штраф"
+                value={String(reaction.evaluation.penalty)}
+                onChange={(v) =>
+                  mutateReaction((r) => {
+                    r.evaluation.penalty = Number(v);
+                  })
+                }
+              >
+                {![0, 1, 2].includes(reaction.evaluation.penalty) && (
+                  <option value={reaction.evaluation.penalty}>
+                    {reaction.evaluation.penalty} — значение из импортированного сценария
+                  </option>
+                )}
+                <option value="0">0 — без штрафа</option>
+                <option value="1">1 — небольшая ошибка</option>
+                <option value="2">2 — серьёзная ошибка</option>
+              </Select>
+              <Field
+                label="Обратная связь"
+                multiline
+                value={reaction.evaluation.feedback}
+                onChange={(v) =>
+                  mutateReaction((r) => {
+                    r.evaluation.feedback = v;
+                  })
+                }
+                hint="Объясните, что в выбранной реплике сработало хорошо или что стоит улучшить."
+              />
+              <div className={`maker-evaluation-preview maker-evaluation-preview--${reaction.evaluation.grade}`}>
+                <span>Предпросмотр</span>
+                <strong>{REACTION_GRADE_LABELS[reaction.evaluation.grade]}</strong>
+                {reaction.evaluation.feedback ? (
+                  <p>{reaction.evaluation.feedback}</p>
+                ) : (
+                  <p className="muted">Добавьте короткое объяснение для участника.</p>
+                )}
+                {reaction.evaluation.penalty > 0 && (
+                  <small>Штраф: {reaction.evaluation.penalty}</small>
+                )}
+              </div>
+            </section>
             <button
               type="button"
               className="maker-primary maker-return-to-node"
@@ -804,6 +871,23 @@ export function Inspector({
               Собирать отзывы
             </label>
             <Select
+              label="Режим учебной обратной связи"
+              value={def.settings.feedbackMode}
+              onChange={(v) =>
+                update((d) => {
+                  d.settings.feedbackMode = v as typeof d.settings.feedbackMode;
+                })
+              }
+            >
+              <option value="immediate">Сразу после ответа</option>
+              <option value="summary">Только после завершения</option>
+              <option value="hidden">Не показывать участнику</option>
+            </Select>
+            <p className="maker-hint">
+              Режим влияет только на учебную оценку реакций. Отдельная форма отзыва о тренировке
+              управляется переключателем «Собирать отзывы».
+            </p>
+            <Select
               label="Стартовая реплика"
               value={def.startNodeId}
               onChange={(v) =>
@@ -819,18 +903,19 @@ export function Inspector({
                 </option>
               ))}
             </Select>
-            {def.settings.legacyFailure ? (
-              <section className="maker-legacy">
-                <strong>Сохранены правила старого сценария</strong>
+            {def.settings.failureRule ? (
+              <section className="maker-assessment-rule">
+                <strong>Автоматическое завершение по штрафам</strong>
                 <p>
-                  Его штрафы и порог провала продолжают действовать, в том числе при тестировании.
+                  Если штрафные баллы достигнут половины количества реплик, сценарий завершится
+                  выбранным отрицательным финалом.
                 </p>
                 <Select
                   label="Финал при превышении порога"
-                  value={def.settings.legacyFailure.endingId}
+                  value={def.settings.failureRule.endingId}
                   onChange={(v) =>
                     update((d) => {
-                      if (d.settings.legacyFailure) d.settings.legacyFailure.endingId = v;
+                      if (d.settings.failureRule) d.settings.failureRule.endingId = v;
                     })
                   }
                 >
@@ -847,19 +932,17 @@ export function Inspector({
                   className="maker-text-button"
                   onClick={() =>
                     update((d) => {
-                      delete d.settings.legacyFailure;
-                      delete d.settings.assessmentNote;
-                      for (const n of d.nodes) for (const r of n.reactions) delete r.legacy;
+                      delete d.settings.failureRule;
                     })
                   }
                 >
-                  Перейти на прохождение без штрафов
+                  Отключить автоматический финал
                 </button>
               </section>
             ) : (
               <p className="maker-hint">
-                Результат определяется финалом выбранной ветки. AI и начисление штрафов для новых
-                сценариев в MVP не используются.
+                По умолчанию штрафы влияют на разбор и геймификацию, а итог определяется переходом
+                в конкретный финал. Автоматическое завершение по сумме штрафов не используется.
               </p>
             )}
           </>

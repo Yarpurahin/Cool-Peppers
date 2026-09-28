@@ -58,6 +58,7 @@
 - `intent` — латинские буквы, цифры и `_`, начинается с буквы; intent уникален внутри одной реплики;
 - `label` — текст кнопки для участника;
 - `examples` — примеры пользовательских формулировок;
+- `evaluation` — учебная оценка реакции: `grade` (`strong`, `acceptable`, `weak`, `critical`), `penalty` и пояснение `feedback`;
 - **ровно одно** из `nextNodeId` или `endingId` задаёт следующий шаг.
 
 ## endings
@@ -69,11 +70,14 @@
 ```json
 {
   "allowRestart": true,
-  "collectFeedback": true
+  "collectFeedback": true,
+  "feedbackMode": "summary"
 }
 ```
 
-Старые импортированные сценарии также могут содержать `legacyFailure` и `assessmentNote`, но для новых JSON они не нужны.
+`feedbackMode`: `immediate` — показать оценку сразу после выбора, `summary` — только в итоговом разборе, `hidden` — не показывать оценку участнику. Необязательное `failureRule` сохраняет автоматическое завершение по порогу штрафов для сценариев, где такая механика нужна.
+
+Импорт старых Arena JSON по-прежнему понимает `reaction.legacy` и `settings.legacyFailure`, но сразу преобразует их в текущую модель. Экспорт всегда создаёт только новый формат.
 
 ## Совместимость
 

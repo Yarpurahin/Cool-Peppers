@@ -1,0 +1,6 @@
+# Optional: expose PostgreSQL to local psql/pgAdmin or a host Node.js process.
+# docker compose -f compose.yaml -f compose.db-port.yaml up -d
+services:
+  postgres:
+    ports:
+      - '127.0.0.1:${POSTGRES_PORT:-5433}:5432'
