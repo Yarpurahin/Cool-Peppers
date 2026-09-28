@@ -5,6 +5,7 @@ import { api, actionErrorMessage } from '../api/client.ts';
 import { useCatalog } from '../app/DataProvider.tsx';
 import type { AdminScenarioSummary } from '../types/api.ts';
 import { Button, ButtonLink } from '../components/ui/Button.tsx';
+import { Select } from '../components/ui/Select.tsx';
 import { Icon } from '../components/ui/Icon.tsx';
 import { statusOf, statusLabel, statusClass } from '../features/maker/model/publication.ts';
 
@@ -119,9 +120,9 @@ function EditorListContent() {
         <div className={`admin-create-controls ${!sourceId ? 'admin-create-controls--blank' : ''}`}>
           <label className="field">
             Основа сценария
-            <select
+            <Select
               value={sourceId}
-              onChange={(event) => updateCreation({ ...creation, sourceId: event.target.value })}
+              onValueChange={(value) => updateCreation({ ...creation, sourceId: value })}
             >
               <option value="">Пустой сценарий</option>
               {scenarios.map((scenario) => (
@@ -129,7 +130,7 @@ function EditorListContent() {
                   {scenario.title}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           {!sourceId && (
             <label className="field">

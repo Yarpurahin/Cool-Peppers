@@ -77,7 +77,6 @@ export function AttemptPage() {
             caption="Отзыв сохранится в вашем аккаунте"
             onSubmit={async (input) => {
               await api(`/attempts/${attempt.id}/feedback`, { method: 'PUT', body: input });
-              return 'Спасибо! Отзыв сохранён.';
             }}
           />
         ) : undefined

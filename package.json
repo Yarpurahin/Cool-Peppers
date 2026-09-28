@@ -21,7 +21,13 @@
     "db:setup": "npm run db:migrate && npm run db:seed",
     "test:api": "node --experimental-strip-types --test tests/api/*.test.ts",
     "test:api:embedded": "node scripts/test-embedded.mjs",
-    "test:ui:embedded": "node scripts/test-ui-embedded.mjs"
+    "test:ui:embedded": "node scripts/test-ui-embedded.mjs",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f app postgres",
+    "docker:backup": "node scripts/docker-db.mjs backup",
+    "docker:backups": "node scripts/docker-db.mjs list",
+    "docker:restore": "node scripts/docker-db.mjs restore"
   },
   "engines": {
     "node": ">=22.12.0"

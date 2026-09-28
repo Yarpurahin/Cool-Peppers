@@ -4,6 +4,7 @@ import type { MakerDefinition, MakerDocument } from '../model/types.ts';
 import type { Selection } from './ScenarioCanvas.tsx';
 import { addReaction, connectReaction, newId } from '../model/commands.ts';
 import { Icon } from '../../../components/ui/Icon.tsx';
+import { Select as StyledSelect } from '../../../components/ui/Select.tsx';
 import { ScenarioCoverField } from './ScenarioCoverField.tsx';
 
 function Field({
@@ -64,9 +65,9 @@ function Select({
   return (
     <label className="field">
       {label}
-      <select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)}>
+      <StyledSelect aria-label={label} value={value} onValueChange={onChange}>
         {children}
-      </select>
+      </StyledSelect>
     </label>
   );
 }

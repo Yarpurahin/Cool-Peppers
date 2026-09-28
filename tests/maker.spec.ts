@@ -9,7 +9,8 @@ test('maker: create, connect, validate, test, save positions, publish and play',
   await page.setViewportSize({ width: 1440, height: 950 });
   await loginAdmin(page);
   await page.goto('/admin/scenarios');
-  await page.getByLabel('Основа сценария').selectOption('');
+  await page.getByRole('combobox', { name: 'Основа сценария' }).click();
+  await page.getByRole('option', { name: 'Пустой сценарий', exact: true }).click();
   await page.getByLabel('Название сценария', { exact: true }).fill('Переговоры о зарплате — maker');
   await page.getByRole('button', { name: 'Создать сценарий', exact: true }).click();
   await expect(page.locator('.maker-card')).toBeVisible();
@@ -41,7 +42,8 @@ test('maker: create, connect, validate, test, save positions, publish and play',
   await page.getByRole('button', { name: 'Новый финал', exact: true }).click();
   await expect(page.getByLabel('Описание финала')).toBeFocused();
   await page.getByLabel('Название финала').fill('Договорились');
-  await page.getByLabel('Тип финала').selectOption('success');
+  await page.getByRole('combobox', { name: 'Тип финала' }).click();
+  await page.getByRole('option', { name: 'Успех', exact: true }).click();
   await page.getByLabel('Описание финала').fill('Стороны согласовали предложение.');
   await expect(page.locator('.react-flow__edge')).toHaveCount(1);
   // Saving an end position must not change the graph.

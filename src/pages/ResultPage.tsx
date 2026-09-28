@@ -71,7 +71,6 @@ function ActiveResult({ id }: { id: string }) {
             caption="Отзыв сохранится в вашем аккаунте"
             onSubmit={async (input) => {
               await saveFeedback(attempt.id, input);
-              return 'Спасибо! Отзыв сохранён.';
             }}
           />
         ) : undefined

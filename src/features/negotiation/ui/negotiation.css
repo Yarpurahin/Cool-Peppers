@@ -223,3 +223,92 @@
 .editor-page .field-error {
   overflow-wrap: anywhere;
 }
+
+/* Keep the original form's dimensions while the confirmation covers it. */
+.feedback-panel {
+  display: grid;
+}
+.feedback-form-content,
+.feedback-success {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+.feedback-panel.is-submitted .feedback-form-content {
+  visibility: hidden;
+  pointer-events: none;
+}
+.feedback-form-content > .eyebrow {
+  color: var(--muted);
+}
+.feedback-question {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 23px;
+}
+.feedback-fields {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.feedback-fields:disabled {
+  opacity: 0.65;
+}
+.feedback-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  gap: 16px;
+  padding: 24px 0;
+  background: var(--surface);
+  border-radius: 12px;
+  text-align: center;
+  animation: feedback-thanks 240ms ease-out;
+}
+.feedback-success:focus {
+  outline: none;
+}
+.feedback-success:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 10px;
+}
+.feedback-success-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--sage);
+  color: var(--tone-green, var(--green));
+  margin-bottom: 6px;
+}
+.feedback-success > .eyebrow {
+  color: var(--muted);
+  font-size: 9px;
+}
+.feedback-success h2 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.35;
+}
+.feedback-success > p:not(.eyebrow) {
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.feedback-success > .button {
+  margin-top: 6px;
+}
+@keyframes feedback-thanks {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

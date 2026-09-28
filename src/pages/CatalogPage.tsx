@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useCatalog } from '../app/DataProvider.tsx';
 import { ScenarioCard } from '../components/scenarios/ScenarioCard.tsx';
 import { Button } from '../components/ui/Button.tsx';
+import { Select } from '../components/ui/Select.tsx';
 import { Icon } from '../components/ui/Icon.tsx';
 import { useGamification } from '../features/gamification/GamificationProvider.tsx';
 
@@ -74,10 +75,10 @@ export function CatalogPage() {
         </div>
         <label className="filter-select">
           <span className="sr-only">Категория</span>
-          <select
+          <Select
             aria-label="Категория"
             value={category}
-            onChange={(event) => update('category', event.target.value)}
+            onValueChange={(value) => update('category', value)}
           >
             <option value="">Все категории</option>
             {category && !categories.includes(category) && (
@@ -86,14 +87,14 @@ export function CatalogPage() {
             {categories.map((value) => (
               <option key={value}>{value}</option>
             ))}
-          </select>
+          </Select>
         </label>
         <label className="filter-select">
           <span className="sr-only">Сложность</span>
-          <select
+          <Select
             aria-label="Сложность"
             value={level}
-            onChange={(event) => update('level', event.target.value)}
+            onValueChange={(value) => update('level', value)}
           >
             <option value="">Любая сложность</option>
             {level && !levels.includes(level as (typeof levels)[number]) && (
@@ -102,7 +103,7 @@ export function CatalogPage() {
             {levels.map((value) => (
               <option key={value}>{value}</option>
             ))}
-          </select>
+          </Select>
         </label>
         <Button variant="outline" onClick={() => setParams({}, { replace: true })}>
           <Icon name="reset" size={17} />

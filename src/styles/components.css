@@ -717,7 +717,7 @@
   height: 36px;
   flex: 0 0 36px;
   border-radius: 11px;
-  background: linear-gradient(145deg, var(--green), var(--tone-decoration, #557767));
+  background: var(--green);
   color: var(--on-accent);
   font-size: 11px;
   font-weight: 800;
@@ -830,11 +830,7 @@
 .account-avatar {
   position: relative;
   border-radius: 50%;
-  background: linear-gradient(
-    145deg,
-    var(--tone-decoration, #274f40),
-    var(--tone-decoration, #65816f)
-  );
+  background: var(--green);
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / 18%);
 }
 .account-avatar--trigger {
@@ -881,9 +877,7 @@
   padding: 13px;
   border: 1px solid var(--tone-border, #dbe4d8);
   border-radius: 12px;
-  background:
-    radial-gradient(circle at 100% 0%, rgb(255 255 255 / 85%), transparent 46%),
-    linear-gradient(135deg, var(--tone-soft, #eef4e9), var(--tone-soft, #f7f8f1));
+  background: var(--tone-soft, #eef4e9);
 }
 .account-avatar--large {
   width: 48px;

@@ -1,0 +1,136 @@
+.select-control {
+  display: block;
+  position: relative;
+  min-width: 0;
+  width: 100%;
+}
+.select-trigger {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--tone-border, #d6ddd4);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--ink);
+  text-align: left;
+  font-size: 13px;
+  font-weight: 450;
+  line-height: 1.7;
+  transition:
+    background-color 160ms,
+    border-color 160ms,
+    box-shadow 160ms;
+}
+.select-trigger:hover:not(:disabled) {
+  background: var(--tone-soft, #f7f9f4);
+  border-color: var(--green);
+}
+.select-trigger:focus-visible,
+.select-trigger[aria-expanded='true'] {
+  outline: none;
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+.select-trigger[aria-invalid='true'] {
+  border-color: var(--orange);
+}
+.select-trigger:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.select-value {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.select-trigger > svg {
+  transform: rotate(90deg);
+  color: var(--muted);
+  transition: transform 160ms;
+}
+.select-trigger[aria-expanded='true'] > svg {
+  transform: rotate(-90deg);
+}
+.select-popup {
+  position: fixed;
+  z-index: 2000;
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 12px 36px rgb(0 0 0 / 18%);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+  animation: select-appear 140ms ease-out;
+}
+.select-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 42px;
+  padding: 10px 12px;
+  border-radius: 7px;
+  cursor: pointer;
+  user-select: none;
+}
+.select-option span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.select-option.is-active {
+  background: var(--sage);
+  outline: 1px solid var(--line);
+  outline-offset: -1px;
+}
+.select-option.is-selected {
+  font-weight: 700;
+}
+.select-option > svg {
+  color: var(--green);
+}
+.select-option[aria-disabled='true'] {
+  color: var(--muted);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.select-group-label {
+  padding: 12px 12px 6px;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+@keyframes select-appear {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (forced-colors: active) {
+  .select-trigger,
+  .select-popup {
+    border: 1px solid ButtonText;
+  }
+  .select-option.is-active {
+    outline: 2px solid Highlight;
+  }
+}

@@ -6,6 +6,7 @@ import type { Pool } from 'pg';
 import { z, ZodError } from 'zod';
 import { avatarSchema } from './avatar.ts';
 import { registerContactRoutes } from './contact.ts';
+import { registerReviewRoutes } from './reviews.ts';
 import { registerAccountRoutes } from './accounts.ts';
 import { awardCompletedAttempt, registerGamificationRoutes } from './gamification.ts';
 import { config } from './config.ts';
@@ -110,6 +111,7 @@ export function createApp(pool: Pool) {
   });
   app.use('/api', authenticate(pool));
   registerContactRoutes(app, pool);
+  registerReviewRoutes(app, pool);
   registerAccountRoutes(app, pool);
   registerGamificationRoutes(app, pool);
 

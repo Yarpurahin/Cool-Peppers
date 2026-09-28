@@ -173,7 +173,7 @@
 .search-field:focus-within > svg {
   color: var(--green);
 }
-.filter-select select {
+.filter-select .select-trigger {
   font-size: 12px;
   background: var(--tone-soft, #fafbf7);
 }
@@ -219,8 +219,9 @@
   padding-block: 52px 65px;
 }
 .auth-story {
-  background: var(--green);
-  color: var(--on-accent);
+  background: var(--auth-story-bg, #eaf0e6);
+  color: var(--ink);
+  border: 1px solid var(--line);
   border-radius: 23px;
   padding: 39px;
   display: flex;
@@ -228,7 +229,7 @@
   min-height: 640px;
 }
 .auth-story > .eyebrow {
-  color: var(--tone-green, #c2d3bb);
+  color: var(--muted);
 }
 .auth-story h2 {
   font-size: clamp(34px, 3.5vw, 48px);
@@ -237,10 +238,10 @@
   margin: 28px 0 20px;
 }
 .auth-story h2 span {
-  color: var(--tone-muted, #d8dfbe);
+  color: var(--tone-green, var(--green));
 }
 .auth-story > p:not(.eyebrow) {
-  color: var(--tone-muted, #d2ddd1);
+  color: var(--muted);
   max-width: 360px;
   font-size: 13px;
   line-height: 1.85;
@@ -257,7 +258,7 @@
 }
 .mini-avatar {
   border-radius: 50%;
-  background: var(--tone-decoration, #476654);
+  background: var(--green);
   color: var(--on-accent);
   min-width: 30px;
   height: 30px;
@@ -268,11 +269,11 @@
   align-items: center;
 }
 .mini-avatar--orange {
-  background: var(--tone-warm, #bf5632);
+  background: var(--orange);
 }
 .mini-message p {
-  background: var(--tone-soft, #fffef5);
-  color: var(--green);
+  background: var(--surface);
+  color: var(--ink);
   border-radius: 15px 15px 15px 3px;
   padding: 14px 18px;
   font-size: 12px;
@@ -281,19 +282,19 @@
   margin-left: 45px;
 }
 .mini-message--reply p {
-  background: var(--tone-soft, #dfe6c9);
+  background: var(--surface);
   border-radius: 15px 15px 3px 15px;
 }
 .conversation-divider {
   display: flex;
   align-items: center;
   gap: 12px;
-  color: var(--tone-green, #adc4a6);
+  color: var(--green);
   margin: 25px 15px 18px;
 }
 .conversation-divider > span {
   height: 1px;
-  background: var(--tone-decoration, #597960);
+  background: var(--line);
   flex: 1;
 }
 .conversation-note {
@@ -301,7 +302,7 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
-  color: var(--tone-muted, #c8d8c0);
+  color: var(--muted);
   font-size: 10px;
   text-align: center;
 }
@@ -309,11 +310,11 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-top: 1px solid var(--tone-border, #54765c);
+  border-top: 1px solid var(--line);
   padding-top: 20px;
   font-size: 8px;
   letter-spacing: 0.15em;
-  color: var(--tone-muted, #cfdfc7);
+  color: var(--muted);
 }
 .auth-form {
   align-self: center;

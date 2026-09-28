@@ -574,7 +574,7 @@
   font-size: 11px;
 }
 .maker-inspector input,
-.maker-inspector select,
+.maker-inspector .select-trigger,
 .maker-inspector textarea {
   width: 100%;
   min-width: 0;

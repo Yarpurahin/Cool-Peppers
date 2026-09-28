@@ -22,6 +22,7 @@ import { AttemptPage } from '../pages/AttemptPage.tsx';
 import { AboutPage } from '../pages/AboutPage.tsx';
 import { ContactPage } from '../pages/ContactPage.tsx';
 import { AdminMessagesPage } from '../pages/AdminMessagesPage.tsx';
+import { AdminReviewsPage } from '../pages/AdminReviewsPage.tsx';
 import { AdminAchievementsPage } from '../pages/AdminAchievementsPage.tsx';
 
 // Unknown scenario IDs receive a genuine not-found screen, never another scenario.
@@ -84,6 +85,7 @@ export function AppRoutes() {
             <Route index element={<AdminDashboardPage />} />
             <Route path="accounts" element={<AdminAccountsPage />} />
             <Route path="messages" element={<AdminMessagesPage />} />
+            <Route path="reviews" element={<AdminReviewsPage />} />
             <Route path="achievements" element={<AdminAchievementsPage />} />
             <Route path="scenarios" element={<EditorListPage />} />
           </Route>

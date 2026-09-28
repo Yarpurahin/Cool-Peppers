@@ -150,3 +150,23 @@ UPDATE app_users SET role = 'admin' WHERE email = 'admin@example.com';
 `scenario_drafts.definition` и `scenario_versions.definition` принимают legacy-формат или v2 с `schemaVersion: 2`, `nodes[].reactions`, `intent` и `examples`. Сохранение через maker переводит только текущий черновик в v2; ранее опубликованные записи не мигрируются. SQL-таблицы попыток и ответов не меняются: `answer_id` соответствует стабильному `reaction.id`.
 
 Координаты не включаются в опубликованные версии. Для существующего приложения достаточно `npm run db:migrate`; удалять или пересоздавать таблицы не нужно. Общая миграция 001 оставлена без изменений.
+
+## Docker, постоянное хранение и резервные копии
+
+Основной `compose.yaml` запускает два постоянных сервиса: `app` и PostgreSQL 17. База не публикует порт на хост по умолчанию и доступна приложению внутри сети Docker. Данные PostgreSQL лежат в именованном томе `cool_peppers_postgres`, поэтому `docker compose down` и пересборка контейнера не удаляют их.
+
+Контейнер приложения при старте выполняет `db:migrate`, затем идемпотентный `db:seed`, после чего запускает HTTP-сервер. В Docker соединение задаётся стандартными переменными `PGHOST/PGPORT/PGDATABASE/PGUSER/PGPASSWORD`; локальный режим с `DATABASE_URL` сохранён.
+
+Для резервных копий используются одноразовые сервисы `backup` и `restore` на том же образе PostgreSQL, что и сервер базы. `backup` выполняет `pg_dump --format=custom`; файлы записываются через bind mount прямо в `./backups` на хосте. Рядом создаётся SHA-256 checksum. `restore` сначала проверяет checksum (если он есть), завершает существующие соединения с целевой БД и выполняет `pg_restore --clean --if-exists --single-transaction --exit-on-error`.
+
+Рекомендуемый цикл:
+
+```powershell
+docker compose run --rm backup
+npm run docker:backups
+npm run docker:restore -- latest
+```
+
+При ручном восстановлении сначала остановите `app`. Node-обёртка `docker:restore` делает это автоматически и запускает приложение только после успешного `pg_restore`.
+
+Важно: `docker compose down -v` удаляет именованный том и вместе с ним текущую БД. Перед этой командой создайте бэкап, если данные нужны.

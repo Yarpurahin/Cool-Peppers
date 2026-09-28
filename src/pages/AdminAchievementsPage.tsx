@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api, actionErrorMessage, errorMessage } from '../api/client.ts';
 import { Button } from '../components/ui/Button.tsx';
+import { Select } from '../components/ui/Select.tsx';
 import { Icon } from '../components/ui/Icon.tsx';
 import type { AdminAchievement } from '../types/api.ts';
 import {
@@ -342,10 +343,10 @@ export function AdminAchievementsPage() {
           <div className="two-fields achievement-rule-fields">
             <label className="field">
               Тип условия
-              <select
+              <Select
                 value={form.conditionType}
-                onChange={(event) => {
-                  const conditionType = event.target.value as AchievementConditionType;
+                onValueChange={(selectedValue) => {
+                  const conditionType = selectedValue as AchievementConditionType;
                   setForm((value) => ({
                     ...value,
                     conditionType,
@@ -358,7 +359,7 @@ export function AdminAchievementsPage() {
                     {item.label}
                   </option>
                 ))}
-              </select>
+              </Select>
               <small>{condition(form.conditionType).description}</small>
             </label>
             <label className="field">
@@ -379,16 +380,16 @@ export function AdminAchievementsPage() {
           {form.conditionType === 'difficulty_successes' && (
             <label className="field">
               Сложность сценария
-              <select
+              <Select
                 value={form.conditionParam ?? 'hard'}
-                onChange={(event) =>
-                  setForm((value) => ({ ...value, conditionParam: event.target.value }))
+                onValueChange={(selectedValue) =>
+                  setForm((value) => ({ ...value, conditionParam: selectedValue }))
                 }
               >
                 <option value="easy">Начальный</option>
                 <option value="medium">Средний</option>
                 <option value="hard">Сложный</option>
-              </select>
+              </Select>
             </label>
           )}
 
