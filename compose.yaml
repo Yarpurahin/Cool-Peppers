@@ -1,0 +1,148 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-arena}
+      POSTGRES_USER: ${POSTGRES_USER:-arena}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+
+    volumes:
+      - arena_postgres:/var/lib/postgresql/data
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+    restart: unless-stopped
+
+    networks:
+      - arena_internal
+
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    environment:
+      NODE_ENV: production
+
+      API_HOST: 0.0.0.0
+      API_PORT: 3001
+
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: ${POSTGRES_DB:-arena}
+      PGUSER: ${POSTGRES_USER:-arena}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+
+      APP_ORIGIN: ${APP_ORIGIN:-http://localhost:3001,http://127.0.0.1:3001}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+
+      ADMIN_NAME: ${ADMIN_NAME:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    ports:
+      - "127.0.0.1:${APP_PORT:-3001}:3001"
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001/api/health').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+    restart: unless-stopped
+
+    networks:
+      - arena_internal
+
+
+  backup:
+    image: postgres:17-alpine
+    profiles:
+      - tools
+
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: ${POSTGRES_DB:-arena}
+      PGUSER: ${POSTGRES_USER:-arena}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+
+      BACKUP_NAME: ${BACKUP_NAME:-}
+      BACKUP_OVERWRITE: ${BACKUP_OVERWRITE:-false}
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    volumes:
+      - ./backups:/backups
+      - ./docker/backup.sh:/scripts/backup.sh:ro
+
+    entrypoint:
+      - /bin/sh
+      - /scripts/backup.sh
+
+    networks:
+      - arena_internal
+
+
+  restore:
+    image: postgres:17-alpine
+    profiles:
+      - tools
+
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: ${POSTGRES_DB:-arena}
+      PGUSER: ${POSTGRES_USER:-arena}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+
+      BACKUP_FILE: ${BACKUP_FILE:-}
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    volumes:
+      - ./backups:/backups
+      - ./docker/restore.sh:/scripts/restore.sh:ro
+
+    entrypoint:
+      - /bin/sh
+      - /scripts/restore.sh
+
+    networks:
+      - arena_internal
+
+
+volumes:
+  arena_postgres:
+    name: cool_peppers_postgres
+
+
+networks:
+  arena_internal:
+    name: cool_peppers_internal

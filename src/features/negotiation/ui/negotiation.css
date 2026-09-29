@@ -1,0 +1,359 @@
+/* Screen-specific additions; reuse the project's layout, colors and controls. */
+.negotiation-play .dialogue-panel {
+  padding: 0;
+  overflow: hidden;
+}
+.negotiation-play .dialogue-header {
+  padding: 20px 24px;
+}
+.negotiation-play .dialogue-message {
+  margin: 0;
+  border-radius: 0;
+  background: var(--tone-soft, #f9fbf8);
+  padding: 24px;
+}
+.negotiation-play .dialogue-message > p {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px 20px;
+  line-height: 1.8;
+}
+.negotiation-play .dialogue-message:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -3px;
+}
+.negotiation-play .dialogue-panel > form {
+  border-top: 1px solid var(--line);
+  padding: 24px;
+}
+.negotiation-play .answer-option {
+  font-size: 13px;
+  align-items: flex-start;
+}
+.negotiation-play .answer-option > span:nth-of-type(2) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.negotiation-play .answer-number {
+  margin-top: 2px;
+}
+.negotiation-play .play-aside {
+  display: grid;
+  gap: 20px;
+}
+.negotiation-play .play-aside h2 {
+  margin: 0 0 14px;
+  font-size: 18px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.negotiation-goal .eyebrow {
+  margin-top: 20px;
+}
+.negotiation-stages ol {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+}
+.negotiation-stages li {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--muted);
+}
+.negotiation-stages li > span {
+  width: 21px;
+  height: 21px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-size: 10px;
+}
+.negotiation-stages .stage--current {
+  color: var(--green);
+  font-weight: 800;
+}
+.negotiation-stages .stage--current > span {
+  background: var(--green);
+  color: var(--on-accent);
+}
+.negotiation-stages .stage--past > span {
+  background: var(--sage);
+  color: var(--green);
+}
+.negotiation-tip {
+  background: var(--sand);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 24px;
+}
+.negotiation-tip > svg {
+  flex-shrink: 0;
+  color: var(--tone-orange, #887344);
+}
+.negotiation-tip h3 {
+  font-size: 15px;
+  margin-bottom: 10px;
+}
+.dialogue-history {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.dialogue-history summary,
+.review-question summary {
+  cursor: pointer;
+  color: var(--green);
+}
+.dialogue-history ol {
+  list-style: none;
+  padding: 0;
+}
+.dialogue-history li {
+  border-top: 1px solid var(--line);
+  margin-top: 18px;
+  padding-top: 18px;
+  line-height: 1.8;
+}
+.dialogue-history blockquote {
+  background: var(--sage);
+  border-radius: 12px;
+  padding: 14px;
+  margin-top: 12px;
+}
+.negotiation-notice {
+  padding: 15px 18px;
+  background: var(--sand);
+  border-radius: 12px;
+  margin-bottom: 24px;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.review-item > div {
+  min-width: 0;
+}
+.review-item--penalty .review-number {
+  background: var(--peach);
+  color: var(--orange);
+}
+.review-item .review-penalty {
+  color: var(--orange);
+  font-weight: 700;
+}
+.review-question {
+  font-size: 12px;
+  margin-top: 10px;
+}
+.result-hero--failure,
+.result-hero--failure .score-circle > div {
+  background: var(--tone-warm, #793f32);
+}
+.result-grid--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+.feedback-message {
+  font-size: 12px;
+  line-height: 1.7;
+}
+.negotiation-empty {
+  max-width: 760px;
+}
+.negotiation-empty p {
+  margin-block: 20px;
+  line-height: 1.8;
+}
+.negotiation-result .score-circle span {
+  max-width: 100px;
+  text-align: center;
+}
+@media (max-width: 700px) {
+  .negotiation-play .dialogue-header,
+  .negotiation-play .dialogue-message,
+  .negotiation-play .dialogue-panel > form {
+    padding: 18px;
+  }
+  .negotiation-play .answer-option {
+    padding: 13px;
+    gap: 10px;
+  }
+  .negotiation-play .answer-number {
+    width: 23px;
+    height: 23px;
+    flex-basis: 23px;
+  }
+  .negotiation-play .play-aside {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .negotiation-stages,
+  .negotiation-tip {
+    display: none;
+  }
+  .negotiation-play .dialogue-submit {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+  .negotiation-play .dialogue-submit > p {
+    text-align: center;
+  }
+}
+
+.editor-fields {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.json-editor {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  tab-size: 2;
+}
+.editor-page .field-error {
+  overflow-wrap: anywhere;
+}
+
+/* Keep the original form's dimensions while the confirmation covers it. */
+.feedback-panel {
+  display: grid;
+}
+.feedback-form-content,
+.feedback-success {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+.feedback-panel.is-submitted .feedback-form-content {
+  visibility: hidden;
+  pointer-events: none;
+}
+.feedback-form-content > .eyebrow {
+  color: var(--muted);
+}
+.feedback-question {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 23px;
+}
+.feedback-fields {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.feedback-fields:disabled {
+  opacity: 0.65;
+}
+.feedback-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  gap: 16px;
+  padding: 24px 0;
+  background: var(--surface);
+  border-radius: 12px;
+  text-align: center;
+  animation: feedback-thanks 240ms ease-out;
+}
+.feedback-success:focus {
+  outline: none;
+}
+.feedback-success:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 10px;
+}
+.feedback-success-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--sage);
+  color: var(--tone-green, var(--green));
+  margin-bottom: 6px;
+}
+.feedback-success > .eyebrow {
+  color: var(--muted);
+  font-size: 9px;
+}
+.feedback-success h2 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.35;
+}
+.feedback-success > p:not(.eyebrow) {
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.feedback-success > .button {
+  margin-top: 6px;
+}
+@keyframes feedback-thanks {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Per-reaction educational feedback */
+.reaction-feedback {
+  display: grid;
+  gap: 7px;
+  margin: 0 0 14px;
+  padding: 13px 15px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.reaction-feedback > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.reaction-feedback strong {
+  font-size: 13px;
+}
+.reaction-feedback p,
+.reaction-feedback small {
+  margin: 0;
+}
+.reaction-feedback p {
+  color: var(--ink);
+  line-height: 1.55;
+}
+.reaction-feedback small {
+  color: var(--muted);
+  font-weight: 700;
+}
+.reaction-feedback--penalty-0 {
+  border-color: color-mix(in srgb, var(--green) 42%, var(--line));
+  background: color-mix(in srgb, var(--surface) 94%, var(--sage));
+}
+.reaction-feedback--penalty-1,
+.reaction-feedback--penalty-2 {
+  border-color: color-mix(in srgb, var(--tone-orange, #b54228) 42%, var(--line));
+}
+.review-item--penalty-0 {
+  border-color: color-mix(in srgb, var(--green) 32%, var(--line));
+}
+.review-item--penalty-2 {
+  border-color: color-mix(in srgb, var(--tone-orange, #b54228) 52%, var(--line));
+}

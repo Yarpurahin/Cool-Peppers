@@ -1,0 +1,952 @@
+import { useEffect, useId, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
+import type { MakerDefinition, MakerDocument, Penalty } from '../model/types.ts';
+import type { Selection } from './ScenarioCanvas.tsx';
+import { addReaction, connectReaction, newId } from '../model/commands.ts';
+import { Icon } from '../../../components/ui/Icon.tsx';
+import { Select as StyledSelect } from '../../../components/ui/Select.tsx';
+import { ScenarioCoverField } from './ScenarioCoverField.tsx';
+import { analyzePenalty } from '../model/penaltyAnalysis.ts';
+
+function Field({
+  label,
+  value,
+  onChange,
+  multiline = false,
+  maxLength = 10000,
+  hint,
+  focusRef,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  multiline?: boolean;
+  maxLength?: number;
+  hint?: string;
+  focusRef?: React.RefObject<HTMLTextAreaElement | null>;
+}) {
+  const hintId = useId();
+  return (
+    <label className="field">
+      {label}
+      {multiline ? (
+        <textarea
+          aria-label={label}
+          aria-describedby={hint ? hintId : undefined}
+          ref={focusRef}
+          rows={4}
+          value={value}
+          maxLength={maxLength}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      ) : (
+        <input
+          aria-label={label}
+          aria-describedby={hint ? hintId : undefined}
+          value={value}
+          maxLength={maxLength}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      )}
+      {hint && <small id={hintId}>{hint}</small>}
+    </label>
+  );
+}
+function Select({
+  label,
+  value,
+  onChange,
+  children,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  children: ReactNode;
+}) {
+  return (
+    <label className="field">
+      {label}
+      <StyledSelect aria-label={label} value={value} onValueChange={onChange}>
+        {children}
+      </StyledSelect>
+    </label>
+  );
+}
+
+const DURATION_OPTIONS = ['3–5 минут', '5–10 минут', '10–15 минут', '15–20 минут', '20+ минут'];
+
+const REACTION_PENALTY_LABELS: Record<Penalty, string> = {
+  0: 'Уместная',
+  1: 'Сомнительная',
+  2: 'Нежелательная',
+};
+
+function ScenarioJsonTools({
+  onExport,
+  onImport,
+}: {
+  onExport: () => void;
+  onImport: (file: File) => Promise<void>;
+}) {
+  const input = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+  const [error, setError] = useState('');
+
+  async function importFile(file: File) {
+    setError('');
+    setImporting(true);
+    try {
+      await onImport(file);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Не удалось импортировать JSON.');
+    } finally {
+      setImporting(false);
+      if (input.current) input.current.value = '';
+    }
+  }
+
+  return (
+    <section className="maker-json-tools" aria-labelledby="maker-json-tools-title">
+      <div className="maker-json-tools-heading">
+        <span className="maker-json-tools-icon">
+          <Icon name="upload" size={17} />
+        </span>
+        <div>
+          <strong id="maker-json-tools-title">JSON сценария</strong>
+          <p>Загрузите готовую структуру или сохраните текущую для переноса и редактирования.</p>
+        </div>
+      </div>
+      <div className="maker-json-tools-actions">
+        <button
+          type="button"
+          className="maker-secondary"
+          disabled={importing}
+          onClick={() => input.current?.click()}
+        >
+          <Icon name="upload" size={15} />
+          {importing ? 'Импортируем…' : 'Импортировать JSON'}
+        </button>
+        <button type="button" className="maker-secondary" onClick={onExport}>
+          <Icon name="save" size={15} />
+          Скачать JSON
+        </button>
+      </div>
+      <input
+        ref={input}
+        className="maker-json-file-input"
+        type="file"
+        accept=".json,application/json"
+        aria-label="Выбрать JSON-файл сценария"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) void importFile(file);
+        }}
+      />
+      {error && (
+        <p className="maker-json-import-error" role="alert">
+          {error.split('\n').map((line, index) => (
+            <span key={`${line}-${index}`}>{line}</span>
+          ))}
+        </p>
+      )}
+    </section>
+  );
+}
+
+export function Inspector({
+  doc,
+  selection,
+  change,
+  onSelect,
+  onDelete,
+  onDeleteMany,
+  onDeleteReaction,
+  onDuplicate,
+  onClose,
+  onExport,
+  onImport,
+  focusToken,
+  disabled,
+}: {
+  doc: MakerDocument;
+  selection: Selection;
+  change: (mutator: (doc: MakerDocument) => void) => void;
+  onSelect: (selection: Selection) => void;
+  onDelete: (id: string) => void;
+  onDeleteMany: (ids: string[]) => void;
+  onDeleteReaction: (nodeId: string, reactionId: string) => void;
+  onDuplicate: (id: string) => void;
+  onClose: () => void;
+  focusToken: number;
+  disabled: boolean;
+  onExport: () => void;
+  onImport: (file: File) => Promise<void>;
+}) {
+  const textRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    if (focusToken) textRef.current?.focus();
+  }, [focusToken]);
+  const def = doc.definition;
+  const penaltyAnalysis = analyzePenalty(def);
+  const update = (mutator: (d: MakerDefinition) => void) => change((d) => mutator(d.definition));
+  const nodeId =
+    selection.type === 'reaction'
+      ? selection.nodeId
+      : selection.type === 'node'
+        ? selection.id
+        : undefined;
+  const node = def.nodes.find((n) => n.id === nodeId);
+  const reaction =
+    selection.type === 'reaction' ? node?.reactions.find((r) => r.id === selection.id) : undefined;
+  const ending =
+    selection.type === 'ending' ? def.endings.find((e) => e.id === selection.id) : undefined;
+  const title =
+    selection.type === 'node'
+      ? 'Реплика'
+      : selection.type === 'reaction'
+        ? 'Реакция'
+        : selection.type === 'blocks'
+          ? `Выбрано блоков: ${selection.ids.length}`
+          : selection.type === 'ending'
+            ? 'Финал'
+            : selection.type === 'main'
+              ? 'Основное'
+              : selection.type === 'characters'
+                ? 'Персонажи'
+                : 'Настройки';
+  const blockId = 'id' in selection ? selection.id : '';
+  const mutateNode = (mutator: (n: NonNullable<typeof node>) => void) =>
+    update((d) => {
+      const n = d.nodes.find((n) => n.id === nodeId);
+      if (n) mutator(n);
+    });
+  const mutateReaction = (mutator: (r: NonNullable<typeof reaction>) => void) =>
+    mutateNode((n) => {
+      const r = n.reactions.find((r) => r.id === blockId);
+      if (r) mutator(r);
+    });
+  return (
+    <aside
+      id="maker-inspector"
+      tabIndex={-1}
+      className="maker-inspector"
+      aria-label="Свойства выбранного элемента"
+    >
+      <div className="maker-inspector-heading">
+        <div>
+          <p className="eyebrow">{title}</p>
+          <h2>{reaction?.label || node?.title || ending?.title || title}</h2>
+        </div>
+        <button
+          className="maker-icon-button"
+          type="button"
+          onClick={onClose}
+          aria-label="Закрыть свойства"
+        >
+          <Icon name="close" size={18} />
+        </button>
+      </div>
+      <fieldset disabled={disabled} className="maker-inspector-fields">
+        <legend className="sr-only">{title}: свойства</legend>
+        {selection.type === 'blocks' && (
+          <section className="maker-bulk-selection">
+            <div className="maker-bulk-selection-icon">
+              <Icon name="branch" size={20} />
+            </div>
+            <div>
+              <strong>Выбрано блоков: {selection.ids.length}</strong>
+              <p>
+                Перетаскивайте любой выбранный блок — группа переместится вместе. Shift или Ctrl
+                добавляет блок в выделение и убирает его повторным нажатием.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="maker-danger-button"
+              onClick={() => onDeleteMany(selection.ids)}
+            >
+              <Icon name="trash" size={16} />
+              Удалить выбранные блоки
+            </button>
+          </section>
+        )}
+        {selection.type === 'node' && node && (
+          <>
+            <Field
+              label="Название блока"
+              value={node.title}
+              maxLength={200}
+              onChange={(v) =>
+                mutateNode((n) => {
+                  n.title = v;
+                })
+              }
+            />
+            <Select
+              label="Персонаж"
+              value={node.characterId}
+              onChange={(v) =>
+                mutateNode((n) => {
+                  n.characterId = v;
+                })
+              }
+            >
+              <option value="">Выберите персонажа</option>
+              {def.characters.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} · {c.role}
+                </option>
+              ))}
+            </Select>
+            <Field
+              label="Реплика персонажа"
+              multiline
+              focusRef={textRef}
+              value={node.text}
+              onChange={(v) =>
+                mutateNode((n) => {
+                  n.text = v;
+                })
+              }
+            />
+            <label className="checkbox-field">
+              <input
+                type="checkbox"
+                checked={def.startNodeId === node.id}
+                onChange={(e) =>
+                  update((d) => {
+                    d.startNodeId = e.target.checked ? node.id : '';
+                  })
+                }
+              />
+              Начинать разговор с этой реплики
+            </label>
+            <div className="maker-section-heading">
+              <h3>Реакции пользователя</h3>
+              <span>{node.reactions.length} / 30</span>
+            </div>
+            <div className="maker-reaction-list">
+              {node.reactions.map((r, i) => (
+                <button
+                  type="button"
+                  key={r.id}
+                  onClick={() => onSelect({ type: 'reaction', nodeId: node.id, id: r.id })}
+                >
+                  <span>{String(i + 1).padStart(2, '0')}</span>
+                  <div>
+                    <strong>{r.label || 'Без названия'}</strong>
+                    <small>
+                      {r.nextNodeId
+                        ? def.nodes.find((n) => n.id === r.nextNodeId)?.title || 'Реплика удалена'
+                        : r.endingId
+                          ? def.endings.find((e) => e.id === r.endingId)?.title || 'Финал удалён'
+                          : 'Переход не задан'}
+                    </small>
+                  </div>
+                  <Icon name="chevron" size={15} />
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="maker-dashed-button"
+              disabled={node.reactions.length >= 30}
+              onClick={() => {
+                let id = '';
+                update((d) => {
+                  id = addReaction(d, node.id)?.id ?? '';
+                });
+                if (id) onSelect({ type: 'reaction', nodeId: node.id, id });
+              }}
+            >
+              <Icon name="plus" size={16} />
+              Добавить реакцию
+            </button>
+            {!!node.textVariants?.length && (
+              <details className="maker-context-variants">
+                <summary>Варианты реплики по предыдущему ответу · {node.textVariants.length}</summary>
+                <p>Позволяют менять формулировку этой реплики в зависимости от предыдущего выбора участника.</p>
+                {node.textVariants.map((v, i) => (
+                  <Field
+                    key={v.afterReactionId}
+                    label={`После ${v.afterReactionId}`}
+                    multiline
+                    value={v.text}
+                    onChange={(text) =>
+                      mutateNode((n) => {
+                        n.textVariants![i].text = text;
+                      })
+                    }
+                  />
+                ))}
+              </details>
+            )}
+          </>
+        )}
+        {selection.type === 'reaction' && node && reaction && (
+          <>
+            <button
+              type="button"
+              className="maker-secondary maker-return-to-node"
+              onClick={() => onSelect({ type: 'node', id: node.id })}
+            >
+              <Icon name="back" size={15} />
+              <span>К реплике</span>
+            </button>
+            <Field
+              label="Название реакции"
+              multiline
+              focusRef={textRef}
+              value={reaction.label}
+              onChange={(v) =>
+                mutateReaction((r) => {
+                  r.label = v;
+                })
+              }
+              hint="Этот текст участник увидит на кнопке."
+            />
+            <div className="maker-section-heading">
+              <h3>Примеры фраз</h3>
+              <span>{reaction.examples.length}</span>
+            </div>
+            <p className="maker-hint">
+              Для будущего распознавания свободного текста. Участник их не видит.
+            </p>
+            {reaction.examples.map((example, i) => (
+              <div className="maker-example" key={i}>
+                <input
+                  aria-label={`Пример фразы ${i + 1}`}
+                  value={example}
+                  maxLength={10000}
+                  onChange={(e) =>
+                    mutateReaction((r) => {
+                      r.examples[i] = e.target.value;
+                    })
+                  }
+                />
+                <button
+                  type="button"
+                  className="maker-icon-button"
+                  aria-label={`Удалить пример ${i + 1}`}
+                  onClick={() =>
+                    mutateReaction((r) => {
+                      r.examples.splice(i, 1);
+                    })
+                  }
+                >
+                  <Icon name="close" size={15} />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              className="maker-dashed-button"
+              disabled={reaction.examples.length >= 100}
+              onClick={() =>
+                mutateReaction((r) => {
+                  r.examples.push('');
+                })
+              }
+            >
+              <Icon name="plus" size={16} />
+              Добавить пример
+            </button>
+            <Select
+              label="Переход"
+              value={
+                reaction.nextNodeId
+                  ? `node:${reaction.nextNodeId}`
+                  : reaction.endingId
+                    ? `ending:${reaction.endingId}`
+                    : ''
+              }
+              onChange={(v) =>
+                update((d) => {
+                  const [type, id] = v.split(':');
+                  connectReaction(
+                    d,
+                    node.id,
+                    reaction.id,
+                    id ? { type: type as 'node' | 'ending', id } : undefined,
+                  );
+                })
+              }
+            >
+              <option value="">Не задан</option>
+              <optgroup label="Реплики">
+                {def.nodes.map((n) => (
+                  <option key={n.id} value={`node:${n.id}`}>
+                    {n.title || n.id}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Финалы">
+                {def.endings.map((e) => (
+                  <option key={e.id} value={`ending:${e.id}`}>
+                    {e.title || e.id}
+                  </option>
+                ))}
+              </optgroup>
+            </Select>
+            <p className="maker-hint">
+              Можно также перетащить точку у реакции к другой карточке или в пустое место.
+            </p>
+            <section className="maker-evaluation-editor" aria-labelledby="maker-evaluation-title">
+              <div className="maker-section-heading">
+                <h3 id="maker-evaluation-title">Оценка реакции</h3>
+                <span>{REACTION_PENALTY_LABELS[reaction.penalty]}</span>
+              </div>
+              <fieldset className="maker-penalty-choice">
+                <legend className="sr-only">Оценка реакции</legend>
+                {([0, 1, 2] as const).map((penalty) => (
+                  <label key={penalty} className={reaction.penalty === penalty ? 'is-selected' : ''}>
+                    <input
+                      type="radio"
+                      name={`reaction-penalty-${reaction.id}`}
+                      checked={reaction.penalty === penalty}
+                      onChange={() =>
+                        mutateReaction((r) => {
+                          r.penalty = penalty;
+                        })
+                      }
+                    />
+                    <span>{REACTION_PENALTY_LABELS[penalty]}</span>
+                    <strong>{penalty === 0 ? '0' : `+${penalty}`}</strong>
+                  </label>
+                ))}
+              </fieldset>
+              <Field
+                label="Обратная связь"
+                multiline
+                value={reaction.feedback}
+                onChange={(v) =>
+                  mutateReaction((r) => {
+                    r.feedback = v;
+                  })
+                }
+                hint="Коротко объясните участнику, что в реакции сработало или что можно улучшить."
+              />
+            </section>
+            <button
+              type="button"
+              className="maker-primary maker-return-to-node"
+              onClick={() => onSelect({ type: 'node', id: node.id })}
+            >
+              <Icon name="check" size={16} />
+              <span>Готово</span>
+            </button>
+            <button
+              type="button"
+              className="maker-danger-button"
+              onClick={() => onDeleteReaction(node.id, reaction.id)}
+            >
+              <Icon name="trash" size={16} />
+              Удалить реакцию
+            </button>
+          </>
+        )}
+        {selection.type === 'ending' && ending && (
+          <>
+            <Field
+              label="Название финала"
+              maxLength={200}
+              value={ending.title}
+              onChange={(v) =>
+                update((d) => {
+                  d.endings.find((e) => e.id === ending.id)!.title = v;
+                })
+              }
+            />
+            <Select
+              label="Тип финала"
+              value={ending.type}
+              onChange={(v) =>
+                update((d) => {
+                  d.endings.find((e) => e.id === ending.id)!.type = v as typeof ending.type;
+                })
+              }
+            >
+              <option value="success">Успех</option>
+              <option value="neutral">Нейтральный исход</option>
+              <option value="failure">Неудача</option>
+            </Select>
+            <Field
+              label="Описание финала"
+              multiline
+              focusRef={textRef}
+              value={ending.description}
+              onChange={(v) =>
+                update((d) => {
+                  d.endings.find((e) => e.id === ending.id)!.description = v;
+                })
+              }
+            />
+            <Field
+              label="Следующий шаг (необязательно)"
+              multiline
+              value={ending.nextStep ?? ''}
+              onChange={(v) =>
+                update((d) => {
+                  d.endings.find((e) => e.id === ending.id)!.nextStep = v;
+                })
+              }
+            />
+          </>
+        )}
+        {((selection.type === 'node' && node) || (selection.type === 'ending' && ending)) && (
+          <div className="maker-block-actions">
+            <button type="button" onClick={() => onDuplicate(blockId)}>
+              <Icon name="plus" size={15} />
+              Дублировать блок
+            </button>
+            <button type="button" className="maker-danger-button" onClick={() => onDelete(blockId)}>
+              <Icon name="trash" size={15} />
+              Удалить блок
+            </button>
+          </div>
+        )}
+        {selection.type === 'main' && (
+          <>
+            <ScenarioCoverField
+              value={doc.preview.coverImage}
+              onChange={(image) =>
+                change((d) => {
+                  if (image) d.preview.coverImage = image;
+                  else delete d.preview.coverImage;
+                })
+              }
+            />
+            <Field
+              label="Название сценария"
+              maxLength={200}
+              value={def.metadata.title}
+              onChange={(v) =>
+                update((d) => {
+                  d.metadata.title = v;
+                })
+              }
+            />
+            <Field
+              label="Короткое описание"
+              multiline
+              value={def.metadata.description}
+              onChange={(v) =>
+                update((d) => {
+                  d.metadata.description = v;
+                })
+              }
+            />
+            <Field
+              label="Категория"
+              maxLength={100}
+              value={def.metadata.category}
+              onChange={(v) =>
+                update((d) => {
+                  d.metadata.category = v;
+                })
+              }
+            />
+            <Select
+              label="Сложность"
+              value={def.metadata.difficulty}
+              onChange={(v) =>
+                update((d) => {
+                  d.metadata.difficulty = v as typeof d.metadata.difficulty;
+                })
+              }
+            >
+              <option value="easy">Начальный</option>
+              <option value="medium">Средний</option>
+              <option value="hard">Продвинутый</option>
+            </Select>
+            <Field
+              label="Контекст"
+              multiline
+              value={def.metadata.context}
+              onChange={(v) =>
+                update((d) => {
+                  d.metadata.context = v;
+                })
+              }
+            />
+            <Field
+              label="Цель участника"
+              multiline
+              value={def.metadata.goal}
+              onChange={(v) =>
+                update((d) => {
+                  d.metadata.goal = v;
+                })
+              }
+            />
+            <Field
+              label="Роль участника"
+              maxLength={200}
+              value={def.metadata.playerRole}
+              onChange={(v) =>
+                update((d) => {
+                  d.metadata.playerRole = v;
+                })
+              }
+            />
+            <Field
+              label="Навык"
+              maxLength={200}
+              value={def.metadata.skill}
+              onChange={(v) =>
+                update((d) => {
+                  d.metadata.skill = v;
+                })
+              }
+            />
+            <Select
+              label="Длительность"
+              value={def.metadata.duration}
+              onChange={(v) =>
+                update((d) => {
+                  d.metadata.duration = v;
+                })
+              }
+            >
+              {!DURATION_OPTIONS.includes(def.metadata.duration) && (
+                <option value={def.metadata.duration}>{def.metadata.duration}</option>
+              )}
+              {DURATION_OPTIONS.map((duration) => (
+                <option key={duration} value={duration}>
+                  {duration}
+                </option>
+              ))}
+            </Select>
+            <Field
+              label="Совет участнику"
+              multiline
+              value={def.metadata.tip}
+              onChange={(v) =>
+                update((d) => {
+                  d.metadata.tip = v;
+                })
+              }
+            />
+          </>
+        )}
+        {selection.type === 'characters' && (
+          <>
+            <p className="maker-hint">
+              У каждой реплики свой персонаж. В диалоге отображаются его имя, роль и инициалы.
+            </p>
+            {def.characters.map((c) => (
+              <section key={c.id} className="maker-entity-fields">
+                <Field
+                  label="Имя персонажа"
+                  value={c.name}
+                  maxLength={100}
+                  onChange={(v) =>
+                    update((d) => {
+                      const char = d.characters.find((x) => x.id === c.id)!;
+                      char.name = v;
+                      char.initials = v
+                        .trim()
+                        .split(/\s+/)
+                        .slice(0, 2)
+                        .map((s) => s[0])
+                        .join('')
+                        .toUpperCase();
+                    })
+                  }
+                />
+                <Field
+                  label="Роль персонажа"
+                  value={c.role}
+                  maxLength={200}
+                  onChange={(v) =>
+                    update((d) => {
+                      d.characters.find((x) => x.id === c.id)!.role = v;
+                    })
+                  }
+                />
+                <Field
+                  label="Описание персонажа"
+                  multiline
+                  value={c.description}
+                  onChange={(v) =>
+                    update((d) => {
+                      d.characters.find((x) => x.id === c.id)!.description = v;
+                    })
+                  }
+                />
+                <button
+                  type="button"
+                  className="maker-danger-button"
+                  disabled={def.nodes.some((n) => n.characterId === c.id)}
+                  onClick={() =>
+                    update((d) => {
+                      d.characters = d.characters.filter((x) => x.id !== c.id);
+                    })
+                  }
+                >
+                  <Icon name="trash" size={16} />
+                  Удалить персонажа
+                </button>
+                {def.nodes.some((n) => n.characterId === c.id) && (
+                  <small>Чтобы удалить, назначьте репликам другого персонажа.</small>
+                )}
+              </section>
+            ))}
+            <button
+              type="button"
+              className="maker-dashed-button"
+              disabled={def.characters.length >= 100}
+              onClick={() =>
+                update((d) => {
+                  d.characters.push({
+                    id: newId('character'),
+                    name: 'Новый персонаж',
+                    initials: 'НП',
+                    role: 'Собеседник',
+                    description: '',
+                  });
+                })
+              }
+            >
+              + Добавить персонажа
+            </button>
+          </>
+        )}
+        {selection.type === 'settings' && (
+          <>
+            <ScenarioJsonTools onExport={onExport} onImport={onImport} />
+            <label className="checkbox-field">
+              <input
+                type="checkbox"
+                checked={def.settings.allowRestart}
+                onChange={(e) => update((d) => { d.settings.allowRestart = e.target.checked; })}
+              />
+              Разрешить повторное прохождение
+            </label>
+            <label className="checkbox-field">
+              <input
+                type="checkbox"
+                checked={def.settings.collectFeedback}
+                onChange={(e) => update((d) => { d.settings.collectFeedback = e.target.checked; })}
+              />
+              Собирать отзывы
+            </label>
+            <Select
+              label="Режим учебной обратной связи"
+              value={def.settings.feedbackMode}
+              onChange={(v) => update((d) => { d.settings.feedbackMode = v as typeof d.settings.feedbackMode; })}
+            >
+              <option value="immediate">Сразу после ответа</option>
+              <option value="summary">Только после завершения</option>
+              <option value="hidden">Не показывать участнику</option>
+            </Select>
+            <Select
+              label="Стартовая реплика"
+              value={def.startNodeId}
+              onChange={(v) => update((d) => { d.startNodeId = v; })}
+            >
+              <option value="">Не выбрана</option>
+              {def.nodes.map((n) => <option key={n.id} value={n.id}>{n.title || n.id}</option>)}
+            </Select>
+
+            <section className="maker-penalty-rule" aria-labelledby="maker-penalty-rule-title">
+              <div>
+                <strong id="maker-penalty-rule-title">Досрочное завершение по ошибкам</strong>
+                <p>Общий финал сработает, когда накопленный штраф достигнет выбранного лимита.</p>
+              </div>
+              <label className="checkbox-field maker-penalty-toggle">
+                <input
+                  type="checkbox"
+                  checked={def.settings.penalty.enabled}
+                  onChange={(event) =>
+                    update((d) => {
+                      d.settings.penalty.enabled = event.target.checked;
+                      if (event.target.checked) {
+                        d.settings.penalty.threshold = penaltyAnalysis.recommendations?.recommended ?? Math.max(1, d.settings.penalty.threshold);
+                        d.settings.penalty.failureEndingId ??= d.endings.find((ending) => ending.type === 'failure')?.id;
+                      }
+                    })
+                  }
+                />
+                Завершать разговор при накоплении штрафов
+              </label>
+
+              {def.settings.penalty.enabled && (
+                <>
+                  <div className="maker-penalty-analysis">
+                    <span><small>Минимум</small><strong>{penaltyAnalysis.minReachablePenalty}</strong></span>
+                    <span><small>Максимум</small><strong>{penaltyAnalysis.unbounded ? '∞' : penaltyAnalysis.maxReachablePenalty}</strong></span>
+                    <span>
+                      <small>Рекомендуемый диапазон</small>
+                      <strong>
+                        {penaltyAnalysis.recommendations
+                          ? `${penaltyAnalysis.recommendations.range.min}–${penaltyAnalysis.recommendations.range.max}`
+                          : '—'}
+                      </strong>
+                    </span>
+                  </div>
+
+                  {penaltyAnalysis.recommendations && (
+                    <fieldset className="maker-threshold-presets">
+                      <legend>Допустимый уровень ошибок</legend>
+                      {penaltyAnalysis.recommendations.strict !== undefined && (
+                        <button type="button" className={def.settings.penalty.threshold === penaltyAnalysis.recommendations.strict ? 'is-selected' : ''}
+                          onClick={() => update((d) => { d.settings.penalty.threshold = penaltyAnalysis.recommendations!.strict!; })}>
+                          <span>Строго</span><strong>{penaltyAnalysis.recommendations.strict}</strong>
+                        </button>
+                      )}
+                      <button type="button" className={def.settings.penalty.threshold === penaltyAnalysis.recommendations.recommended ? 'is-selected' : ''}
+                        onClick={() => update((d) => { d.settings.penalty.threshold = penaltyAnalysis.recommendations!.recommended; })}>
+                        <span>Рекомендуемый</span><strong>{penaltyAnalysis.recommendations.recommended}</strong>
+                      </button>
+                      {penaltyAnalysis.recommendations.soft !== undefined && (
+                        <button type="button" className={def.settings.penalty.threshold === penaltyAnalysis.recommendations.soft ? 'is-selected' : ''}
+                          onClick={() => update((d) => { d.settings.penalty.threshold = penaltyAnalysis.recommendations!.soft!; })}>
+                          <span>Мягко</span><strong>{penaltyAnalysis.recommendations.soft}</strong>
+                        </button>
+                      )}
+                    </fieldset>
+                  )}
+
+                  <label className="field maker-threshold-manual">
+                    Настроить вручную
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={def.settings.penalty.threshold}
+                      onChange={(event) => update((d) => { d.settings.penalty.threshold = Math.max(1, Number.parseInt(event.target.value || '1', 10)); })}
+                    />
+                  </label>
+                  <div className={`maker-threshold-status ${penaltyAnalysis.current?.penaltyEndingReachable ? 'is-ok' : 'is-error'}`}>
+                    <strong>Текущий лимит: {def.settings.penalty.threshold}</strong>
+                    {penaltyAnalysis.unbounded ? (
+                      <p>В графе есть цикл с повторным накоплением штрафов. Измените цикл перед публикацией.</p>
+                    ) : penaltyAnalysis.current?.penaltyEndingReachable ? (
+                      <p>При текущем лимите досрочное поражение достижимо.</p>
+                    ) : (
+                      <p>Лимит недостижим. Максимум до системного финала: {penaltyAnalysis.maxThresholdReachablePenalty}.</p>
+                    )}
+                    {penaltyAnalysis.singleReactionCanEnd && (
+                      <p className="maker-threshold-warning">Одна нежелательная реакция может немедленно завершить сценарий.</p>
+                    )}
+                  </div>
+                  <Select
+                    label="Финал при исчерпании лимита"
+                    value={def.settings.penalty.failureEndingId ?? ''}
+                    onChange={(v) => update((d) => { d.settings.penalty.failureEndingId = v || undefined; })}
+                  >
+                    <option value="">Не выбран</option>
+                    {def.endings.filter((ending) => ending.type === 'failure').map((ending) => (
+                      <option key={ending.id} value={ending.id}>{ending.title}</option>
+                    ))}
+                  </Select>
+                </>
+              )}
+            </section>
+          </>
+        )}
+      </fieldset>
+    </aside>
+  );
+}

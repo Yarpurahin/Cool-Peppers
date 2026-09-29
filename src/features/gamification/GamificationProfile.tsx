@@ -1,0 +1,165 @@
+import { useEffect, useMemo, useState } from 'react';
+import type { GamificationSummary } from '../../types/api.ts';
+import { Icon } from '../../components/ui/Icon.tsx';
+import { Button } from '../../components/ui/Button.tsx';
+import { MasteryStars } from './MasteryStars.tsx';
+
+const SKILLS_PAGE_SIZE = 4;
+const ACHIEVEMENTS_PAGE_SIZE = 3;
+
+function Pagination({
+  page,
+  total,
+  pageSize,
+  onPage,
+  label,
+}: {
+  page: number;
+  total: number;
+  pageSize: number;
+  onPage: (page: number) => void;
+  label: string;
+}) {
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  if (pages <= 1) return null;
+  return (
+    <nav className="contact-pagination profile-pagination" aria-label={label}>
+      <Button variant="outline" disabled={page <= 0} onClick={() => onPage(Math.max(0, page - 1))}>
+        <Icon name="back" size={16} /> Назад
+      </Button>
+      <span className="contact-page-number" aria-current="page">
+        Страница {page + 1} из {pages}
+      </span>
+      <Button variant="outline" disabled={page + 1 >= pages} onClick={() => onPage(Math.min(pages - 1, page + 1))}>
+        Далее <Icon name="arrow" size={16} />
+      </Button>
+    </nav>
+  );
+}
+
+export function GamificationProfile({
+  summary,
+  loading,
+  error,
+}: {
+  summary: GamificationSummary | null;
+  loading: boolean;
+  error: string;
+}) {
+  const [skillsPage, setSkillsPage] = useState(0);
+  const [achievementsPage, setAchievementsPage] = useState(0);
+
+  const activeAchievements = useMemo(
+    () => summary?.achievements.filter((item) => item.active || item.unlocked) ?? [],
+    [summary],
+  );
+  useEffect(() => {
+    const maxSkillsPage = Math.max(0, Math.ceil((summary?.skills.length ?? 0) / SKILLS_PAGE_SIZE) - 1);
+    setSkillsPage((page) => Math.min(page, maxSkillsPage));
+  }, [summary?.skills.length]);
+  useEffect(() => {
+    const maxPage = Math.max(0, Math.ceil(activeAchievements.length / ACHIEVEMENTS_PAGE_SIZE) - 1);
+    setAchievementsPage((page) => Math.min(page, maxPage));
+  }, [activeAchievements.length]);
+
+  if (loading && !summary)
+    return <section className="panel gamification-loading" role="status">Загружаем прогресс…</section>;
+  if (error && !summary)
+    return <section className="panel gamification-loading" role="status">Прогресс временно недоступен.</section>;
+  if (!summary) return null;
+
+  const weekly = Math.min(summary.weeklyGoal.completed, summary.weeklyGoal.target);
+  const weeklyPercent = Math.round((weekly / summary.weeklyGoal.target) * 100);
+  const visibleSkills = summary.skills.slice(skillsPage * SKILLS_PAGE_SIZE, (skillsPage + 1) * SKILLS_PAGE_SIZE);
+  const visibleAchievements = activeAchievements.slice(
+    achievementsPage * ACHIEVEMENTS_PAGE_SIZE,
+    (achievementsPage + 1) * ACHIEVEMENTS_PAGE_SIZE,
+  );
+
+  return (
+    <section className="gamification-section" aria-labelledby="gamification-title">
+      <div className="gamification-hero">
+        <div className="gamification-level-mark" aria-hidden="true"><Icon name="award" size={28} /></div>
+        <div className="gamification-level-copy">
+          <p className="eyebrow">Прогресс переговорщика</p>
+          <div className="gamification-level-line"><h2 id="gamification-title">Уровень {summary.level}</h2><span>{summary.levelTitle}</span></div>
+          <div className="gamification-progress-copy">
+            <span>{summary.earnedInLevel} / {summary.neededInLevel} XP до следующего уровня</span>
+            <strong>{summary.totalXp} XP всего</strong>
+          </div>
+          <div className="gamification-progress" aria-label={`Прогресс уровня ${summary.progressPercent}%`}><span style={{ width: `${summary.progressPercent}%` }} /></div>
+        </div>
+        <div className="weekly-goal-card">
+          <span>Цель недели</span><strong>{weekly}/{summary.weeklyGoal.target}</strong><small>завершённых тренировок</small>
+          <div className="weekly-goal-track" aria-hidden="true"><span style={{ width: `${weeklyPercent}%` }} /></div>
+        </div>
+      </div>
+
+      <div className="gamification-columns">
+        <section className="panel gamification-card skills-card">
+          <div className="panel-heading">
+            <div><p className="eyebrow">Развитие</p><h2>Навыки</h2></div><Icon name="chart" />
+          </div>
+          {summary.skills.length ? (
+            <>
+              <div className="skill-list">
+                {visibleSkills.map((skill) => (
+                  <article className="skill-row" key={skill.key}>
+                    <div className="skill-row-heading">
+                      <div><strong>{skill.name}</strong><span>Ур. {skill.level} · {skill.levelTitle}</span></div>
+                      <small>{skill.xp} XP</small>
+                    </div>
+                    <div className="skill-progress" aria-label={`Прогресс навыка ${skill.progressPercent}%`}><span style={{ width: `${skill.progressPercent}%` }} /></div>
+                    <p>{skill.earnedInLevel}/{skill.neededInLevel} XP уровня · тренировок: {skill.attempts}</p>
+                  </article>
+                ))}
+              </div>
+              <Pagination page={skillsPage} total={summary.skills.length} pageSize={SKILLS_PAGE_SIZE} onPage={setSkillsPage} label="Страницы навыков" />
+            </>
+          ) : <p className="gamification-empty">Завершите сценарий — здесь появится прогресс навыков.</p>}
+        </section>
+
+        <section className="panel gamification-card achievements-card">
+          <div className="panel-heading">
+            <div><p className="eyebrow">Коллекция</p><h2>Достижения</h2></div>
+            <span className="achievement-count">{activeAchievements.filter((item) => item.unlocked).length}/{activeAchievements.length}</span>
+          </div>
+          <div className="achievement-grid">
+            {visibleAchievements.map((item) => (
+              <article className={`achievement-item ${item.unlocked ? 'is-unlocked' : 'is-locked'}`} key={item.id}>
+                <span className="achievement-icon"><Icon name={item.unlocked ? item.icon : 'lock'} size={18} /></span>
+                <div className="achievement-copy">
+                  <div className="achievement-title-row"><strong>{item.title}</strong>{!item.active && item.unlocked && <small>Архив</small>}</div>
+                  <p>{item.description}</p>
+                  {item.unlocked ? (
+                    item.unlockedAt && <small>Получено {new Date(item.unlockedAt).toLocaleDateString('ru-RU')}</small>
+                  ) : (
+                    <div className="achievement-progress-wrap">
+                      <div className="achievement-progress-copy"><span>Прогресс</span><strong>{item.progress}/{item.target}</strong></div>
+                      <div className="achievement-progress-track" aria-label={`Прогресс достижения ${item.progressPercent}%`}><span style={{ width: `${item.progressPercent}%` }} /></div>
+                    </div>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+          <Pagination page={achievementsPage} total={activeAchievements.length} pageSize={ACHIEVEMENTS_PAGE_SIZE} onPage={setAchievementsPage} label="Страницы достижений" />
+        </section>
+      </div>
+
+      <section className="panel gamification-card mastery-card">
+        <div className="panel-heading"><div><p className="eyebrow">Повторная практика</p><h2>Мастерство сценариев</h2></div><Icon name="star" /></div>
+        {summary.mastery.length ? (
+          <div className="mastery-list">
+            {summary.mastery.map((item) => (
+              <article className="mastery-row" key={item.scenarioId}>
+                <div><strong>{item.title}</strong><span>{item.completedAttempts} прохожд.</span></div>
+                <MasteryStars value={item.bestStars} /><small>лучший результат: +{item.bestXp} XP</small>
+              </article>
+            ))}
+          </div>
+        ) : <p className="gamification-empty">После первого завершённого сценария здесь появится мастерство.</p>}
+      </section>
+    </section>
+  );
+}

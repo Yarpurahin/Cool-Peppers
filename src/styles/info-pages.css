@@ -1,0 +1,427 @@
+/* Information pages share the application palette and shell. */
+.info-page {
+  padding-bottom: 76px;
+}
+.info-section {
+  margin-top: 64px;
+}
+.info-section .section-heading h2 {
+  font-size: 30px;
+}
+.about-page {
+  max-width: 840px;
+}
+.about-heading {
+  padding-block: 12px 34px;
+  border-bottom: 1px solid var(--line);
+}
+.about-heading h1 {
+  margin-block: 20px 24px;
+  font-size: clamp(32px, 3.5vw, 46px);
+}
+.about-lead {
+  font-size: 18px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.about-prose {
+  font-size: 15px;
+  line-height: 1.9;
+  color: var(--muted);
+}
+.about-prose h2 {
+  margin-block: 38px 18px;
+  font-size: 25px;
+  color: var(--ink);
+}
+.about-prose p + p {
+  margin-top: 16px;
+}
+.contact-heading {
+  margin-bottom: 36px;
+}
+.contact-heading h1 {
+  font-size: clamp(32px, 3.6vw, 46px);
+}
+.contact-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 32px;
+  align-items: start;
+}
+.contact-aside {
+  display: grid;
+  gap: 22px;
+}
+.contact-team {
+  background: var(--sage);
+  border: 1px solid var(--tone-border, #dce4d8);
+  padding: 30px;
+  border-radius: var(--radius);
+}
+.contact-team > .icon-tile {
+  width: 52px;
+  height: 52px;
+  background: var(--surface);
+  margin-bottom: 24px;
+}
+.contact-team > .eyebrow {
+  color: var(--green);
+}
+.contact-team h2 {
+  margin-block: 8px 14px;
+}
+.contact-team > p:not(.eyebrow),
+.contact-reasons {
+  color: var(--tone-muted, #526357);
+  font-size: 13px;
+  line-height: 1.8;
+}
+.contact-reasons {
+  list-style: none;
+  padding: 0;
+  margin-block: 25px;
+  display: grid;
+  gap: 20px;
+}
+.contact-reasons li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.contact-reasons svg {
+  color: var(--green);
+  margin-top: 3px;
+}
+.contact-reasons strong {
+  display: block;
+  color: var(--ink);
+  margin-bottom: 3px;
+}
+.contact-team-note {
+  border-top: 1px solid var(--tone-border, #ccd8c7);
+  padding-top: 20px;
+}
+.contact-tip {
+  display: flex;
+  gap: 12px;
+  padding: 4px 12px;
+}
+.contact-tip > svg {
+  color: var(--orange);
+}
+.contact-tip h3 {
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+.contact-tip p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+}
+.contact-form-panel {
+  padding: 32px;
+}
+.contact-form-panel .panel-heading {
+  margin-bottom: 12px;
+}
+.contact-form-intro {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 24px;
+}
+.contact-form-panel .field {
+  font-size: 13px;
+}
+.contact-form-panel textarea {
+  min-height: 166px;
+}
+.contact-field-hint,
+.contact-message-meta {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 450;
+}
+.contact-message-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+}
+.contact-message-meta > span {
+  font-variant-numeric: tabular-nums;
+}
+.contact-field-error {
+  color: var(--tone-orange, #a43319);
+  font-weight: 600;
+  font-size: 12px;
+}
+.contact-form-panel [aria-invalid='true'] {
+  border-color: var(--tone-orange, #a43319);
+  background: var(--tone-soft, #fffaf8);
+}
+.contact-privacy {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.8;
+}
+.contact-privacy svg {
+  margin-top: 1px;
+}
+.contact-submit {
+  justify-self: start;
+}
+.contact-faq {
+  border-top: 1px solid var(--line);
+  padding-top: 34px;
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 32px;
+}
+.contact-faq h2 {
+  margin-block: 12px;
+}
+.accordion-item {
+  border-bottom: 1px solid var(--line);
+}
+.accordion-item h3 {
+  margin: 0;
+}
+.accordion-item h3 > button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  min-height: 58px;
+  gap: 20px;
+  padding: 16px 4px;
+  text-align: left;
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1.6;
+  border-radius: 6px;
+}
+.accordion-item h3 > button:hover,
+.accordion-item h3 > button:focus-visible {
+  color: var(--orange);
+  background: transparent;
+}
+.accordion-item h3 svg {
+  transition: transform 280ms ease;
+}
+.accordion-item.is-open h3 svg {
+  transform: rotate(45deg);
+}
+.accordion-content {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    grid-template-rows 280ms ease,
+    opacity 200ms ease,
+    visibility 280ms;
+}
+.accordion-item.is-open .accordion-content {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  visibility: visible;
+}
+.accordion-content-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+.accordion-content p {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 0 4px 20px;
+  line-height: 1.8;
+}
+.contact-success {
+  min-height: 580px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 20px;
+}
+.contact-success-icon {
+  display: grid;
+  place-items: center;
+  width: 70px;
+  height: 70px;
+  background: var(--sage);
+  color: var(--green);
+  border-radius: 50%;
+}
+.contact-success > p:not(.eyebrow) {
+  color: var(--muted);
+}
+.contact-receipt {
+  font-size: 11px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.contact-receipt strong {
+  display: block;
+  font-weight: 600;
+}
+.contact-inbox {
+  display: grid;
+  gap: 20px;
+}
+.contact-inbox-message {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.contact-inbox-message time {
+  color: var(--muted);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.contact-inbox-text {
+  white-space: pre-wrap;
+  margin-bottom: 14px;
+}
+.contact-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 18px;
+  padding: 22px 0 0;
+  margin-top: 28px;
+  border-top: 1px solid var(--line);
+}
+.contact-pagination .button {
+  min-width: 120px;
+  background: var(--surface);
+  border-color: var(--line);
+}
+.contact-pagination .button:not(:disabled):hover {
+  border-color: var(--green);
+  background: var(--sage);
+}
+.contact-pagination .button:disabled {
+  color: var(--muted);
+  opacity: 0.55;
+}
+.contact-page-number {
+  display: grid;
+  place-items: center;
+  min-height: 42px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  background: var(--sage);
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.brand:hover,
+.brand:focus-visible {
+  color: var(--green);
+}
+
+@media (max-width: 1000px) {
+  .contact-grid,
+  .contact-faq {
+    gap: 24px;
+  }
+  .contact-team,
+  .contact-form-panel {
+    padding: 26px;
+  }
+}
+@media (max-width: 850px) {
+  .contact-grid {
+    gap: 20px;
+  }
+  .contact-team,
+  .contact-form-panel {
+    padding: 23px;
+  }
+}
+@media (max-width: 700px) {
+  .info-page {
+    padding-bottom: 48px;
+  }
+  .info-section {
+    margin-top: 40px;
+  }
+  .about-heading {
+    padding-top: 0;
+  }
+  .about-lead {
+    font-size: 16px;
+  }
+  .about-prose {
+    font-size: 14px;
+  }
+  .about-prose h2 {
+    font-size: 23px;
+    margin-top: 30px;
+  }
+  .contact-heading h1 {
+    font-size: clamp(29px, 7.2vw, 42px);
+  }
+  .contact-heading > p:last-child {
+    font-size: 14px;
+  }
+  .contact-grid,
+  .contact-faq {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .contact-team > .icon-tile {
+    float: right;
+    margin: 0 0 12px 12px;
+  }
+  .contact-reasons {
+    gap: 15px;
+    margin-block: 20px;
+  }
+  .contact-form-panel {
+    padding: 24px;
+  }
+  .contact-submit {
+    width: 100%;
+  }
+  .contact-success {
+    min-height: 430px;
+  }
+  .contact-faq {
+    padding-top: 26px;
+  }
+  .contact-inbox-message .panel-heading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .contact-pagination {
+    gap: 8px;
+    justify-content: space-between;
+  }
+  .contact-pagination .button {
+    min-width: 0;
+    padding: 10px 12px;
+    gap: 6px;
+  }
+  .contact-page-number {
+    padding: 8px 10px;
+    white-space: nowrap;
+  }
+}
+@media (max-width: 380px) {
+  .contact-team,
+  .contact-form-panel {
+    padding: 20px;
+  }
+  .contact-pagination .button {
+    font-size: 11px;
+    padding: 10px 8px;
+  }
+}

@@ -1,0 +1,140 @@
+{
+  "format": "arena-scenario",
+  "formatVersion": 2,
+  "definition": {
+    "schemaVersion": 3,
+    "metadata": {
+      "id": "scenario_template",
+      "version": 1,
+      "title": "Название сценария",
+      "description": "Короткое описание сценария для каталога.",
+      "category": "Карьера",
+      "difficulty": "medium",
+      "duration": "5–10 минут",
+      "skill": "Ведение переговоров",
+      "context": "Опишите исходную ситуацию, известную участнику до начала разговора.",
+      "goal": "Опишите цель участника.",
+      "playerRole": "Роль участника",
+      "tip": "Короткий совет перед началом сценария."
+    },
+    "startNodeId": "node_start",
+    "characters": [
+      {
+        "id": "character_partner",
+        "name": "Анна Смирнова",
+        "initials": "АС",
+        "role": "Собеседник",
+        "description": "Краткое описание характера и позиции персонажа."
+      }
+    ],
+    "stages": [
+      {
+        "id": "stage_opening",
+        "title": "Начало"
+      },
+      {
+        "id": "stage_discussion",
+        "title": "Обсуждение"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "node_start",
+        "title": "Начало разговора",
+        "characterId": "character_partner",
+        "stageId": "stage_opening",
+        "text": "Добрый день. Давайте обсудим условия.",
+        "reactions": [
+          {
+            "id": "reaction_ask",
+            "intent": "ask_clarification",
+            "label": "Уточнить условия",
+            "examples": [
+              "Какие условия вы предлагаете?",
+              "Расскажите подробнее об условиях"
+            ],
+            "nextNodeId": "node_offer",
+            "penalty": 0,
+            "feedback": "Вы уточняете условия до того, как принимать решение."
+          },
+          {
+            "id": "reaction_close",
+            "intent": "close_agreement",
+            "label": "Завершить разговор",
+            "examples": [
+              "Спасибо, я подумаю"
+            ],
+            "endingId": "ending_neutral",
+            "penalty": 0,
+            "feedback": "Вы корректно откладываете решение и завершаете разговор."
+          }
+        ]
+      },
+      {
+        "id": "node_offer",
+        "title": "Предложение",
+        "characterId": "character_partner",
+        "stageId": "stage_discussion",
+        "text": "Я могу предложить такой вариант. Вас это устраивает?",
+        "reactions": [
+          {
+            "id": "reaction_accept",
+            "intent": "accept_offer",
+            "label": "Согласиться",
+            "examples": [
+              "Да, меня устраивает",
+              "Согласен"
+            ],
+            "endingId": "ending_success",
+            "penalty": 0,
+            "feedback": "Вы прямо фиксируете согласие с предложением."
+          },
+          {
+            "id": "reaction_reject",
+            "intent": "reject_offer",
+            "label": "Отказаться",
+            "examples": [
+              "Нет, мне не подходит"
+            ],
+            "endingId": "ending_failure",
+            "penalty": 2,
+            "feedback": "Отказ завершает переговоры; перед ним можно было уточнить альтернативы."
+          }
+        ]
+      }
+    ],
+    "endings": [
+      {
+        "id": "ending_success",
+        "title": "Договорились",
+        "description": "Стороны пришли к соглашению.",
+        "type": "success",
+        "nextStep": "Зафиксируйте договорённости."
+      },
+      {
+        "id": "ending_neutral",
+        "title": "Разговор завершён",
+        "description": "Решение отложено.",
+        "type": "neutral",
+        "nextStep": "Вернитесь к обсуждению позже."
+      },
+      {
+        "id": "ending_failure",
+        "title": "Договориться не удалось",
+        "description": "Стороны не нашли подходящего варианта.",
+        "type": "failure",
+        "nextStep": "Проанализируйте альтернативные варианты."
+      }
+    ],
+    "settings": {
+      "allowRestart": true,
+      "collectFeedback": true,
+      "feedbackMode": "summary",
+      "penalty": {
+        "enabled": true,
+        "threshold": 2,
+        "failureEndingId": "ending_failure"
+      }
+    }
+  }
+}

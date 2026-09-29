@@ -1,0 +1,57 @@
+:root {
+  font-family: 'Manrope Variable', 'Segoe UI', sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  color-scheme: light;
+  --on-accent: #ffffff;
+  --bg: #f7f7f2;
+  --surface: #ffffff;
+  --ink: #26352f;
+  --muted: #69746d;
+  --line: #e0e5dc;
+  --orange: #c34a27;
+  --orange-hover: #a73b1c;
+  --green: #285241;
+  --green-hover: #1c3e30;
+  --sage: #eaf0e6;
+  --focus: #4f7663;
+  --focus-ring: rgb(79 118 99 / 16%);
+  --sand: #f1eddd;
+  --peach: #f4e5dc;
+  --radius: 20px;
+  --shadow: 0 12px 36px rgb(32 52 39 / 5%);
+}
+
+/* Radix Colors 3: Gray Dark surfaces, Green / Orange accents.
+   https://www.radix-ui.com/colors/docs/palette-composition/understanding-the-scale */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #111111;
+  --surface: #191919;
+  --ink: #eeeeee;
+  --muted: #b4b4b4;
+  --line: #3a3a3a;
+  --orange: #f76b15;
+  --orange-hover: #ff801f;
+  --green: #30a46c;
+  --green-hover: #33b074;
+  --sage: #132d21;
+  --sand: #2a2723;
+  --peach: #331e0b;
+  --focus: #3dd68c;
+  --focus-ring: rgb(61 214 140 / 20%);
+  --shadow: 0 12px 36px rgb(0 0 0 / 28%);
+  --on-accent: #111111;
+  --tone-ink: var(--ink);
+  --tone-muted: var(--muted);
+  --tone-orange: #ffa057;
+  --tone-green: #3dd68c;
+  --tone-border: #484848;
+  --tone-soft: #222222;
+  --tone-warm: #331e0b;
+  --tone-decoration: #28684a;
+  --auth-story-bg: #1a2520;
+}
