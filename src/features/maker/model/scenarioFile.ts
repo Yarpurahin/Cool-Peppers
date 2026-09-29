@@ -20,7 +20,7 @@ const coverImageSchema = z
 export const scenarioFileSchema = z
   .object({
     format: z.literal('arena-scenario'),
-    formatVersion: z.literal(1),
+    formatVersion: z.literal(2),
     definition: makerDefinitionSchema,
     editor: editorStateSchema.optional(),
     coverImage: coverImageSchema.nullable().optional(),
@@ -28,6 +28,16 @@ export const scenarioFileSchema = z
   .strict();
 
 export type ScenarioFile = z.infer<typeof scenarioFileSchema>;
+
+const legacyScenarioFileSchema = z
+  .object({
+    format: z.literal('arena-scenario'),
+    formatVersion: z.union([z.literal(1), z.literal(2)]),
+    definition: legacyMakerDefinitionSchema,
+    editor: editorStateSchema.optional(),
+    coverImage: coverImageSchema.nullable().optional(),
+  })
+  .strict();
 
 export interface ParsedScenarioFile {
   document: MakerDocument;
@@ -146,6 +156,17 @@ export function parseScenarioFile(input: unknown, current: MakerDraft): ParsedSc
   const portable = scenarioFileSchema.safeParse(input);
   if (portable.success)
     return { document: fromPortable(portable.data, current), source: 'arena-scenario' };
+  const legacyPortable = legacyScenarioFileSchema.safeParse(input);
+  if (legacyPortable.success) {
+    const file: ScenarioFile = {
+      format: 'arena-scenario',
+      formatVersion: 2,
+      definition: legacyPortable.data.definition,
+      ...(legacyPortable.data.editor ? { editor: legacyPortable.data.editor } : {}),
+      ...(legacyPortable.data.coverImage !== undefined ? { coverImage: legacyPortable.data.coverImage } : {}),
+    };
+    return { document: fromPortable(file, current), source: 'arena-scenario' };
+  }
 
   const exported = documentSchema.safeParse(input);
   if (exported.success) {
@@ -170,7 +191,7 @@ export function parseScenarioFile(input: unknown, current: MakerDraft): ParsedSc
   if (parsedDefinition) {
     const file: ScenarioFile = {
       format: 'arena-scenario',
-      formatVersion: 1,
+      formatVersion: 2,
       definition: parsedDefinition,
     };
     return { document: fromPortable(file, current), source: 'definition' };
@@ -180,7 +201,7 @@ export function parseScenarioFile(input: unknown, current: MakerDraft): ParsedSc
   const detail =
     object?.format === 'arena-scenario'
       ? zodMessage(portable.error)
-      : object?.schemaVersion === 2
+      : object?.schemaVersion === 2 || object?.schemaVersion === 3
         ? zodMessage(rawDefinition.success ? portable.error : rawDefinition.error)
         : object && ('preview' in object || 'definition' in object)
           ? zodMessage(exported.error)
@@ -191,7 +212,7 @@ export function parseScenarioFile(input: unknown, current: MakerDraft): ParsedSc
 export function createScenarioFile(document: MakerDocument): ScenarioFile {
   return {
     format: 'arena-scenario',
-    formatVersion: 1,
+    formatVersion: 2,
     definition: structuredClone(document.definition),
     editor: structuredClone(document.editor),
     coverImage: document.preview.coverImage ? structuredClone(document.preview.coverImage) : null,

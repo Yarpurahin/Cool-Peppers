@@ -48,7 +48,8 @@ export function addReaction(def: MakerDefinition, nodeId: string): UserReaction 
     intent: id,
     label: 'Новая реакция',
     examples: [],
-    evaluation: { grade: 'acceptable', penalty: 0, feedback: '' },
+    penalty: 0,
+    feedback: '',
   };
   node.reactions.push(reaction);
   return reaction;
@@ -84,7 +85,7 @@ export function removeBlocks(doc: MakerDocument, ids: readonly string[]) {
       if (r.endingId && removing.has(r.endingId)) delete r.endingId;
     }
   if (removing.has(doc.definition.startNodeId)) doc.definition.startNodeId = '';
-  // A removed assessment failure ending remains an explicit validation error until the rule is disabled/reassigned.
+  // A removed penalty failure ending remains an explicit validation error until the rule is disabled/reassigned.
   for (const id of ids) delete doc.editor.positions[id];
   cleanVariants(doc.definition);
 }

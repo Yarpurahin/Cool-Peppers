@@ -34,7 +34,7 @@ test('reload recovers unfinished text, graph, settings, cover and viewport witho
     intent: '',
     label: '',
     examples: [],
-    evaluation: { grade: 'acceptable', penalty: 0, feedback: '' },
+    penalty: 0, feedback: '',
   });
   local.preview.coverImage = { src: 'data:image/png;base64,aGVsbG8=', alt: 'Описание' };
   local.editor.viewport = { x: -120, y: 98, zoom: 0.8 };

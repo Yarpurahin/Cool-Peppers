@@ -1,8 +1,8 @@
 {
   "format": "arena-scenario",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "definition": {
-    "schemaVersion": 2,
+    "schemaVersion": 3,
     "metadata": {
       "id": "scenario_template",
       "version": 1,
@@ -54,11 +54,8 @@
               "Расскажите подробнее об условиях"
             ],
             "nextNodeId": "node_offer",
-            "evaluation": {
-              "grade": "strong",
-              "penalty": 0,
-              "feedback": "Вы уточняете условия до того, как принимать решение."
-            }
+            "penalty": 0,
+            "feedback": "Вы уточняете условия до того, как принимать решение."
           },
           {
             "id": "reaction_close",
@@ -68,11 +65,8 @@
               "Спасибо, я подумаю"
             ],
             "endingId": "ending_neutral",
-            "evaluation": {
-              "grade": "acceptable",
-              "penalty": 0,
-              "feedback": "Вы корректно откладываете решение и завершаете разговор."
-            }
+            "penalty": 0,
+            "feedback": "Вы корректно откладываете решение и завершаете разговор."
           }
         ]
       },
@@ -92,11 +86,8 @@
               "Согласен"
             ],
             "endingId": "ending_success",
-            "evaluation": {
-              "grade": "strong",
-              "penalty": 0,
-              "feedback": "Вы прямо фиксируете согласие с предложением."
-            }
+            "penalty": 0,
+            "feedback": "Вы прямо фиксируете согласие с предложением."
           },
           {
             "id": "reaction_reject",
@@ -106,11 +97,8 @@
               "Нет, мне не подходит"
             ],
             "endingId": "ending_failure",
-            "evaluation": {
-              "grade": "weak",
-              "penalty": 1,
-              "feedback": "Отказ завершает переговоры; перед ним можно было уточнить альтернативы."
-            }
+            "penalty": 2,
+            "feedback": "Отказ завершает переговоры; перед ним можно было уточнить альтернативы."
           }
         ]
       }
@@ -141,7 +129,12 @@
     "settings": {
       "allowRestart": true,
       "collectFeedback": true,
-      "feedbackMode": "summary"
+      "feedbackMode": "summary",
+      "penalty": {
+        "enabled": true,
+        "threshold": 2,
+        "failureEndingId": "ending_failure"
+      }
     }
   }
 }

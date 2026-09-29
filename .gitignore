@@ -1,14 +1,11 @@
 node_modules/
 dist/
 .prerender/
-playwright-report/
 test-results/
-coverage/
+playwright-report/
+*.local
+.DS_Store
 .env
 .env.*
 !.env.example
-backups/*
-!backups/.gitkeep
 *.log
-*.zip
-*.rar

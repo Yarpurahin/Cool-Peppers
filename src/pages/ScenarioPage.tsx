@@ -71,11 +71,10 @@ export function ScenarioPage() {
               Выбирайте реплики и подтверждайте ответ. Ваш выбор меняет ход разговора. После
               завершения вы получите разбор своих решений. Прогресс сохраняется в вашем аккаунте.
             </p>
-            {negotiation && Boolean(negotiation.definition.settings.failureRule) && (
+            {negotiation.definition.settings.penalty.enabled && (
               <p className="negotiation-rules">
-                {negotiation.definition.settings.assessmentNote} Порог провала —{' '}
-                {negotiation.failureThreshold} штрафных баллов: половина всех{' '}
-                {negotiation.totalQuestions} вопросов с округлением вверх.
+                Досрочное завершение включено: при накоплении {negotiation.failureThreshold}{' '}
+                штрафных баллов разговор перейдёт в отрицательный финал.
               </p>
             )}
           </section>

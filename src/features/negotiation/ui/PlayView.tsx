@@ -62,17 +62,13 @@ export function PlayView({
           </div>
           {model.evaluation && (
             <section
-              className={`reaction-feedback reaction-feedback--${model.evaluation.grade}`}
+              className={`reaction-feedback reaction-feedback--penalty-${model.evaluation.penalty}`}
               aria-live="polite"
               aria-label="Обратная связь по предыдущему ответу"
             >
               <div>
                 <Icon
-                  name={
-                    model.evaluation.grade === 'strong' || model.evaluation.grade === 'acceptable'
-                      ? 'check'
-                      : 'bulb'
-                  }
+                  name={model.evaluation.penalty === 0 ? 'check' : 'bulb'}
                   size={17}
                 />
                 <strong>{model.evaluation.title}</strong>

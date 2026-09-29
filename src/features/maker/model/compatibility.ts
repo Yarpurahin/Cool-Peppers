@@ -4,7 +4,8 @@
  */
 import type { Character, ScenarioMetadata } from '../../negotiation/model/types.ts';
 import type { ScenarioPreview } from '../../../types/scenario.ts';
-import type { MakerDefinition, ReactionGrade } from './types.ts';
+import type { MakerDefinition, Penalty } from './types.ts';
+import { analyzePenalty } from './penaltyAnalysis.ts';
 
 export interface LegacyScenarioDefinition {
   metadata: ScenarioMetadata;
@@ -29,7 +30,7 @@ export interface LegacyScenarioDefinition {
     answers: readonly {
       id: string;
       text: string;
-      grade?: ReactionGrade;
+      grade?: string;
       penalty: number;
       feedback: string;
       next: { type: 'node'; nodeId: string } | { type: 'ending'; endingId: string };
@@ -58,16 +59,20 @@ export interface LegacyScenarioPreview extends ScenarioPreview {
   };
 }
 
-function gradeFromPenalty(penalty: number): ReactionGrade {
-  if (penalty >= 2) return 'critical';
-  if (penalty === 1) return 'weak';
-  return 'acceptable';
+function penalty(value: number): Penalty {
+  return value >= 2 ? 2 : value === 1 ? 1 : 0;
 }
 
+function activateLegacyPenalty(definition: MakerDefinition, endingId: string) {
+  definition.settings.penalty.failureEndingId = endingId;
+  const analysis = analyzePenalty(definition);
+  definition.settings.penalty.threshold = analysis.recommendations?.recommended ?? 1;
+  definition.settings.penalty.enabled = true;
+}
 
 export function upgradeLegacyDefinition(def: LegacyScenarioDefinition): MakerDefinition {
-  return {
-    schemaVersion: 2,
+  const definition: MakerDefinition = {
+    schemaVersion: 3,
     metadata: structuredClone(def.metadata),
     startNodeId: def.startNodeId,
     characters: structuredClone([...def.characters]),
@@ -84,18 +89,14 @@ export function upgradeLegacyDefinition(def: LegacyScenarioDefinition): MakerDef
       })),
       reactions: node.answers.map((answer, index) => ({
         id: answer.id,
-        // Stable fallback intent for data that predates intent authoring.
         intent: `legacy_${index + 1}_${answer.id.replace(/[^a-zA-Z0-9_]/g, '_')}`.slice(0, 100),
         label: answer.text,
         examples: [answer.text],
         ...(answer.next.type === 'node'
           ? { nextNodeId: answer.next.nodeId }
           : { endingId: answer.next.endingId }),
-        evaluation: {
-          grade: answer.grade ?? gradeFromPenalty(answer.penalty),
-          penalty: answer.penalty,
-          feedback: answer.feedback,
-        },
+        penalty: penalty(answer.penalty),
+        feedback: answer.feedback,
       })),
     })),
     endings: def.endings.map((ending) => ({ ...structuredClone(ending) })),
@@ -103,20 +104,18 @@ export function upgradeLegacyDefinition(def: LegacyScenarioDefinition): MakerDef
       allowRestart: def.settings.allowRestart,
       collectFeedback: def.settings.collectFeedback,
       feedbackMode: def.settings.feedbackMode ?? 'summary',
-      ...(def.settings.failure.rule === 'half-all-questions'
-        ? { failureRule: { ...def.settings.failure } }
-        : {}),
-      ...(def.settings.assessmentNote !== undefined
-        ? { assessmentNote: def.settings.assessmentNote }
-        : {}),
+      penalty: { enabled: false, threshold: 1 },
     },
   };
+  if (def.settings.failure.rule === 'half-all-questions')
+    activateLegacyPenalty(definition, def.settings.failure.endingId);
+  return definition;
 }
 
 /** Last-resort upgrade for very old preview-only database snapshots. */
 export function definitionFromLegacyPreview(preview: LegacyScenarioPreview): MakerDefinition {
-  const definition: MakerDefinition = {
-    schemaVersion: 2,
+  return {
+    schemaVersion: 3,
     metadata: {
       id: preview.id,
       version: 1,
@@ -132,7 +131,12 @@ export function definitionFromLegacyPreview(preview: LegacyScenarioPreview): Mak
       playerRole: preview.role,
       tip: preview.tip,
     },
-    settings: { allowRestart: true, collectFeedback: true, feedbackMode: 'summary' },
+    settings: {
+      allowRestart: true,
+      collectFeedback: true,
+      feedbackMode: 'summary',
+      penalty: { enabled: false, threshold: 1 },
+    },
     startNodeId: 'node_1',
     characters: [
       {
@@ -155,7 +159,8 @@ export function definitionFromLegacyPreview(preview: LegacyScenarioPreview): Mak
         intent: `reaction_${index + 1}_${reactionIndex + 1}`,
         label: answer.text,
         examples: [answer.text],
-        evaluation: { grade: 'acceptable', penalty: 0, feedback: '' },
+        penalty: 0,
+        feedback: '',
         ...(answer.next === -1
           ? { endingId: 'ending_1' }
           : { nextNodeId: `node_${answer.next + 1}` }),
@@ -171,7 +176,6 @@ export function definitionFromLegacyPreview(preview: LegacyScenarioPreview): Mak
       },
     ],
   };
-  return definition;
 }
 
 export function stripLegacyPreview(preview: LegacyScenarioPreview | ScenarioPreview): ScenarioPreview {

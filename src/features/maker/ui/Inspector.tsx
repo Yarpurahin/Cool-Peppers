@@ -1,11 +1,12 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { MakerDefinition, MakerDocument } from '../model/types.ts';
+import type { MakerDefinition, MakerDocument, Penalty } from '../model/types.ts';
 import type { Selection } from './ScenarioCanvas.tsx';
 import { addReaction, connectReaction, newId } from '../model/commands.ts';
 import { Icon } from '../../../components/ui/Icon.tsx';
 import { Select as StyledSelect } from '../../../components/ui/Select.tsx';
 import { ScenarioCoverField } from './ScenarioCoverField.tsx';
+import { analyzePenalty } from '../model/penaltyAnalysis.ts';
 
 function Field({
   label,
@@ -74,12 +75,11 @@ function Select({
 
 const DURATION_OPTIONS = ['3–5 минут', '5–10 минут', '10–15 минут', '15–20 минут', '20+ минут'];
 
-const REACTION_GRADE_LABELS = {
-  strong: 'Сильный ответ',
-  acceptable: 'Допустимый ответ',
-  weak: 'Слабый ответ',
-  critical: 'Критическая ошибка',
-} as const;
+const REACTION_PENALTY_LABELS: Record<Penalty, string> = {
+  0: 'Уместная',
+  1: 'Сомнительная',
+  2: 'Нежелательная',
+};
 
 function ScenarioJsonTools({
   onExport,
@@ -187,6 +187,7 @@ export function Inspector({
     if (focusToken) textRef.current?.focus();
   }, [focusToken]);
   const def = doc.definition;
+  const penaltyAnalysis = analyzePenalty(def);
   const update = (mutator: (d: MakerDefinition) => void) => change((d) => mutator(d.definition));
   const nodeId =
     selection.type === 'reaction'
@@ -492,71 +493,39 @@ export function Inspector({
             </p>
             <section className="maker-evaluation-editor" aria-labelledby="maker-evaluation-title">
               <div className="maker-section-heading">
-                <h3 id="maker-evaluation-title">Оценка ответа</h3>
-                <span>{REACTION_GRADE_LABELS[reaction.evaluation.grade]}</span>
+                <h3 id="maker-evaluation-title">Оценка реакции</h3>
+                <span>{REACTION_PENALTY_LABELS[reaction.penalty]}</span>
               </div>
-              <p className="maker-hint">
-                Используется для учебной обратной связи и итоговой оценки. Intent и примеры фраз
-                остаются отдельными данными для будущего AI-распознавания.
-              </p>
-              <Select
-                label="Качество ответа"
-                value={reaction.evaluation.grade}
-                onChange={(v) =>
-                  mutateReaction((r) => {
-                    r.evaluation.grade = v as typeof r.evaluation.grade;
-                    if (v === 'strong' || v === 'acceptable') r.evaluation.penalty = 0;
-                    if (v === 'weak' && r.evaluation.penalty === 0) r.evaluation.penalty = 1;
-                    if (v === 'critical' && r.evaluation.penalty < 2) r.evaluation.penalty = 2;
-                  })
-                }
-              >
-                <option value="strong">Сильный ответ</option>
-                <option value="acceptable">Допустимый ответ</option>
-                <option value="weak">Слабый ответ</option>
-                <option value="critical">Критическая ошибка</option>
-              </Select>
-              <Select
-                label="Штраф"
-                value={String(reaction.evaluation.penalty)}
-                onChange={(v) =>
-                  mutateReaction((r) => {
-                    r.evaluation.penalty = Number(v);
-                  })
-                }
-              >
-                {![0, 1, 2].includes(reaction.evaluation.penalty) && (
-                  <option value={reaction.evaluation.penalty}>
-                    {reaction.evaluation.penalty} — значение из импортированного сценария
-                  </option>
-                )}
-                <option value="0">0 — без штрафа</option>
-                <option value="1">1 — небольшая ошибка</option>
-                <option value="2">2 — серьёзная ошибка</option>
-              </Select>
+              <fieldset className="maker-penalty-choice">
+                <legend className="sr-only">Оценка реакции</legend>
+                {([0, 1, 2] as const).map((penalty) => (
+                  <label key={penalty} className={reaction.penalty === penalty ? 'is-selected' : ''}>
+                    <input
+                      type="radio"
+                      name={`reaction-penalty-${reaction.id}`}
+                      checked={reaction.penalty === penalty}
+                      onChange={() =>
+                        mutateReaction((r) => {
+                          r.penalty = penalty;
+                        })
+                      }
+                    />
+                    <span>{REACTION_PENALTY_LABELS[penalty]}</span>
+                    <strong>{penalty === 0 ? '0' : `+${penalty}`}</strong>
+                  </label>
+                ))}
+              </fieldset>
               <Field
                 label="Обратная связь"
                 multiline
-                value={reaction.evaluation.feedback}
+                value={reaction.feedback}
                 onChange={(v) =>
                   mutateReaction((r) => {
-                    r.evaluation.feedback = v;
+                    r.feedback = v;
                   })
                 }
-                hint="Объясните, что в выбранной реплике сработало хорошо или что стоит улучшить."
+                hint="Коротко объясните участнику, что в реакции сработало или что можно улучшить."
               />
-              <div className={`maker-evaluation-preview maker-evaluation-preview--${reaction.evaluation.grade}`}>
-                <span>Предпросмотр</span>
-                <strong>{REACTION_GRADE_LABELS[reaction.evaluation.grade]}</strong>
-                {reaction.evaluation.feedback ? (
-                  <p>{reaction.evaluation.feedback}</p>
-                ) : (
-                  <p className="muted">Добавьте короткое объяснение для участника.</p>
-                )}
-                {reaction.evaluation.penalty > 0 && (
-                  <small>Штраф: {reaction.evaluation.penalty}</small>
-                )}
-              </div>
             </section>
             <button
               type="button"
@@ -850,11 +819,7 @@ export function Inspector({
               <input
                 type="checkbox"
                 checked={def.settings.allowRestart}
-                onChange={(e) =>
-                  update((d) => {
-                    d.settings.allowRestart = e.target.checked;
-                  })
-                }
+                onChange={(e) => update((d) => { d.settings.allowRestart = e.target.checked; })}
               />
               Разрешить повторное прохождение
             </label>
@@ -862,89 +827,123 @@ export function Inspector({
               <input
                 type="checkbox"
                 checked={def.settings.collectFeedback}
-                onChange={(e) =>
-                  update((d) => {
-                    d.settings.collectFeedback = e.target.checked;
-                  })
-                }
+                onChange={(e) => update((d) => { d.settings.collectFeedback = e.target.checked; })}
               />
               Собирать отзывы
             </label>
             <Select
               label="Режим учебной обратной связи"
               value={def.settings.feedbackMode}
-              onChange={(v) =>
-                update((d) => {
-                  d.settings.feedbackMode = v as typeof d.settings.feedbackMode;
-                })
-              }
+              onChange={(v) => update((d) => { d.settings.feedbackMode = v as typeof d.settings.feedbackMode; })}
             >
               <option value="immediate">Сразу после ответа</option>
               <option value="summary">Только после завершения</option>
               <option value="hidden">Не показывать участнику</option>
             </Select>
-            <p className="maker-hint">
-              Режим влияет только на учебную оценку реакций. Отдельная форма отзыва о тренировке
-              управляется переключателем «Собирать отзывы».
-            </p>
             <Select
               label="Стартовая реплика"
               value={def.startNodeId}
-              onChange={(v) =>
-                update((d) => {
-                  d.startNodeId = v;
-                })
-              }
+              onChange={(v) => update((d) => { d.startNodeId = v; })}
             >
               <option value="">Не выбрана</option>
-              {def.nodes.map((n) => (
-                <option key={n.id} value={n.id}>
-                  {n.title || n.id}
-                </option>
-              ))}
+              {def.nodes.map((n) => <option key={n.id} value={n.id}>{n.title || n.id}</option>)}
             </Select>
-            {def.settings.failureRule ? (
-              <section className="maker-assessment-rule">
-                <strong>Автоматическое завершение по штрафам</strong>
-                <p>
-                  Если штрафные баллы достигнут половины количества реплик, сценарий завершится
-                  выбранным отрицательным финалом.
-                </p>
-                <Select
-                  label="Финал при превышении порога"
-                  value={def.settings.failureRule.endingId}
-                  onChange={(v) =>
+
+            <section className="maker-penalty-rule" aria-labelledby="maker-penalty-rule-title">
+              <div>
+                <strong id="maker-penalty-rule-title">Досрочное завершение по ошибкам</strong>
+                <p>Общий финал сработает, когда накопленный штраф достигнет выбранного лимита.</p>
+              </div>
+              <label className="checkbox-field maker-penalty-toggle">
+                <input
+                  type="checkbox"
+                  checked={def.settings.penalty.enabled}
+                  onChange={(event) =>
                     update((d) => {
-                      if (d.settings.failureRule) d.settings.failureRule.endingId = v;
+                      d.settings.penalty.enabled = event.target.checked;
+                      if (event.target.checked) {
+                        d.settings.penalty.threshold = penaltyAnalysis.recommendations?.recommended ?? Math.max(1, d.settings.penalty.threshold);
+                        d.settings.penalty.failureEndingId ??= d.endings.find((ending) => ending.type === 'failure')?.id;
+                      }
                     })
                   }
-                >
-                  {def.endings
-                    .filter((e) => e.type === 'failure')
-                    .map((e) => (
-                      <option key={e.id} value={e.id}>
-                        {e.title}
-                      </option>
+                />
+                Завершать разговор при накоплении штрафов
+              </label>
+
+              {def.settings.penalty.enabled && (
+                <>
+                  <div className="maker-penalty-analysis">
+                    <span><small>Минимум</small><strong>{penaltyAnalysis.minReachablePenalty}</strong></span>
+                    <span><small>Максимум</small><strong>{penaltyAnalysis.unbounded ? '∞' : penaltyAnalysis.maxReachablePenalty}</strong></span>
+                    <span>
+                      <small>Рекомендуемый диапазон</small>
+                      <strong>
+                        {penaltyAnalysis.recommendations
+                          ? `${penaltyAnalysis.recommendations.range.min}–${penaltyAnalysis.recommendations.range.max}`
+                          : '—'}
+                      </strong>
+                    </span>
+                  </div>
+
+                  {penaltyAnalysis.recommendations && (
+                    <fieldset className="maker-threshold-presets">
+                      <legend>Допустимый уровень ошибок</legend>
+                      {penaltyAnalysis.recommendations.strict !== undefined && (
+                        <button type="button" className={def.settings.penalty.threshold === penaltyAnalysis.recommendations.strict ? 'is-selected' : ''}
+                          onClick={() => update((d) => { d.settings.penalty.threshold = penaltyAnalysis.recommendations!.strict!; })}>
+                          <span>Строго</span><strong>{penaltyAnalysis.recommendations.strict}</strong>
+                        </button>
+                      )}
+                      <button type="button" className={def.settings.penalty.threshold === penaltyAnalysis.recommendations.recommended ? 'is-selected' : ''}
+                        onClick={() => update((d) => { d.settings.penalty.threshold = penaltyAnalysis.recommendations!.recommended; })}>
+                        <span>Рекомендуемый</span><strong>{penaltyAnalysis.recommendations.recommended}</strong>
+                      </button>
+                      {penaltyAnalysis.recommendations.soft !== undefined && (
+                        <button type="button" className={def.settings.penalty.threshold === penaltyAnalysis.recommendations.soft ? 'is-selected' : ''}
+                          onClick={() => update((d) => { d.settings.penalty.threshold = penaltyAnalysis.recommendations!.soft!; })}>
+                          <span>Мягко</span><strong>{penaltyAnalysis.recommendations.soft}</strong>
+                        </button>
+                      )}
+                    </fieldset>
+                  )}
+
+                  <label className="field maker-threshold-manual">
+                    Настроить вручную
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={def.settings.penalty.threshold}
+                      onChange={(event) => update((d) => { d.settings.penalty.threshold = Math.max(1, Number.parseInt(event.target.value || '1', 10)); })}
+                    />
+                  </label>
+                  <div className={`maker-threshold-status ${penaltyAnalysis.current?.penaltyEndingReachable ? 'is-ok' : 'is-error'}`}>
+                    <strong>Текущий лимит: {def.settings.penalty.threshold}</strong>
+                    {penaltyAnalysis.unbounded ? (
+                      <p>В графе есть цикл с повторным накоплением штрафов. Измените цикл перед публикацией.</p>
+                    ) : penaltyAnalysis.current?.penaltyEndingReachable ? (
+                      <p>При текущем лимите досрочное поражение достижимо.</p>
+                    ) : (
+                      <p>Лимит недостижим. Максимум до системного финала: {penaltyAnalysis.maxThresholdReachablePenalty}.</p>
+                    )}
+                    {penaltyAnalysis.singleReactionCanEnd && (
+                      <p className="maker-threshold-warning">Одна нежелательная реакция может немедленно завершить сценарий.</p>
+                    )}
+                  </div>
+                  <Select
+                    label="Финал при исчерпании лимита"
+                    value={def.settings.penalty.failureEndingId ?? ''}
+                    onChange={(v) => update((d) => { d.settings.penalty.failureEndingId = v || undefined; })}
+                  >
+                    <option value="">Не выбран</option>
+                    {def.endings.filter((ending) => ending.type === 'failure').map((ending) => (
+                      <option key={ending.id} value={ending.id}>{ending.title}</option>
                     ))}
-                </Select>
-                <button
-                  type="button"
-                  className="maker-text-button"
-                  onClick={() =>
-                    update((d) => {
-                      delete d.settings.failureRule;
-                    })
-                  }
-                >
-                  Отключить автоматический финал
-                </button>
-              </section>
-            ) : (
-              <p className="maker-hint">
-                По умолчанию штрафы влияют на разбор и геймификацию, а итог определяется переходом
-                в конкретный финал. Автоматическое завершение по сумме штрафов не используется.
-              </p>
-            )}
+                  </Select>
+                </>
+              )}
+            </section>
           </>
         )}
       </fieldset>

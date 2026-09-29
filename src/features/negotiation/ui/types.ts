@@ -11,12 +11,7 @@ export interface PlayViewModel {
   step: number;
   stages: readonly { id: string; title: string; state: 'past' | 'current' | 'future' }[];
   history: readonly { id: string; question: string; answer: string }[];
-  evaluation?: {
-    grade: 'strong' | 'acceptable' | 'weak' | 'critical';
-    title: string;
-    text: string;
-    penalty: number;
-  };
+  evaluation?: { title: string; text: string; penalty: 0 | 1 | 2 };
 }
 
 export interface ResultViewModel {
@@ -27,7 +22,6 @@ export interface ResultViewModel {
   subtitle: string;
   nextStep: string;
   metric: { value: number; label: string; percent: number };
-  note?: string;
   reviews: readonly {
     id: string;
     title: string;
@@ -35,7 +29,6 @@ export interface ResultViewModel {
     quote: string;
     question?: string;
     penalty: number;
-    grade?: 'strong' | 'acceptable' | 'weak' | 'critical';
   }[];
 }
 

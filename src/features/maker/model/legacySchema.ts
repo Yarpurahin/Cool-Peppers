@@ -1,20 +1,11 @@
-/** Parser for Arena schemaVersion=2 files created before evaluation became canonical. */
 import { z } from 'zod';
-import type { MakerDefinition, ReactionGrade } from './types.ts';
+import { analyzePenalty } from './penaltyAnalysis.ts';
+import type { MakerDefinition, Penalty } from './types.ts';
 
 const text = (max = 10000) =>
-  z
-    .string()
-    .max(max)
-    .refine((s) => !s.includes('\u0000'), 'Недопустимый символ');
+  z.string().max(max).refine((s) => !s.includes('\u0000'), 'Недопустимый символ');
 const id = z.string().regex(/^[a-zA-Z0-9_-]{1,100}$/);
 const reference = z.union([id, z.literal('')]);
-
-function gradeFromPenalty(penalty: number): ReactionGrade {
-  if (penalty >= 2) return 'critical';
-  if (penalty === 1) return 'weak';
-  return 'acceptable';
-}
 
 const evaluation = z
   .object({
@@ -23,13 +14,28 @@ const evaluation = z
     feedback: text(),
   })
   .strict();
-const oldEvaluation = z
-  .object({ penalty: z.number().int().min(0).max(10000), feedback: text() })
-  .strict();
 
+function clampPenalty(value: number): Penalty {
+  if (value >= 2) return 2;
+  if (value === 1) return 1;
+  return 0;
+}
+
+function enableRecommendedPenalty(definition: MakerDefinition, endingId?: string) {
+  if (!endingId) return;
+  definition.settings.penalty.failureEndingId = endingId;
+  const analysis = analyzePenalty(definition);
+  definition.settings.penalty.threshold = analysis.recommendations?.recommended ?? 1;
+  definition.settings.penalty.enabled = true;
+}
+
+/**
+ * Compatibility parser for canonical v2 and transitional v3 scenario files.
+ * New code always emits schemaVersion=3 with reaction.penalty/feedback and settings.penalty.
+ */
 export const legacyMakerDefinitionSchema = z
   .object({
-    schemaVersion: z.literal(2),
+    schemaVersion: z.union([z.literal(2), z.literal(3)]),
     metadata: z
       .object({
         id,
@@ -48,11 +54,7 @@ export const legacyMakerDefinitionSchema = z
       .strict(),
     startNodeId: reference,
     characters: z
-      .array(
-        z
-          .object({ id, name: text(100), initials: text(8), role: text(200), description: text() })
-          .strict(),
-      )
+      .array(z.object({ id, name: text(100), initials: text(8), role: text(200), description: text() }).strict())
       .max(100),
     stages: z.array(z.object({ id, title: text(200) }).strict()).max(100),
     nodes: z
@@ -64,10 +66,7 @@ export const legacyMakerDefinitionSchema = z
             characterId: reference,
             stageId: reference.optional(),
             text: text(),
-            textVariants: z
-              .array(z.object({ afterReactionId: id, text: text() }).strict())
-              .max(1000)
-              .optional(),
+            textVariants: z.array(z.object({ afterReactionId: id, text: text() }).strict()).max(1000).optional(),
             reactions: z
               .array(
                 z
@@ -75,11 +74,13 @@ export const legacyMakerDefinitionSchema = z
                     id,
                     intent: text(100),
                     label: text(),
-                    examples: z.array(text()).max(100).default([]),
+                    examples: z.array(text()).max(100),
                     nextNodeId: reference.optional(),
                     endingId: reference.optional(),
                     evaluation: evaluation.optional(),
-                    legacy: oldEvaluation.optional(),
+                    penalty: z.number().int().min(0).max(10000).optional(),
+                    feedback: text().optional(),
+                    legacy: z.object({ penalty: z.number().int().min(0).max(10000), feedback: text() }).strict().optional(),
                   })
                   .strict(),
               )
@@ -89,17 +90,7 @@ export const legacyMakerDefinitionSchema = z
       )
       .max(500),
     endings: z
-      .array(
-        z
-          .object({
-            id,
-            title: text(200),
-            description: text(),
-            type: z.enum(['success', 'neutral', 'failure']),
-            nextStep: text().optional(),
-          })
-          .strict(),
-      )
+      .array(z.object({ id, title: text(200), description: text(), type: z.enum(['success', 'neutral', 'failure']), nextStep: text().optional() }).strict())
       .max(100),
     settings: z
       .object({
@@ -107,12 +98,11 @@ export const legacyMakerDefinitionSchema = z
         collectFeedback: z.boolean(),
         feedbackMode: z.enum(['immediate', 'summary', 'hidden']).optional(),
         assessmentNote: text().optional(),
-        failureRule: z
-          .object({ rule: z.literal('half-all-questions'), endingId: id })
-          .strict()
-          .optional(),
-        legacyFailure: z
-          .object({ rule: z.literal('half-all-questions'), endingId: id })
+        failureRule: z.object({ rule: z.literal('half-all-questions'), endingId: id }).strict().optional(),
+        legacyFailure: z.object({ rule: z.literal('half-all-questions'), endingId: id }).strict().optional(),
+        penaltyRule: z.object({ mode: z.string().optional(), endingId: id }).strict().optional(),
+        penalty: z
+          .object({ enabled: z.boolean(), threshold: z.number().int().min(1).max(10000), failureEndingId: id.optional() })
           .strict()
           .optional(),
       })
@@ -120,9 +110,8 @@ export const legacyMakerDefinitionSchema = z
   })
   .strict()
   .transform((value): MakerDefinition => {
-    const failureRule = value.settings.failureRule ?? value.settings.legacyFailure;
-    return {
-      schemaVersion: 2,
+    const definition: MakerDefinition = {
+      schemaVersion: 3,
       metadata: value.metadata,
       startNodeId: value.startNodeId,
       characters: value.characters,
@@ -135,11 +124,8 @@ export const legacyMakerDefinitionSchema = z
         text: node.text,
         ...(node.textVariants ? { textVariants: node.textVariants } : {}),
         reactions: node.reactions.map((reaction) => {
-          const normalizedEvaluation = reaction.evaluation ?? {
-            grade: gradeFromPenalty(reaction.legacy?.penalty ?? 0),
-            penalty: reaction.legacy?.penalty ?? 0,
-            feedback: reaction.legacy?.feedback ?? '',
-          };
+          const sourcePenalty = reaction.penalty ?? reaction.evaluation?.penalty ?? reaction.legacy?.penalty ?? 0;
+          const feedback = reaction.feedback ?? reaction.evaluation?.feedback ?? reaction.legacy?.feedback ?? '';
           return {
             id: reaction.id,
             intent: reaction.intent,
@@ -147,7 +133,8 @@ export const legacyMakerDefinitionSchema = z
             examples: reaction.examples,
             ...(reaction.nextNodeId !== undefined ? { nextNodeId: reaction.nextNodeId } : {}),
             ...(reaction.endingId !== undefined ? { endingId: reaction.endingId } : {}),
-            evaluation: normalizedEvaluation,
+            penalty: clampPenalty(sourcePenalty),
+            feedback,
           };
         }),
       })),
@@ -156,10 +143,13 @@ export const legacyMakerDefinitionSchema = z
         allowRestart: value.settings.allowRestart,
         collectFeedback: value.settings.collectFeedback,
         feedbackMode: value.settings.feedbackMode ?? 'summary',
-        ...(failureRule ? { failureRule } : {}),
-        ...(value.settings.assessmentNote !== undefined
-          ? { assessmentNote: value.settings.assessmentNote }
-          : {}),
+        penalty: value.settings.penalty ?? { enabled: false, threshold: 1 },
       },
     };
+    const legacyEnding =
+      value.settings.penaltyRule?.endingId ??
+      value.settings.failureRule?.endingId ??
+      value.settings.legacyFailure?.endingId;
+    if (!value.settings.penalty && legacyEnding) enableRecommendedPenalty(definition, legacyEnding);
+    return definition;
   });

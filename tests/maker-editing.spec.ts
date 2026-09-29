@@ -209,7 +209,7 @@ test('reaction ports switch sides when a target moves; the start port is hidden'
       intent: 'continue',
       label: 'Продолжить',
       examples: [],
-      evaluation: { grade: 'acceptable', penalty: 0, feedback: '' },
+      penalty: 0, feedback: '',
       nextNodeId: 'node_2',
     },
   ];
@@ -309,7 +309,7 @@ test('maker imports Arena JSON from settings and keeps the database scenario id'
       intent: 'continue_discussion',
       label: 'Продолжить',
       examples: ['Продолжим'],
-      evaluation: { grade: 'acceptable', penalty: 0, feedback: 'Продолжает обсуждение.' },
+      penalty: 0, feedback: 'Продолжает обсуждение.',
       endingId: 'json_ending',
     },
   ];

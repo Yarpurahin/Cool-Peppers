@@ -120,8 +120,8 @@ test('double-click opens a different reaction from a closed drawer without movin
   const definition = createBlankDefinition(id, 'Реакции');
   definition.nodes[0].text = 'Обсудим условия?';
   definition.nodes[0].reactions = [
-    { id: 'reaction-a', intent: 'a', label: 'Обсудить условия', examples: [], evaluation: { grade: 'acceptable', penalty: 0, feedback: '' }, endingId: 'ending' },
-    { id: 'reaction-b', intent: 'b', label: 'Уточнить предложение', examples: [], evaluation: { grade: 'acceptable', penalty: 0, feedback: '' } },
+    { id: 'reaction-a', intent: 'a', label: 'Обсудить условия', examples: [], penalty: 0, feedback: '', endingId: 'ending' },
+    { id: 'reaction-b', intent: 'b', label: 'Уточнить предложение', examples: [], penalty: 0, feedback: '' },
   ];
   definition.endings = [
     { id: 'ending', title: 'Продолжить обсуждение', description: '', type: 'neutral' },

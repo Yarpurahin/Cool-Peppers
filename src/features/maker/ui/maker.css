@@ -2131,3 +2131,177 @@
   padding-top: 8px;
   border-top: 1px solid var(--line);
 }
+
+/* Collapsible structure groups. */
+.maker-section-toggle {
+  width: 100%;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.maker-section-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.maker-section-title svg {
+  transition: transform 160ms ease;
+  transform: rotate(0deg);
+}
+.maker-section-title svg.is-open {
+  transform: rotate(90deg);
+}
+
+/* Reaction penalty is the only assessment source of truth. */
+.maker-penalty-choice {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.maker-penalty-choice label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  cursor: pointer;
+}
+.maker-penalty-choice label.is-selected {
+  border-color: var(--green);
+  background: var(--sage);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--green) 20%, transparent);
+}
+.maker-penalty-choice input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.maker-penalty-choice span {
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.25;
+}
+.maker-penalty-choice strong {
+  font-size: 15px;
+}
+
+.maker-penalty-rule {
+  display: grid;
+  gap: 14px;
+  margin-top: 8px;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--tone-soft, #f7f6ef);
+}
+.maker-penalty-rule > div:first-child > p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.55;
+}
+.maker-penalty-toggle {
+  padding: 10px 11px;
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.maker-penalty-analysis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+.maker-penalty-analysis > span {
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+}
+.maker-penalty-analysis small {
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.3;
+}
+.maker-penalty-analysis strong {
+  font-size: 14px;
+}
+.maker-threshold-presets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.maker-threshold-presets legend {
+  grid-column: 1 / -1;
+  margin-bottom: 2px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.maker-threshold-presets button {
+  display: grid;
+  gap: 4px;
+  padding: 10px 8px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--ink);
+  text-align: left;
+}
+.maker-threshold-presets button.is-selected {
+  border-color: var(--green);
+  background: var(--sage);
+}
+.maker-threshold-presets button span {
+  color: var(--muted);
+  font-size: 8px;
+}
+.maker-threshold-presets button strong {
+  font-size: 14px;
+}
+.maker-threshold-manual {
+  margin: 0 !important;
+}
+.maker-threshold-status {
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+}
+.maker-threshold-status.is-ok {
+  border-color: color-mix(in srgb, var(--green) 35%, var(--line));
+}
+.maker-threshold-status.is-error {
+  border-color: color-mix(in srgb, var(--tone-orange, #b54228) 45%, var(--line));
+}
+.maker-threshold-status strong {
+  font-size: 11px;
+}
+.maker-threshold-status p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.5;
+}
+.maker-threshold-status .maker-threshold-warning {
+  color: var(--tone-orange, #b54228);
+}
+@media (max-width: 700px) {
+  .maker-penalty-choice,
+  .maker-penalty-analysis,
+  .maker-threshold-presets {
+    grid-template-columns: 1fr;
+  }
+}

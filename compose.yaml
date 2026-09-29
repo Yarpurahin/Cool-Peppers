@@ -1,19 +1,21 @@
 services:
   postgres:
     image: postgres:17-alpine
+
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-arena}
       POSTGRES_USER: ${POSTGRES_USER:-arena}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
 
-    ports:
-      - '127.0.0.1:${POSTGRES_PORT:-5432}:5432'
-
     volumes:
       - arena_postgres:/var/lib/postgresql/data
 
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""
+        ]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -23,6 +25,7 @@ services:
 
     networks:
       - arena_internal
+
 
   app:
     build:
@@ -53,15 +56,15 @@ services:
         condition: service_healthy
 
     ports:
-      - '127.0.0.1:${APP_PORT:-3001}:3001'
+      - "127.0.0.1:${APP_PORT:-3001}:3001"
 
     healthcheck:
       test:
         [
-          'CMD',
-          'node',
-          '-e',
-          "fetch('http://127.0.0.1:3001/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001/api/health').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"
         ]
       interval: 10s
       timeout: 5s
@@ -73,9 +76,11 @@ services:
     networks:
       - arena_internal
 
+
   backup:
     image: postgres:17-alpine
-    profiles: ['tools']
+    profiles:
+      - tools
 
     environment:
       PGHOST: postgres
@@ -95,14 +100,18 @@ services:
       - ./backups:/backups
       - ./docker/backup.sh:/scripts/backup.sh:ro
 
-    entrypoint: ['/bin/sh', '/scripts/backup.sh']
+    entrypoint:
+      - /bin/sh
+      - /scripts/backup.sh
 
     networks:
       - arena_internal
 
+
   restore:
     image: postgres:17-alpine
-    profiles: ['tools']
+    profiles:
+      - tools
 
     environment:
       PGHOST: postgres
@@ -121,7 +130,9 @@ services:
       - ./backups:/backups
       - ./docker/restore.sh:/scripts/restore.sh:ro
 
-    entrypoint: ['/bin/sh', '/scripts/restore.sh']
+    entrypoint:
+      - /bin/sh
+      - /scripts/restore.sh
 
     networks:
       - arena_internal

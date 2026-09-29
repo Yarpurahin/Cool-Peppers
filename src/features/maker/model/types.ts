@@ -1,14 +1,8 @@
 import type { Character, ScenarioMetadata } from '../../negotiation/model/types.ts';
 import type { ScenarioPreview } from '../../../types/scenario.ts';
 
-export type ReactionGrade = 'strong' | 'acceptable' | 'weak' | 'critical';
+export type Penalty = 0 | 1 | 2;
 export type FeedbackMode = 'immediate' | 'summary' | 'hidden';
-
-export interface ReactionEvaluation {
-  grade: ReactionGrade;
-  penalty: number;
-  feedback: string;
-}
 
 export interface UserReaction {
   id: string;
@@ -17,7 +11,8 @@ export interface UserReaction {
   examples: string[];
   nextNodeId?: string;
   endingId?: string;
-  evaluation: ReactionEvaluation;
+  penalty: Penalty;
+  feedback: string;
 }
 
 export interface DialogueNode {
@@ -38,8 +33,14 @@ export interface ScenarioEnding {
   nextStep?: string;
 }
 
+export interface PenaltySettings {
+  enabled: boolean;
+  threshold: number;
+  failureEndingId?: string;
+}
+
 export interface MakerDefinition {
-  schemaVersion: 2;
+  schemaVersion: 3;
   metadata: ScenarioMetadata;
   startNodeId: string;
   characters: Character[];
@@ -50,8 +51,7 @@ export interface MakerDefinition {
     allowRestart: boolean;
     collectFeedback: boolean;
     feedbackMode: FeedbackMode;
-    failureRule?: { rule: 'half-all-questions'; endingId: string };
-    assessmentNote?: string;
+    penalty: PenaltySettings;
   };
 }
 

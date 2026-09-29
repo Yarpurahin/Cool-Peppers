@@ -2144,3 +2144,34 @@
 .achievement-active-toggle strong { font-size: 11px; }
 .achievement-active-toggle small { margin-top: 3px; color: var(--muted); font-size: 8px; }
 .achievement-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* Profile pagination: same visual language as admin review pagination. */
+.gamification-columns {
+  align-items: stretch;
+}
+.gamification-columns > .gamification-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.gamification-columns .skill-list,
+.gamification-columns .achievement-grid {
+  flex: 1;
+  align-content: start;
+}
+.profile-pagination {
+  margin-top: auto;
+  padding-top: 18px;
+  gap: 10px;
+}
+.profile-pagination .button {
+  min-width: 96px;
+}
+.profile-pagination .contact-page-number {
+  min-height: 38px;
+  padding: 7px 10px;
+  font-size: 10px;
+}
+.history-panel .profile-pagination {
+  margin-top: 22px;
+}

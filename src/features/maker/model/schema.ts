@@ -30,7 +30,7 @@ export const editorStateSchema = z
 /** Current canonical Arena graph. Compatibility formats are parsed elsewhere. */
 export const makerDefinitionSchema: z.ZodType<MakerDefinition> = z
   .object({
-    schemaVersion: z.literal(2),
+    schemaVersion: z.literal(3),
     metadata: z
       .object({
         id,
@@ -79,13 +79,8 @@ export const makerDefinitionSchema: z.ZodType<MakerDefinition> = z
                     examples: z.array(text()).max(100),
                     nextNodeId: reference.optional(),
                     endingId: reference.optional(),
-                    evaluation: z
-                      .object({
-                        grade: z.enum(['strong', 'acceptable', 'weak', 'critical']),
-                        penalty: z.number().int().min(0).max(10000),
-                        feedback: text(),
-                      })
-                      .strict(),
+                    penalty: z.union([z.literal(0), z.literal(1), z.literal(2)]),
+                    feedback: text(),
                   })
                   .strict(),
               )
@@ -112,11 +107,13 @@ export const makerDefinitionSchema: z.ZodType<MakerDefinition> = z
         allowRestart: z.boolean(),
         collectFeedback: z.boolean(),
         feedbackMode: z.enum(['immediate', 'summary', 'hidden']),
-        assessmentNote: text().optional(),
-        failureRule: z
-          .object({ rule: z.literal('half-all-questions'), endingId: id })
-          .strict()
-          .optional(),
+        penalty: z
+          .object({
+            enabled: z.boolean(),
+            threshold: z.number().int().min(1).max(10000),
+            failureEndingId: id.optional(),
+          })
+          .strict(),
       })
       .strict(),
   })

@@ -58,8 +58,8 @@ export const previewSchema = z
     level: z.enum(['Начальный', 'Средний', 'Продвинутый']),
     duration: required(100),
     skill: required(200),
-    description: required(),
-    context: required(),
+    description: text(),
+    context: text(),
     goal: required(),
     tip: required(),
     role: required(200),
@@ -225,9 +225,14 @@ function canonicalDocument(input: z.infer<typeof rawDocumentSchema>): AuthoringD
       : null;
   if (!definition)
     throw new Error('У сценария отсутствует исполняемый граф. Откройте и сохраните его в конструкторе.');
-  const compiled = compileScenario(definition).definition;
-  const preview = previewFromDefinition(compiled, stripLegacyPreview(rawPreview as LegacyScenarioPreview));
-  return { preview, definition: compiled, ...(input.editor ? { editor: input.editor } : {}) };
+  // Drafts are allowed to be structurally incomplete while the author edits them.
+  // Semantic graph validation is intentionally deferred to publication/runtime.
+  const canonical = structuredClone(definition);
+  const preview = previewFromDefinition(
+    canonical,
+    stripLegacyPreview(rawPreview as LegacyScenarioPreview),
+  );
+  return { preview, definition: canonical, ...(input.editor ? { editor: input.editor } : {}) };
 }
 
 export const documentSchema = rawDocumentSchema.transform(canonicalDocument);

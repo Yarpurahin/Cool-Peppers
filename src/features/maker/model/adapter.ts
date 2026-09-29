@@ -3,7 +3,7 @@ import type { AuthoringDraft, MakerDefinition, MakerDraft } from './types.ts';
 
 export function createBlankDefinition(id: string, title: string): MakerDefinition {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     metadata: {
       id,
       version: 1,
@@ -18,7 +18,12 @@ export function createBlankDefinition(id: string, title: string): MakerDefinitio
       playerRole: 'Участник',
       tip: '',
     },
-    settings: { allowRestart: true, collectFeedback: true, feedbackMode: 'summary' },
+    settings: {
+      allowRestart: true,
+      collectFeedback: true,
+      feedbackMode: 'summary',
+      penalty: { enabled: false, threshold: 1 },
+    },
     startNodeId: 'node_1',
     characters: [
       { id: 'character_1', name: 'Анна', initials: 'А', role: 'Собеседник', description: '' },
@@ -68,14 +73,9 @@ export function previewFromDefinition(
     ...(base?.coverImage ? { coverImage: structuredClone(base.coverImage) } : {}),
     person: {
       name: character?.name || previousPerson?.name || 'Собеседник',
-      initials:
-        character?.initials ||
-        previousPerson?.initials ||
-        character?.name.slice(0, 1) ||
-        'С',
+      initials: character?.initials || previousPerson?.initials || character?.name.slice(0, 1) || 'С',
       role: character?.role || previousPerson?.role || 'Собеседник',
-      character:
-        character?.description || previousPerson?.character || 'Участник переговоров',
+      character: character?.description || previousPerson?.character || 'Участник переговоров',
       quote: start?.text || previousPerson?.quote || 'Начало разговора',
     },
   };

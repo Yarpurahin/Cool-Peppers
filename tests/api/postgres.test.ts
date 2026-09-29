@@ -91,7 +91,7 @@ test('PostgreSQL API integration', { timeout: 120000 }, async (t) => {
       await seed(pool);
       const result = await guest.request('/scenarios');
       assert.equal(result.status, 200);
-      assert.equal(result.data.length, 1);
+      assert.equal(result.data.length, 2);
       assert.equal(
         result.data.find((x: { preview: { id: string } }) => x.preview.id === 'terms').definition
           .nodes.length,
@@ -479,8 +479,14 @@ test('PostgreSQL API integration', { timeout: 120000 }, async (t) => {
       'invalid graph stays a draft and cannot replace the published version',
       async () => {
         draft = (await a.request(`/editor/${customId}`)).data;
-        draft.definition.nodes[0].reactions[0].nextNodeId = draft.definition.startNodeId;
-        delete draft.definition.nodes[0].reactions[0].endingId;
+        draft.definition.nodes[0].reactions = [
+          {
+            ...draft.definition.nodes[0].reactions[0],
+            nextNodeId: draft.definition.startNodeId,
+            endingId: undefined,
+            penalty: 0,
+          },
+        ];
         const saved = await a.request(`/editor/${customId}`, 'PUT', {
           preview: draft.preview,
           definition: draft.definition,
@@ -527,7 +533,7 @@ test('PostgreSQL API integration', { timeout: 120000 }, async (t) => {
         const id = created.data.id;
         const loaded = await a.request(`/editor/${id}`);
         const maker: MakerDraft = loaded.data;
-        assert.equal(maker.definition.schemaVersion, 2);
+        assert.equal(maker.definition.schemaVersion, 3);
         maker.editor.positions.node_1 = { x: 430, y: -210 };
         maker.editor.viewport = { x: 12, y: 34, zoom: 0.75 };
         const save = () =>
@@ -558,7 +564,7 @@ test('PostgreSQL API integration', { timeout: 120000 }, async (t) => {
             intent: 'salary_offer',
             label: 'Назвать сумму',
             examples: ['Хочу 200 тысяч'],
-            evaluation: { grade: 'strong', penalty: 0, feedback: 'Конкретный ориентир.' },
+            penalty: 0, feedback: 'Конкретный ориентир.',
             endingId: 'finish',
           },
         ];
@@ -590,11 +596,11 @@ test('PostgreSQL API integration', { timeout: 120000 }, async (t) => {
         assert.equal(
           (await pool.query('SELECT definition FROM scenario_versions WHERE scenario_id=$1', [id]))
             .rows[0].definition.schemaVersion,
-          2,
+          3,
         );
         const started = await b.request(`/scenarios/${id}/attempts`, 'POST');
         assert.equal(started.status, 200);
-        assert.equal(started.data.definition.settings.failureRule, undefined);
+        assert.equal(started.data.definition.settings.penalty.enabled, false);
         const completed = await b.request(`/attempts/${started.data.attempt.id}/answers`, 'POST', {
           nodeId: 'node_1',
           answerId: 'reaction_offer',

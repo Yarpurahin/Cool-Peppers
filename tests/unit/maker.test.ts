@@ -21,7 +21,7 @@ import {
 } from '../../src/features/maker/model/commands.ts';
 import { scenarios } from '../../src/data/scenarios.ts';
 import { documentSchema, normalizeDocument } from '../../src/types/validation.ts';
-import type { MakerDocument, MakerDraft } from '../../src/features/maker/model/types.ts';
+import type { MakerDefinition, MakerDocument, MakerDraft } from '../../src/features/maker/model/types.ts';
 import {
   createScenarioFile,
   parseScenarioFile,
@@ -45,7 +45,7 @@ function fixture(): MakerDocument {
       intent: 'salary_offer',
       label: 'Назвать сумму',
       examples: ['Около 200 тысяч'],
-      evaluation: { grade: 'strong', penalty: 0, feedback: 'Конкретный ориентир.' },
+      penalty: 0, feedback: 'Конкретный ориентир.',
       endingId: 'agreement',
     },
   ];
@@ -67,8 +67,10 @@ test('built-in scenario uses the same canonical maker graph as authored scenario
 
 test('maker engine and negotiation runtime traverse the same canonical graph', () => {
   const original = structuredClone(employmentScenario);
-  const direct = compileScenario(employmentScenario);
-  const maker = compileMaker(employmentScenario);
+  const withoutEarlyExit: MakerDefinition = structuredClone(employmentScenario) as MakerDefinition;
+  withoutEarlyExit.settings.penalty.enabled = false;
+  const direct = compileScenario(withoutEarlyExit);
+  const maker = compileMaker(withoutEarlyExit);
   let endings = 0;
   function walk(a: ReturnType<typeof startAttempt>, b: typeof a) {
     assert.deepEqual(a, b);
@@ -138,7 +140,7 @@ test('cycles with exits are valid, closed loops fail, unreachable blocks are war
     intent: 'ask_again',
     label: 'Уточнить',
     examples: [],
-    evaluation: { grade: 'acceptable', penalty: 0, feedback: '' },
+    penalty: 0, feedback: '',
     nextNodeId: 'node_1',
   });
   const engine = compileMaker(doc.definition);
@@ -212,17 +214,17 @@ test('auto layout keeps converging branches around their shared destination', ()
   addBlock(doc, 'node', { x: 0, y: 0 }, 'merge');
   const start = doc.definition.nodes[0];
   start.reactions = [
-    { id: 'to_upper', intent: 'upper', label: 'Верхняя ветка', examples: [], evaluation: { grade: 'acceptable', penalty: 0, feedback: '' }, nextNodeId: 'upper' },
-    { id: 'to_lower', intent: 'lower', label: 'Нижняя ветка', examples: [], evaluation: { grade: 'acceptable', penalty: 0, feedback: '' }, nextNodeId: 'lower' },
+    { id: 'to_upper', intent: 'upper', label: 'Верхняя ветка', examples: [], penalty: 0, feedback: '', nextNodeId: 'upper' },
+    { id: 'to_lower', intent: 'lower', label: 'Нижняя ветка', examples: [], penalty: 0, feedback: '', nextNodeId: 'lower' },
   ];
   doc.definition.nodes.find((node) => node.id === 'upper')!.reactions = [
-    { id: 'upper_merge', intent: 'upper_merge', label: 'Дальше', examples: [], evaluation: { grade: 'acceptable', penalty: 0, feedback: '' }, nextNodeId: 'merge' },
+    { id: 'upper_merge', intent: 'upper_merge', label: 'Дальше', examples: [], penalty: 0, feedback: '', nextNodeId: 'merge' },
   ];
   doc.definition.nodes.find((node) => node.id === 'lower')!.reactions = [
-    { id: 'lower_merge', intent: 'lower_merge', label: 'Дальше', examples: [], evaluation: { grade: 'acceptable', penalty: 0, feedback: '' }, nextNodeId: 'merge' },
+    { id: 'lower_merge', intent: 'lower_merge', label: 'Дальше', examples: [], penalty: 0, feedback: '', nextNodeId: 'merge' },
   ];
   doc.definition.nodes.find((node) => node.id === 'merge')!.reactions = [
-    { id: 'finish', intent: 'finish', label: 'Финиш', examples: [], evaluation: { grade: 'acceptable', penalty: 0, feedback: '' }, endingId: 'agreement' },
+    { id: 'finish', intent: 'finish', label: 'Финиш', examples: [], penalty: 0, feedback: '', endingId: 'agreement' },
   ];
   const positions = layoutGraph(doc.definition);
   assert.ok(positions.upper.x === positions.lower.x);
@@ -231,15 +233,16 @@ test('auto layout keeps converging branches around their shared destination', ()
   assert.ok(positions.merge.y < Math.max(positions.upper.y, positions.lower.y));
 });
 
-test('new maker reactions start with a neutral editable evaluation', () => {
+test('new maker reactions start with a neutral penalty and feedback', () => {
   const doc = fixture();
   doc.definition.nodes[0].reactions = [];
   const reaction = addReaction(doc.definition, 'node_1')!;
   reaction.endingId = 'agreement';
-  assert.deepEqual(reaction.evaluation, { grade: 'acceptable', penalty: 0, feedback: '' });
+  assert.equal(reaction.penalty, 0);
+  assert.equal(reaction.feedback, '');
   const runtime = compileScenario(doc.definition);
-  assert.equal(runtime.nodes.get('node_1')!.reactions[0].evaluation.feedback, '');
-  assert.equal(runtime.nodes.get('node_1')!.reactions[0].evaluation.grade, 'acceptable');
+  assert.equal(runtime.nodes.get('node_1')!.reactions[0].feedback, '');
+  assert.equal(runtime.nodes.get('node_1')!.reactions[0].penalty, 0);
 });
 
 
@@ -276,7 +279,7 @@ test('scenario JSON importer also accepts a raw schemaVersion 2 definition', () 
     revision: 1,
     publishedVersion: null,
   };
-  const definition = structuredClone(sourceDefinitionForImport());
+  const definition = toLegacyV2(sourceDefinitionForImport());
   const imported = parseScenarioFile(definition, current);
   assert.equal(imported.source, 'definition');
   assert.equal(imported.document.definition.metadata.id, current.definition.metadata.id);
@@ -291,7 +294,7 @@ test('old Arena assessment fields are normalized at the import boundary', () => 
     revision: 1,
     publishedVersion: null,
   };
-  const old = structuredClone(sourceDefinitionForImport()) as any;
+  const old = toLegacyV2(sourceDefinitionForImport());
   const reaction = old.nodes[0].reactions[0];
   delete reaction.evaluation;
   reaction.legacy = { penalty: 2, feedback: 'Старое пояснение' };
@@ -300,16 +303,33 @@ test('old Arena assessment fields are normalized at the import boundary', () => 
 
   const imported = parseScenarioFile(old, current);
   const normalized = imported.document.definition;
-  assert.deepEqual(normalized.nodes[0].reactions[0].evaluation, {
-    grade: 'critical',
-    penalty: 2,
-    feedback: 'Старое пояснение',
-  });
+  assert.equal(normalized.nodes[0].reactions[0].penalty, 2);
+  assert.equal(normalized.nodes[0].reactions[0].feedback, 'Старое пояснение');
   assert.equal(normalized.settings.feedbackMode, 'summary');
-  assert.equal(normalized.settings.failureRule?.endingId, 'agreement');
+  assert.equal(normalized.settings.penalty.enabled, true);
+  assert.equal(normalized.settings.penalty.failureEndingId, 'agreement');
   assert.equal('legacy' in normalized.nodes[0].reactions[0], false);
   assert.equal('legacyFailure' in normalized.settings, false);
 });
+
+
+function toLegacyV2(source: ReturnType<typeof sourceDefinitionForImport>): any {
+  const definition = structuredClone(source) as any;
+  definition.schemaVersion = 2;
+  for (const node of definition.nodes) {
+    for (const reaction of node.reactions) {
+      reaction.evaluation = {
+        grade: reaction.penalty === 0 ? 'strong' : reaction.penalty === 1 ? 'weak' : 'critical',
+        penalty: reaction.penalty,
+        feedback: reaction.feedback,
+      };
+      delete reaction.penalty;
+      delete reaction.feedback;
+    }
+  }
+  delete definition.settings.penalty;
+  return definition;
+}
 
 function sourceDefinitionForImport() {
   const definition = fixture().definition;

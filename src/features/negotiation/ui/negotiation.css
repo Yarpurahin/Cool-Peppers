@@ -343,17 +343,17 @@
   color: var(--muted);
   font-weight: 700;
 }
-.reaction-feedback--strong {
+.reaction-feedback--penalty-0 {
   border-color: color-mix(in srgb, var(--green) 42%, var(--line));
   background: color-mix(in srgb, var(--surface) 94%, var(--sage));
 }
-.reaction-feedback--weak,
-.reaction-feedback--critical {
+.reaction-feedback--penalty-1,
+.reaction-feedback--penalty-2 {
   border-color: color-mix(in srgb, var(--tone-orange, #b54228) 42%, var(--line));
 }
-.review-item--strong {
+.review-item--penalty-0 {
   border-color: color-mix(in srgb, var(--green) 32%, var(--line));
 }
-.review-item--critical {
+.review-item--penalty-2 {
   border-color: color-mix(in srgb, var(--tone-orange, #b54228) 52%, var(--line));
 }
