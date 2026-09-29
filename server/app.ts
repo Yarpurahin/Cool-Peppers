@@ -6,7 +6,9 @@ import type { Pool } from 'pg';
 import { z, ZodError } from 'zod';
 import { avatarSchema } from './avatar.ts';
 import { registerContactRoutes } from './contact.ts';
+import { registerReviewRoutes } from './reviews.ts';
 import { registerAccountRoutes } from './accounts.ts';
+import { awardCompletedAttempt, registerGamificationRoutes } from './gamification.ts';
 import { config } from './config.ts';
 import { transaction } from './db.ts';
 import {
@@ -53,20 +55,14 @@ import {
   startAttempt,
 } from '../src/features/negotiation/model/engine.ts';
 import type { AuthoringDocument } from '../src/features/maker/model/types.ts';
-import {
-  createBlankDefinition,
-  fromPreview,
-  isMakerDefinition,
-} from '../src/features/maker/model/adapter.ts';
+import { createBlankDefinition, previewFromDefinition } from '../src/features/maker/model/adapter.ts';
 import { validateMaker } from '../src/features/maker/model/validation.ts';
 import { scenarios as initialScenarios } from '../src/data/scenarios.ts';
 
 function validateGraph(document: AuthoringDocument) {
-  if (document.definition && isMakerDefinition(document.definition)) {
-    const issues = validateMaker(document.definition);
-    if (issues.some((i) => i.severity === 'error'))
-      throw new ApiError(422, 'Исправьте ошибки графа перед публикацией.', issues);
-  }
+  const issues = validateMaker(document.definition);
+  if (issues.some((i) => i.severity === 'error'))
+    throw new ApiError(422, 'Исправьте ошибки графа перед публикацией.', issues);
   try {
     return normalizeDocument(document);
   } catch (error) {
@@ -109,7 +105,9 @@ export function createApp(pool: Pool) {
   });
   app.use('/api', authenticate(pool));
   registerContactRoutes(app, pool);
+  registerReviewRoutes(app, pool);
   registerAccountRoutes(app, pool);
+  registerGamificationRoutes(app, pool);
 
   // Single-process development limit. For multiple instances use a shared gateway limiter.
   const authAttempts = new Map<string, { count: number; expires: number }>();
@@ -231,8 +229,10 @@ export function createApp(pool: Pool) {
     const result = await pool.query(
       `SELECT a.*, v.preview->>'title' AS title,
       (SELECT count(*)::int FROM attempt_answers h WHERE h.attempt_id = a.id) AS answers,
-      (SELECT e->>'title' FROM jsonb_array_elements(v.definition->'endings') e WHERE e->>'id' = a.ending_id LIMIT 1) AS outcome
+      (SELECT e->>'title' FROM jsonb_array_elements(v.definition->'endings') e WHERE e->>'id' = a.ending_id LIMIT 1) AS outcome,
+      r.xp_earned, r.mastery_stars
       FROM attempts a JOIN scenario_versions v ON (v.scenario_id,v.version) = (a.scenario_id,a.scenario_version)
+      LEFT JOIN attempt_rewards r ON r.attempt_id = a.id
       WHERE a.user_id = $1 ORDER BY a.started_at DESC, a.id DESC LIMIT $2 OFFSET $3`,
       [id, limit, offset],
     );
@@ -258,6 +258,8 @@ export function createApp(pool: Pool) {
         penalties: row.penalties,
         answers: row.answers,
         outcome: row.outcome,
+        xpEarned: row.xp_earned == null ? undefined : Number(row.xp_earned),
+        masteryStars: row.mastery_stars == null ? undefined : Number(row.mastery_stars),
       })),
     });
   });
@@ -266,9 +268,9 @@ export function createApp(pool: Pool) {
       await pool.query(`SELECT v.preview, v.definition FROM scenarios s JOIN scenario_versions v
       ON (v.scenario_id,v.version) = (s.id,s.published_version) WHERE s.archived_at IS NULL AND s.deleted_at IS NULL ORDER BY s.created_at, s.id`);
     res.json(
-      rows.rows.map((doc: AuthoringDocument) => {
-        const definition = doc.definition ?? fromPreview(doc.preview);
-        return { preview: doc.preview, definition: compileScenario(definition).definition };
+      rows.rows.map((raw) => {
+        const doc = documentSchema.parse(raw);
+        return { preview: doc.preview, definition: compileScenario(doc.definition).definition };
       }),
     );
   });
@@ -314,7 +316,7 @@ export function createApp(pool: Pool) {
         throw new ApiError(409, 'Попытка уже изменилась. Обновите страницу.');
       if (input.restart && current.rowCount) {
         const old = await getVersion(client, id, current.rows[0].scenario_version);
-        if (!old.definition?.settings.allowRestart)
+        if (!old.definition.settings.allowRestart)
           throw new ApiError(409, 'Повторное прохождение отключено');
       }
       const source = await client.query(
@@ -323,8 +325,8 @@ export function createApp(pool: Pool) {
         [id],
       );
       if (!source.rowCount) throw new ApiError(404, 'Сценарий не найден');
-      const definition = source.rows[0].definition ?? fromPreview(source.rows[0].preview);
-      const scenario = compileScenario(definition);
+      const sourceDocument = documentSchema.parse(source.rows[0]);
+      const scenario = compileScenario(sourceDocument.definition);
       const next = startAttempt(scenario, randomUUID(), new Date().toISOString());
       if (current.rowCount)
         await client.query(
@@ -371,7 +373,7 @@ export function createApp(pool: Pool) {
       )
         throw new ApiError(409, 'Вопрос уже обработан. Загрузите актуальный прогресс.');
       const document = await getVersion(client, row.scenario_id, row.scenario_version);
-      const scenario = compileScenario(document.definition!);
+      const scenario = compileScenario(document.definition);
       const now = new Date(Math.max(Date.now(), row.updated_at.getTime())).toISOString();
       let next;
       try {
@@ -396,6 +398,8 @@ export function createApp(pool: Pool) {
           next.status === 'completed' ? now : null,
         ],
       );
+      if (updated.rows[0].status === 'completed')
+        await awardCompletedAttempt(client, userId, updated.rows[0], scenario.definition);
       return detail(client, updated.rows[0]);
     });
     res.json(result);
@@ -461,27 +465,27 @@ export function createApp(pool: Pool) {
           [input.sourceId],
         );
         if (!source.rowCount) throw new ApiError(404, 'Шаблон не найден');
-        const sourceDoc = source.rows[0] as AuthoringDocument;
-        const sourceDefinition = sourceDoc.definition ?? fromPreview(sourceDoc.preview);
+        const sourceDoc = documentSchema.parse(source.rows[0]);
         doc = {
           preview: structuredClone(sourceDoc.preview),
-          definition: structuredClone(sourceDefinition),
+          definition: structuredClone(sourceDoc.definition),
         };
         doc.preview.id = id;
         doc.preview.title += ' — копия';
-        doc.definition!.metadata.id = id;
-        doc.definition!.metadata.version = 1;
-        doc.definition!.metadata.title += ' — копия';
+        doc.definition.metadata.id = id;
+        doc.definition.metadata.version = 1;
+        doc.definition.metadata.title += ' — копия';
       } else {
+        const definition = createBlankDefinition(id, input.title);
         doc = {
-          preview: { ...structuredClone(initialScenarios[0]), id, title: input.title },
-          definition: createBlankDefinition(id, input.title),
+          preview: previewFromDefinition(definition, initialScenarios[0]),
+          definition,
         };
       }
       await client.query('INSERT INTO scenarios(id, owner_id) VALUES ($1,$2)', [id, userId]);
       await client.query(
         'INSERT INTO scenario_drafts(scenario_id,preview,definition) VALUES ($1,$2,$3)',
-        [id, JSON.stringify(doc.preview), doc.definition ? JSON.stringify(doc.definition) : null],
+        [id, JSON.stringify(doc.preview), JSON.stringify(doc.definition)],
       );
       return { id };
     });
@@ -498,8 +502,16 @@ export function createApp(pool: Pool) {
        WHERE d.scenario_id = $1`,
       [id],
     );
+    const row = draft.rows[0];
+    const doc = documentSchema.parse({
+      preview: row.preview,
+      definition: row.definition,
+      editor: row.editor ?? undefined,
+    });
     res.json({
-      ...draft.rows[0],
+      ...doc,
+      revision: row.revision,
+      hasUnpublishedChanges: row.hasUnpublishedChanges,
       publishedVersion: scenario.published_version,
       archivedAt: scenario.archived_at,
     });
@@ -508,7 +520,7 @@ export function createApp(pool: Pool) {
     const id = idSchema.parse(req.params.id);
     const userId = admin(res).id;
     const input = saveDraftSchema.parse(req.body);
-    if (input.preview.id !== id || (input.definition && input.definition.metadata.id !== id))
+    if (input.preview.id !== id || input.definition.metadata.id !== id)
       throw new ApiError(422, 'ID сценария нельзя изменять');
     const saved = await transaction(pool, async (client) => {
       await ownedScenario(client, id, userId, true);
@@ -518,7 +530,7 @@ export function createApp(pool: Pool) {
         [
           id,
           JSON.stringify(input.preview),
-          input.definition ? JSON.stringify(input.definition) : null,
+          JSON.stringify(input.definition),
           input.revision,
           input.editor ? JSON.stringify(input.editor) : null,
         ],
@@ -554,17 +566,20 @@ export function createApp(pool: Pool) {
       if (draft.revision !== revision)
         throw new ApiError(409, 'Черновик изменился. Обновите страницу.');
       const version = (scenario.published_version ?? 0) + 1;
-      if (draft.definition) draft.definition.metadata.version = version;
-      const doc = validateGraph(
-        documentSchema.parse({ preview: draft.preview, definition: draft.definition }),
-      );
+      const parsedDraft = documentSchema.parse({
+        preview: draft.preview,
+        definition: draft.definition,
+        editor: draft.editor ?? undefined,
+      });
+      parsedDraft.definition.metadata.version = version;
+      const doc = validateGraph(parsedDraft);
       await client.query(
         'INSERT INTO scenario_versions(scenario_id,version,preview,definition) VALUES ($1,$2,$3,$4)',
         [
           id,
           version,
           JSON.stringify(doc.preview),
-          doc.definition ? JSON.stringify(doc.definition) : null,
+          JSON.stringify(doc.definition),
         ],
       );
       await client.query(
@@ -573,7 +588,7 @@ export function createApp(pool: Pool) {
       );
       await client.query(
         'UPDATE scenario_drafts SET preview=$2,definition=$3,revision=revision+1,updated_at=now() WHERE scenario_id=$1',
-        [id, JSON.stringify(doc.preview), doc.definition ? JSON.stringify(doc.definition) : null],
+        [id, JSON.stringify(doc.preview), JSON.stringify(doc.definition)],
       );
       return { version, revision: revision + 1 };
     });

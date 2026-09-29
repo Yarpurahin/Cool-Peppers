@@ -158,7 +158,7 @@ test('root account, admin creation and private avatar persistence', async () => 
       practice = (
         await created<AttemptDetail>(`/attempts/${practice.attempt.id}/answers`, 'POST', {
           nodeId: node.id,
-          answerId: node.answers[0].id,
+          answerId: node.reactions[0].id,
           expectedAnswers: practice.attempt.history.length,
         })
       ).data!;

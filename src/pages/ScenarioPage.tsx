@@ -8,6 +8,8 @@ import { ScenarioArt } from '../components/scenarios/ScenarioArt.tsx';
 import { ScenarioMeta } from '../components/scenarios/ScenarioMeta.tsx';
 import { useNegotiation } from '../features/negotiation/NegotiationProvider.tsx';
 import { ErrorPage } from './ErrorPage.tsx';
+import { useGamification } from '../features/gamification/GamificationProvider.tsx';
+import { MasteryStars } from '../features/gamification/MasteryStars.tsx';
 
 export function ScenarioPage() {
   const { findScenario, findNegotiation, user } = useCatalog();
@@ -15,6 +17,7 @@ export function ScenarioPage() {
   const scenario = findScenario(scenarioId);
   const negotiation = findNegotiation(scenarioId);
   const { entries, ensure } = useNegotiation();
+  const { masteryFor } = useGamification();
   const navigate = useNavigate();
   const lock = useRef(false);
   const [busy, setBusy] = useState(false);
@@ -22,7 +25,8 @@ export function ScenarioPage() {
   const attempt = entries.get(scenarioId ?? '')?.attempt;
   const completed = attempt?.status === 'completed';
   const canResume = attempt?.status === 'in-progress' && attempt.history.length > 0;
-  if (!scenario) return <ErrorPage />;
+  const mastery = masteryFor(scenarioId ?? '');
+  if (!scenario || !negotiation) return <ErrorPage />;
   return (
     <div className="container page scenario-page">
       <Link to="/scenarios" className="back-link">
@@ -37,6 +41,13 @@ export function ScenarioPage() {
           </p>
           <h1>{scenario.title}</h1>
           <ScenarioMeta scenario={scenario} />
+          {mastery && (
+            <div className="scenario-page-mastery">
+              <span>Ваш лучший результат</span>
+              <MasteryStars value={mastery.bestStars} />
+              <small>{mastery.completedAttempts} прохожд.</small>
+            </div>
+          )}
         </div>
         <div className={`heading-art cover--${scenario.art}`}>
           <ScenarioArt kind={scenario.art} image={scenario.coverImage} />
@@ -57,15 +68,13 @@ export function ScenarioPage() {
             <hr />
             <h2>Как пройдёт разговор</h2>
             <p>
-              {negotiation
-                ? 'Выбирайте реплики и подтверждайте ответ. Ваш выбор меняет ход разговора. После завершения вы получите разбор своих решений. Прогресс сохраняется в вашем аккаунте.'
-                : 'В готовом тренажёре вы сможете выбирать реплики и пробовать разные подходы, а затем разобрать свои решения. Сейчас можно посмотреть демонстрационный экран диалога.'}
+              Выбирайте реплики и подтверждайте ответ. Ваш выбор меняет ход разговора. После
+              завершения вы получите разбор своих решений. Прогресс сохраняется в вашем аккаунте.
             </p>
-            {negotiation && negotiation.definition.settings.failure.rule !== 'none' && (
+            {negotiation.definition.settings.penalty.enabled && (
               <p className="negotiation-rules">
-                {negotiation.definition.settings.assessmentNote} Порог провала —{' '}
-                {negotiation.failureThreshold} штрафных баллов: половина всех{' '}
-                {negotiation.totalQuestions} вопросов с округлением вверх.
+                Досрочное завершение включено: при накоплении {negotiation.failureThreshold}{' '}
+                штрафных баллов разговор перейдёт в отрицательный финал.
               </p>
             )}
           </section>

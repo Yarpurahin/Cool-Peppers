@@ -5,9 +5,11 @@ import { Avatar } from '../ui/Avatar.tsx';
 import { Logo } from './Logo.tsx';
 import { useCatalog } from '../../app/DataProvider.tsx';
 import { Icon } from '../ui/Icon.tsx';
+import { useGamification } from '../../features/gamification/GamificationProvider.tsx';
 
 export function Header() {
   const { user, logout } = useCatalog();
+  const { summary: gamification } = useGamification();
   const [open, setOpen] = useState(false);
   const toggle = useRef<HTMLButtonElement>(null);
   const account = useRef<HTMLDetailsElement>(null);
@@ -75,6 +77,11 @@ export function Header() {
                     <div className="account-profile-copy">
                       <strong>{user.name}</strong>
                       <span>{user.email}</span>
+                      {gamification && (
+                        <span className="account-gamification-line">
+                          Уровень {gamification.level} · {gamification.totalXp} XP
+                        </span>
+                      )}
                       <em className="account-role-badge">
                         <Icon name={user.role === 'admin' ? 'shield' : 'user'} size={12} />
                         {user.role === 'admin' ? 'Администратор' : 'Участник'}

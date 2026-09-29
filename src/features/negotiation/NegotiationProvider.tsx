@@ -6,6 +6,7 @@ import type { AttemptDetail } from '../../types/api.ts';
 import { compileScenario } from './model/engine.ts';
 import type { CompiledScenario } from './model/engine.ts';
 import type { Feedback, ScenarioAttempt } from './model/types.ts';
+import { useGamification } from '../gamification/GamificationProvider.tsx';
 
 interface Entry extends AttemptDetail {
   scenario: CompiledScenario;
@@ -31,6 +32,7 @@ const entry = (value: AttemptDetail): Entry => ({
 
 export function NegotiationProvider({ children }: { children: ReactNode }) {
   const { user } = useCatalog();
+  const gamification = useGamification();
   const [entries, setEntries] = useState<ReadonlyMap<string, Entry>>(new Map());
   const latest = useRef(entries);
   const [loading, setLoading] = useState(Boolean(user));
@@ -107,7 +109,9 @@ export function NegotiationProvider({ children }: { children: ReactNode }) {
             method: 'POST',
             body: { nodeId, answerId, expectedAnswers: current.attempt.history.length },
           });
-          return write(saved).attempt;
+          const next = write(saved);
+          if (saved.attempt.status === 'completed') void gamification.refresh();
+          return next.attempt;
         },
         restart: async (id) => {
           const current = latest.current.get(id);

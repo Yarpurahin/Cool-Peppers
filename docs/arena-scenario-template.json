@@ -1,8 +1,8 @@
 {
   "format": "arena-scenario",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "definition": {
-    "schemaVersion": 2,
+    "schemaVersion": 3,
     "metadata": {
       "id": "scenario_template",
       "version": 1,
@@ -53,7 +53,9 @@
               "Какие условия вы предлагаете?",
               "Расскажите подробнее об условиях"
             ],
-            "nextNodeId": "node_offer"
+            "nextNodeId": "node_offer",
+            "penalty": 0,
+            "feedback": "Вы уточняете условия до того, как принимать решение."
           },
           {
             "id": "reaction_close",
@@ -62,7 +64,9 @@
             "examples": [
               "Спасибо, я подумаю"
             ],
-            "endingId": "ending_neutral"
+            "endingId": "ending_neutral",
+            "penalty": 0,
+            "feedback": "Вы корректно откладываете решение и завершаете разговор."
           }
         ]
       },
@@ -81,7 +85,9 @@
               "Да, меня устраивает",
               "Согласен"
             ],
-            "endingId": "ending_success"
+            "endingId": "ending_success",
+            "penalty": 0,
+            "feedback": "Вы прямо фиксируете согласие с предложением."
           },
           {
             "id": "reaction_reject",
@@ -90,7 +96,9 @@
             "examples": [
               "Нет, мне не подходит"
             ],
-            "endingId": "ending_failure"
+            "endingId": "ending_failure",
+            "penalty": 2,
+            "feedback": "Отказ завершает переговоры; перед ним можно было уточнить альтернативы."
           }
         ]
       }
@@ -120,7 +128,13 @@
     ],
     "settings": {
       "allowRestart": true,
-      "collectFeedback": true
+      "collectFeedback": true,
+      "feedbackMode": "summary",
+      "penalty": {
+        "enabled": true,
+        "threshold": 2,
+        "failureEndingId": "ending_failure"
+      }
     }
   }
 }

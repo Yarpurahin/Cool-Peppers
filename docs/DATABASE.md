@@ -2,7 +2,7 @@
 
 ## Решение
 
-Схема гибридная. Пользователи, сессии, сценарии, версии, попытки, ответы и отзывы — отдельные связанные таблицы. Полное описание графа диалога хранится как `jsonb` внутри **неизменяемой версии**. Его структура соответствует `ScenarioDefinition` из исходного проекта; персонажи, этапы, варианты реплик, штрафы и концовки не теряются.
+Схема гибридная. Пользователи, сессии, сценарии, версии, попытки, ответы и отзывы — отдельные связанные таблицы. Полное описание графа диалога хранится как `jsonb` внутри **неизменяемой версии**. Его структура соответствует каноническому `MakerDefinition` (`schemaVersion: 3`); персонажи, этапы, реакции, evaluation, варианты реплик и концовки не теряются.
 
 Граф публикуется и загружается целиком, поэтому хранение одного документа на версию сохраняет текущую архитектуру без сборки сценария из десятков запросов. История действий, права и связи с пользователем остаются реляционными. JSON проверяется схемой Zod; перед публикацией `compileScenario` дополнительно проверяет переходы, уникальность ID, персонажей, этапы, отсутствие циклов, достижимость вопросов и концовку провала.
 
@@ -35,29 +35,32 @@ erDiagram
     attempts ||--o| feedback : feedback
 ```
 
-## Соответствие существующих TypeScript-типов
+## Соответствие текущей модели TypeScript
 
-| Тип из исходного проекта   | Представление в PostgreSQL                                                                                |
-| -------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `ScenarioId`               | `scenarios.id`, `text`; строковые ID сохранены (`terms`, `feedback`, `new-deadline`)                      |
-| `ScenarioMetadata`         | `scenario_versions.definition.metadata`; номер версии также в отдельной колонке `version`                 |
-| `ScenarioDefinition`       | `scenario_versions.definition`, `jsonb`; у черновика — `scenario_drafts.definition`                       |
-| `Character`, `CharacterId` | `definition.characters`; ID персонажа связывается со `speakerId` вопроса при валидации                    |
-| Этап `{ id, title }`       | `definition.stages`; `stageId` вопроса проверяется при публикации                                         |
-| `DialogueNode`, `NodeId`   | `definition.nodes`, включая `textVariants`                                                                |
-| `AnswerOption`, `AnswerId` | `definition.nodes[].answers`, включая `penalty`, `feedback`, `next`                                       |
-| `Transition`               | `next.type = node / ending`, целевой `nodeId` или `endingId`                                              |
-| `Ending`, `EndingId`       | `definition.endings`, включая `success / neutral / failure` и следующий шаг                               |
-| `ScenarioAttempt`          | `attempts` + упорядоченные строки `attempt_answers`                                                       |
-| `AnswerHistoryItem`        | `attempt_answers.node_id`, `answer_id`, `answered_at`; `sequence` сохраняет порядок                       |
-| `Feedback`                 | `feedback.attempt_id`, `helpful`, `comment`, `created_at`                                                 |
-| `ScenarioPreview`          | `scenario_versions.preview`, `jsonb`; поля исполняемой карточки вычисляются из определения при публикации |
-| `ScenarioArt`              | `preview.art`, ограничен Zod: `calendar / conversation / agreement`                                       |
-| `DemoDialogueNode`         | `preview.dialogue`, только для демонстрационных данных                                                    |
-| Демонстрационный профиль   | Не импортируется; реальные данные — `app_users`                                                           |
-| Демонстрационная история   | Не импортируется; реальная история строится из `attempts`                                                 |
+| Тип / поле | Представление в PostgreSQL |
+| --- | --- |
+| `MakerDefinition` | `scenario_versions.definition` и `scenario_drafts.definition`, `jsonb` |
+| `ScenarioMetadata` | `definition.metadata`; ID и версия дополнительно зафиксированы ключами версии |
+| `Character` | `definition.characters`; реплика ссылается через `characterId` |
+| Этап | `definition.stages`; реплика ссылается через необязательный `stageId` |
+| Реплика | `definition.nodes`, включая `textVariants` |
+| `UserReaction` | `definition.nodes[].reactions`; содержит `intent`, `examples`, `evaluation` и переход |
+| `ReactionEvaluation` | `reaction.penalty / reaction.feedback` |
+| Переход | ровно один из `nextNodeId` или `endingId` |
+| Финал | `definition.endings` (`success / neutral / failure`) |
+| `ScenarioPreview` | `scenario_versions.preview`; только данные каталога/карточки, не исполняемая логика |
+| `ScenarioAttempt` | `attempts` + упорядоченные `attempt_answers` |
+| `Feedback` | таблица `feedback` |
 
-`ScenarioPreview.level` дополнен значением «Продвинутый» для уже существующего `difficulty: hard`.
+Старые структуры `speakerId / answers / next`, `preview.dialogue` и `reaction.legacy` не являются рабочей схемой БД. Они принимаются compatibility-parser только при чтении старых данных и преобразуются в `MakerDefinition`.
+
+### Нормализация старых документов
+
+```bash
+npm run db:normalize-scenarios
+```
+
+Команда обновляет только JSON-представление старых сценариев и черновиков. Для `scenario_versions` она временно отключает пользовательский trigger неизменяемости внутри одной транзакции, сохраняет те же `(scenario_id, version)`, затем включает trigger обратно. Если транзакция падает, PostgreSQL откатывает и данные, и состояние trigger. Уже канонические JSON не переписываются.
 
 ## SQL-типы
 
@@ -147,6 +150,26 @@ UPDATE app_users SET role = 'admin' WHERE email = 'admin@example.com';
 
 Миграция `002_scenario_editor.sql` добавляет `scenario_drafts.editor jsonb NOT NULL DEFAULT '{"positions":{}}'`. Поле хранит только позиции карточек и необязательный viewport. Оно обновляется в той же транзакции, что и черновик, с прежней проверкой revision.
 
-`scenario_drafts.definition` и `scenario_versions.definition` принимают legacy-формат или v2 с `schemaVersion: 2`, `nodes[].reactions`, `intent` и `examples`. Сохранение через maker переводит только текущий черновик в v2; ранее опубликованные записи не мигрируются. SQL-таблицы попыток и ответов не меняются: `answer_id` соответствует стабильному `reaction.id`.
+`scenario_drafts.definition` и `scenario_versions.definition` принимают legacy-формат или текущий v3 с `schemaVersion: 3`, `nodes[].reactions`, `intent` и `examples`. Сохранение через maker переводит текущий черновик в v3; ранее опубликованные записи не мигрируются. SQL-таблицы попыток и ответов не меняются: `answer_id` соответствует стабильному `reaction.id`.
 
 Координаты не включаются в опубликованные версии. Для существующего приложения достаточно `npm run db:migrate`; удалять или пересоздавать таблицы не нужно. Общая миграция 001 оставлена без изменений.
+
+## Docker, постоянное хранение и резервные копии
+
+Основной `compose.yaml` запускает два постоянных сервиса: `app` и PostgreSQL 17. База не публикует порт на хост по умолчанию и доступна приложению внутри сети Docker. Данные PostgreSQL лежат в именованном томе `cool_peppers_postgres`, поэтому `docker compose down` и пересборка контейнера не удаляют их.
+
+Контейнер приложения при старте выполняет `db:migrate`, затем идемпотентный `db:seed`, после чего запускает HTTP-сервер. В Docker соединение задаётся стандартными переменными `PGHOST/PGPORT/PGDATABASE/PGUSER/PGPASSWORD`; локальный режим с `DATABASE_URL` сохранён.
+
+Для резервных копий используются одноразовые сервисы `backup` и `restore` на том же образе PostgreSQL, что и сервер базы. `backup` выполняет `pg_dump --format=custom`; файлы записываются через bind mount прямо в `./backups` на хосте. Рядом создаётся SHA-256 checksum. `restore` сначала проверяет checksum (если он есть), завершает существующие соединения с целевой БД и выполняет `pg_restore --clean --if-exists --single-transaction --exit-on-error`.
+
+Рекомендуемый цикл:
+
+```powershell
+docker compose run --rm backup
+npm run docker:backups
+npm run docker:restore -- latest
+```
+
+При ручном восстановлении сначала остановите `app`. Node-обёртка `docker:restore` делает это автоматически и запускает приложение только после успешного `pg_restore`.
+
+Важно: `docker compose down -v` удаляет именованный том и вместе с ним текущую БД. Перед этой командой создайте бэкап, если данные нужны.

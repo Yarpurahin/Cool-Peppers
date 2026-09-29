@@ -223,3 +223,137 @@
 .editor-page .field-error {
   overflow-wrap: anywhere;
 }
+
+/* Keep the original form's dimensions while the confirmation covers it. */
+.feedback-panel {
+  display: grid;
+}
+.feedback-form-content,
+.feedback-success {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+.feedback-panel.is-submitted .feedback-form-content {
+  visibility: hidden;
+  pointer-events: none;
+}
+.feedback-form-content > .eyebrow {
+  color: var(--muted);
+}
+.feedback-question {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 23px;
+}
+.feedback-fields {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.feedback-fields:disabled {
+  opacity: 0.65;
+}
+.feedback-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  gap: 16px;
+  padding: 24px 0;
+  background: var(--surface);
+  border-radius: 12px;
+  text-align: center;
+  animation: feedback-thanks 240ms ease-out;
+}
+.feedback-success:focus {
+  outline: none;
+}
+.feedback-success:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 10px;
+}
+.feedback-success-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--sage);
+  color: var(--tone-green, var(--green));
+  margin-bottom: 6px;
+}
+.feedback-success > .eyebrow {
+  color: var(--muted);
+  font-size: 9px;
+}
+.feedback-success h2 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.35;
+}
+.feedback-success > p:not(.eyebrow) {
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.feedback-success > .button {
+  margin-top: 6px;
+}
+@keyframes feedback-thanks {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Per-reaction educational feedback */
+.reaction-feedback {
+  display: grid;
+  gap: 7px;
+  margin: 0 0 14px;
+  padding: 13px 15px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.reaction-feedback > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.reaction-feedback strong {
+  font-size: 13px;
+}
+.reaction-feedback p,
+.reaction-feedback small {
+  margin: 0;
+}
+.reaction-feedback p {
+  color: var(--ink);
+  line-height: 1.55;
+}
+.reaction-feedback small {
+  color: var(--muted);
+  font-weight: 700;
+}
+.reaction-feedback--penalty-0 {
+  border-color: color-mix(in srgb, var(--green) 42%, var(--line));
+  background: color-mix(in srgb, var(--surface) 94%, var(--sage));
+}
+.reaction-feedback--penalty-1,
+.reaction-feedback--penalty-2 {
+  border-color: color-mix(in srgb, var(--tone-orange, #b54228) 42%, var(--line));
+}
+.review-item--penalty-0 {
+  border-color: color-mix(in srgb, var(--green) 32%, var(--line));
+}
+.review-item--penalty-2 {
+  border-color: color-mix(in srgb, var(--tone-orange, #b54228) 52%, var(--line));
+}

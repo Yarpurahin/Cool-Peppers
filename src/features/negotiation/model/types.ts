@@ -1,4 +1,4 @@
-// Semantic aliases, not branded IDs. Stable strings are suitable for JSON/API data.
+// Shared scenario metadata plus attempt state. The executable graph itself is the maker model.
 export type ScenarioId = string;
 export type NodeId = string;
 export type AnswerId = string;
@@ -27,51 +27,6 @@ export interface ScenarioMetadata {
   goal: string;
   playerRole: string;
   tip: string;
-}
-
-export type Transition = { type: 'node'; nodeId: NodeId } | { type: 'ending'; endingId: EndingId };
-
-export interface AnswerOption {
-  id: AnswerId;
-  text: string;
-  penalty: number;
-  feedback: string;
-  next: Transition;
-}
-
-export interface DialogueNode {
-  id: NodeId;
-  stageId: string;
-  title: string;
-  speakerId: CharacterId;
-  text: string;
-  /** Context changes wording, but does not add another question to the graph. */
-  textVariants?: readonly { afterAnswerId: AnswerId; text: string }[];
-  answers: readonly AnswerOption[];
-}
-
-export interface Ending {
-  id: EndingId;
-  type: 'success' | 'neutral' | 'failure';
-  title: string;
-  description: string;
-  nextStep: string;
-}
-
-export interface ScenarioDefinition {
-  metadata: ScenarioMetadata;
-  settings: {
-    allowRestart: boolean;
-    collectFeedback: boolean;
-    failure: { rule: 'half-all-questions'; endingId: EndingId } | { rule: 'none' };
-    navigation?: 'graph';
-    assessmentNote?: string;
-  };
-  startNodeId: NodeId;
-  characters: readonly Character[];
-  stages: readonly { id: string; title: string }[];
-  nodes: readonly DialogueNode[];
-  endings: readonly Ending[];
 }
 
 export interface AnswerHistoryItem {

@@ -32,7 +32,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [catalogError, setCatalogError] = useState<unknown>(null);
   const acceptCatalog = useCallback((docs: ScenarioDocument[]) => {
     if (!Array.isArray(docs)) throw new ApiError(500, 'Некорректный ответ сервера');
-    for (const doc of docs) if (doc.definition) compileScenario(doc.definition);
+    for (const doc of docs) compileScenario(doc.definition);
     setDocuments(docs);
     setCatalogStatus('ready');
     setCatalogError(null);
@@ -83,7 +83,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [acceptCatalog]);
   const scenarios = useMemo(() => documents.map((d) => d.preview), [documents]);
   const compiled = useMemo(
-    () => documents.flatMap((d) => (d.definition ? [compileScenario(d.definition)] : [])),
+    () => documents.map((document) => compileScenario(document.definition)),
     [documents],
   );
   return (

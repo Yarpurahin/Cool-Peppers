@@ -24,8 +24,11 @@ test('full attempt persists across reload, feedback and restart preserves histor
   await page.getByRole('radio', { name: 'Да', exact: true }).check();
   await page.getByLabel('Что можно улучшить?').fill('Больше примеров');
   await page.getByRole('button', { name: 'Отправить отзыв' }).click();
-  await expect(page.getByRole('status')).toContainText('Отзыв сохранён');
+  await expect(page.getByRole('status', { name: 'Спасибо, ваш отзыв отправлен' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Отправить отзыв' })).toHaveCount(0);
   await page.reload();
+  await expect(page.getByRole('status', { name: 'Спасибо, ваш отзыв отправлен' })).toBeVisible();
+  await page.getByRole('button', { name: 'Изменить отзыв' }).click();
   await expect(page.getByLabel('Что можно улучшить?')).toHaveValue('Больше примеров');
   await page.getByRole('button', { name: 'Попробовать ещё раз' }).click();
   await expect(page.locator('.dialogue-header .badge')).toHaveText('Шаг 1');

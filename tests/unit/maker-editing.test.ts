@@ -29,7 +29,13 @@ test('reload recovers unfinished text, graph, settings, cover and viewport witho
   local.definition.nodes[0].text = 'Несохранённая реплика';
   local.definition.settings.allowRestart = false;
   local.definition.characters[0].name = 'Мария';
-  local.definition.nodes[0].reactions.push({ id: 'reply', intent: '', label: '', examples: [] });
+  local.definition.nodes[0].reactions.push({
+    id: 'reply',
+    intent: '',
+    label: '',
+    examples: [],
+    penalty: 0, feedback: '',
+  });
   local.preview.coverImage = { src: 'data:image/png;base64,aGVsbG8=', alt: 'Описание' };
   local.editor.viewport = { x: -120, y: 98, zoom: 0.8 };
   const restored = recoverDraft(serializeRecovery(local, fingerprint(server)), server);

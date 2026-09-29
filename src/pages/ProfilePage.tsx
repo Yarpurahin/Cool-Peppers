@@ -8,6 +8,11 @@ import type { HistoryRow, User } from '../types/api.ts';
 import { Button } from '../components/ui/Button.tsx';
 import { Icon } from '../components/ui/Icon.tsx';
 import { PasswordField } from '../components/ui/PasswordField.tsx';
+import { useGamification } from '../features/gamification/GamificationProvider.tsx';
+import { GamificationProfile } from '../features/gamification/GamificationProfile.tsx';
+import { MasteryStars } from '../features/gamification/MasteryStars.tsx';
+
+const HISTORY_PAGE_SIZE = 10;
 
 interface History {
   total: number;
@@ -17,6 +22,7 @@ interface History {
 }
 export function ProfilePage() {
   const { user, setUser, logout } = useCatalog();
+  const gamification = useGamification();
   const [history, setHistory] = useState<History | null>(null);
   const [offset, setOffset] = useState(0);
   const [error, setError] = useState('');
@@ -30,13 +36,17 @@ export function ProfilePage() {
   useEffect(() => {
     const controller = new AbortController();
     setHistoryError('');
-    api<History>(`/me/history?offset=${offset}&limit=20`, { signal: controller.signal })
+    api<History>(`/me/history?offset=${offset}&limit=${HISTORY_PAGE_SIZE}`, { signal: controller.signal })
       .then(setHistory)
       .catch((cause) => {
         if (!controller.signal.aborted) setHistoryError(errorMessage(cause));
       });
     return () => controller.abort();
   }, [offset]);
+  useEffect(() => {
+    if (!history || history.total === 0 || offset < history.total) return;
+    setOffset(Math.max(0, Math.floor((history.total - 1) / HISTORY_PAGE_SIZE) * HISTORY_PAGE_SIZE));
+  }, [history, offset]);
   if (!user) return null;
   return (
     <div className="container page profile-page">
@@ -83,6 +93,11 @@ export function ProfilePage() {
           <p>По завершённым попыткам</p>
         </div>
       </div>
+      <GamificationProfile
+        summary={gamification.summary}
+        loading={gamification.loading}
+        error={gamification.error}
+      />
       <section className="panel personal-panel">
         <div className="panel-heading">
           <h2>Личные данные</h2>
@@ -252,32 +267,34 @@ export function ProfilePage() {
                 </p>
               </div>
               <div className="history-score">
+                {row.masteryStars ? <MasteryStars value={row.masteryStars} compact /> : null}
+                {row.xpEarned != null && <span className="history-xp">+{row.xpEarned} XP</span>}
                 <strong>{row.penalties}</strong>
                 <span> штрафов</span>
               </div>
             </article>
           ))}
         </div>
-        {history && history.total > 20 && (
-          <div className="button-row">
+        {history && history.total > HISTORY_PAGE_SIZE && (
+          <nav className="contact-pagination profile-pagination" aria-label="Страницы истории практики">
             <Button
               disabled={offset === 0}
               variant="outline"
-              onClick={() => setOffset((n) => Math.max(0, n - 20))}
+              onClick={() => setOffset((value) => Math.max(0, value - HISTORY_PAGE_SIZE))}
             >
-              Назад
+              <Icon name="back" size={16} /> Назад
             </Button>
-            <span>
-              {offset + 1}–{Math.min(offset + 20, history.total)} из {history.total}
+            <span className="contact-page-number" aria-current="page">
+              Страница {Math.floor(offset / HISTORY_PAGE_SIZE) + 1} из {Math.ceil(history.total / HISTORY_PAGE_SIZE)}
             </span>
             <Button
-              disabled={offset + 20 >= history.total}
+              disabled={offset + HISTORY_PAGE_SIZE >= history.total}
               variant="outline"
-              onClick={() => setOffset((n) => n + 20)}
+              onClick={() => setOffset((value) => value + HISTORY_PAGE_SIZE)}
             >
-              Далее
+              Далее <Icon name="arrow" size={16} />
             </Button>
-          </div>
+          </nav>
         )}
       </section>
     </div>

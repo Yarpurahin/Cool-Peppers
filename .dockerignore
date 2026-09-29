@@ -1,0 +1,17 @@
+.git
+.gitignore
+.github
+node_modules
+dist
+playwright-report
+test-results
+coverage
+.env
+.env.*
+!.env.example
+backups/*
+!backups/.gitkeep
+*.rar
+*.zip
+*.patch
+npm-debug.log*

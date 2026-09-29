@@ -209,6 +209,7 @@ test('reaction ports switch sides when a target moves; the start port is hidden'
       intent: 'continue',
       label: 'Продолжить',
       examples: [],
+      penalty: 0, feedback: '',
       nextNodeId: 'node_2',
     },
   ];
@@ -248,10 +249,14 @@ test('creation form recovers its fields and fits narrow screens; metadata and ac
 }) => {
   await loginAdmin(page);
   await page.goto('/admin/scenarios');
-  await page.getByLabel('Основа сценария').selectOption('');
+  await page.getByRole('combobox', { name: 'Основа сценария' }).click();
+  await page.getByRole('option', { name: 'Пустой сценарий', exact: true }).click();
   await page.getByLabel('Название сценария', { exact: true }).fill('Мобильный сценарий');
   await page.reload();
-  await expect(page.getByLabel('Основа сценария')).toHaveValue('');
+  await expect(page.getByRole('combobox', { name: 'Основа сценария' })).toHaveAttribute(
+    'value',
+    '',
+  );
   await expect(page.getByLabel('Название сценария', { exact: true })).toHaveValue(
     'Мобильный сценарий',
   );
@@ -304,6 +309,7 @@ test('maker imports Arena JSON from settings and keeps the database scenario id'
       intent: 'continue_discussion',
       label: 'Продолжить',
       examples: ['Продолжим'],
+      penalty: 0, feedback: 'Продолжает обсуждение.',
       endingId: 'json_ending',
     },
   ];

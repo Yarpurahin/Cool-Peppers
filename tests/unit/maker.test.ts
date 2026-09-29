@@ -7,12 +7,7 @@ import {
   answerQuestion,
   questionText,
 } from '../../src/features/negotiation/model/engine.ts';
-import {
-  createBlankDefinition,
-  fromPreview,
-  toMakerDefinition,
-  toRuntimeDefinition,
-} from '../../src/features/maker/model/adapter.ts';
+import { createBlankDefinition } from '../../src/features/maker/model/adapter.ts';
 import { compileMaker, startMaker, submitIntent } from '../../src/features/maker/model/engine.ts';
 import { validateMaker } from '../../src/features/maker/model/validation.ts';
 import {
@@ -26,7 +21,7 @@ import {
 } from '../../src/features/maker/model/commands.ts';
 import { scenarios } from '../../src/data/scenarios.ts';
 import { documentSchema, normalizeDocument } from '../../src/types/validation.ts';
-import type { MakerDocument, MakerDraft } from '../../src/features/maker/model/types.ts';
+import type { MakerDefinition, MakerDocument, MakerDraft } from '../../src/features/maker/model/types.ts';
 import {
   createScenarioFile,
   parseScenarioFile,
@@ -50,6 +45,7 @@ function fixture(): MakerDocument {
       intent: 'salary_offer',
       label: 'Назвать сумму',
       examples: ['Около 200 тысяч'],
+      penalty: 0, feedback: 'Конкретный ориентир.',
       endingId: 'agreement',
     },
   ];
@@ -60,25 +56,21 @@ function fixture(): MakerDocument {
   };
 }
 
-test('every built-in preview can be compiled into a playable template', () => {
-  for (const preview of scenarios) {
-    const definition =
-      preview.id === employmentScenario.metadata.id
-        ? toMakerDefinition(employmentScenario)
-        : fromPreview(preview);
-    assert.deepEqual(validateMaker(definition), []);
-    const engine = compileMaker(definition);
-    const attempt = startMaker(engine, `template-${preview.id}`, now);
-    assert.equal(attempt.status, 'in-progress');
-    assert.equal(attempt.currentNodeId, definition.startNodeId);
-  }
+test('built-in scenario uses the same canonical maker graph as authored scenarios', () => {
+  assert.deepEqual(validateMaker(employmentScenario), []);
+  const engine = compileMaker(employmentScenario);
+  const attempt = startMaker(engine, 'template-terms', now);
+  assert.equal(attempt.status, 'in-progress');
+  if (attempt.status === 'in-progress') assert.equal(attempt.currentNodeId, employmentScenario.startNodeId);
+  assert.equal(scenarios[0].id, employmentScenario.metadata.id);
 });
 
-test('adapter preserves all legacy paths, history, penalties and contextual replies', () => {
+test('maker engine and negotiation runtime traverse the same canonical graph', () => {
   const original = structuredClone(employmentScenario);
-  const legacy = compileScenario(employmentScenario);
-  const adapted = compileMaker(toMakerDefinition(employmentScenario));
-  assert.deepEqual(validateMaker(adapted.definition), []);
+  const withoutEarlyExit: MakerDefinition = structuredClone(employmentScenario) as MakerDefinition;
+  withoutEarlyExit.settings.penalty.enabled = false;
+  const direct = compileScenario(withoutEarlyExit);
+  const maker = compileMaker(withoutEarlyExit);
   let endings = 0;
   function walk(a: ReturnType<typeof startAttempt>, b: typeof a) {
     assert.deepEqual(a, b);
@@ -86,25 +78,18 @@ test('adapter preserves all legacy paths, history, penalties and contextual repl
       endings++;
       return;
     }
-    const node = legacy.nodes.get(a.currentNodeId)!;
-    assert.equal(
-      questionText(node, a),
-      questionText(adapted.runtime.nodes.get(a.currentNodeId)!, b),
-    );
-    for (const answer of node.answers) {
-      const reaction = adapted.definition.nodes
-        .find((n) => n.id === node.id)!
-        .reactions.find((r) => r.id === answer.id)!;
+    const node = direct.nodes.get(a.currentNodeId)!;
+    assert.equal(questionText(node, a), questionText(maker.runtime.nodes.get(a.currentNodeId)!, b));
+    for (const reaction of node.reactions) {
       walk(
-        answerQuestion(legacy, a, node.id, answer.id, now),
-        submitIntent(adapted, b, node.id, reaction.intent, now),
+        answerQuestion(direct, a, node.id, reaction.id, now),
+        submitIntent(maker, b, node.id, reaction.intent, now),
       );
     }
   }
-  walk(startAttempt(legacy, 'same-attempt', now), startMaker(adapted, 'same-attempt', now));
+  walk(startAttempt(direct, 'same-attempt', now), startMaker(maker, 'same-attempt', now));
   assert.equal(endings, 180);
   assert.deepEqual(employmentScenario, original);
-  assert.deepEqual(toMakerDefinition(employmentScenario), toMakerDefinition(employmentScenario));
 });
 
 test('intent controls transitions independent of label, examples and canvas position', () => {
@@ -155,6 +140,7 @@ test('cycles with exits are valid, closed loops fail, unreachable blocks are war
     intent: 'ask_again',
     label: 'Уточнить',
     examples: [],
+    penalty: 0, feedback: '',
     nextNodeId: 'node_1',
   });
   const engine = compileMaker(doc.definition);
@@ -228,17 +214,17 @@ test('auto layout keeps converging branches around their shared destination', ()
   addBlock(doc, 'node', { x: 0, y: 0 }, 'merge');
   const start = doc.definition.nodes[0];
   start.reactions = [
-    { id: 'to_upper', intent: 'upper', label: 'Верхняя ветка', examples: [], nextNodeId: 'upper' },
-    { id: 'to_lower', intent: 'lower', label: 'Нижняя ветка', examples: [], nextNodeId: 'lower' },
+    { id: 'to_upper', intent: 'upper', label: 'Верхняя ветка', examples: [], penalty: 0, feedback: '', nextNodeId: 'upper' },
+    { id: 'to_lower', intent: 'lower', label: 'Нижняя ветка', examples: [], penalty: 0, feedback: '', nextNodeId: 'lower' },
   ];
   doc.definition.nodes.find((node) => node.id === 'upper')!.reactions = [
-    { id: 'upper_merge', intent: 'upper_merge', label: 'Дальше', examples: [], nextNodeId: 'merge' },
+    { id: 'upper_merge', intent: 'upper_merge', label: 'Дальше', examples: [], penalty: 0, feedback: '', nextNodeId: 'merge' },
   ];
   doc.definition.nodes.find((node) => node.id === 'lower')!.reactions = [
-    { id: 'lower_merge', intent: 'lower_merge', label: 'Дальше', examples: [], nextNodeId: 'merge' },
+    { id: 'lower_merge', intent: 'lower_merge', label: 'Дальше', examples: [], penalty: 0, feedback: '', nextNodeId: 'merge' },
   ];
   doc.definition.nodes.find((node) => node.id === 'merge')!.reactions = [
-    { id: 'finish', intent: 'finish', label: 'Финиш', examples: [], endingId: 'agreement' },
+    { id: 'finish', intent: 'finish', label: 'Финиш', examples: [], penalty: 0, feedback: '', endingId: 'agreement' },
   ];
   const positions = layoutGraph(doc.definition);
   assert.ok(positions.upper.x === positions.lower.x);
@@ -247,10 +233,16 @@ test('auto layout keeps converging branches around their shared destination', ()
   assert.ok(positions.merge.y < Math.max(positions.upper.y, positions.lower.y));
 });
 
-test('new maker reactions do not invent explanatory feedback for the result screen', () => {
+test('new maker reactions start with a neutral penalty and feedback', () => {
   const doc = fixture();
-  const runtime = toRuntimeDefinition(doc.definition);
-  assert.equal(runtime.nodes[0].answers[0].feedback, '');
+  doc.definition.nodes[0].reactions = [];
+  const reaction = addReaction(doc.definition, 'node_1')!;
+  reaction.endingId = 'agreement';
+  assert.equal(reaction.penalty, 0);
+  assert.equal(reaction.feedback, '');
+  const runtime = compileScenario(doc.definition);
+  assert.equal(runtime.nodes.get('node_1')!.reactions[0].feedback, '');
+  assert.equal(runtime.nodes.get('node_1')!.reactions[0].penalty, 0);
 });
 
 
@@ -287,12 +279,57 @@ test('scenario JSON importer also accepts a raw schemaVersion 2 definition', () 
     revision: 1,
     publishedVersion: null,
   };
-  const definition = structuredClone(sourceDefinitionForImport());
+  const definition = toLegacyV2(sourceDefinitionForImport());
   const imported = parseScenarioFile(definition, current);
   assert.equal(imported.source, 'definition');
   assert.equal(imported.document.definition.metadata.id, current.definition.metadata.id);
   assert.equal(imported.document.definition.metadata.title, definition.metadata.title);
 });
+
+
+test('old Arena assessment fields are normalized at the import boundary', () => {
+  const currentDocument = fixture();
+  const current: MakerDraft = {
+    ...currentDocument,
+    revision: 1,
+    publishedVersion: null,
+  };
+  const old = toLegacyV2(sourceDefinitionForImport());
+  const reaction = old.nodes[0].reactions[0];
+  delete reaction.evaluation;
+  reaction.legacy = { penalty: 2, feedback: 'Старое пояснение' };
+  delete old.settings.feedbackMode;
+  old.settings.legacyFailure = { rule: 'half-all-questions', endingId: 'agreement' };
+
+  const imported = parseScenarioFile(old, current);
+  const normalized = imported.document.definition;
+  assert.equal(normalized.nodes[0].reactions[0].penalty, 2);
+  assert.equal(normalized.nodes[0].reactions[0].feedback, 'Старое пояснение');
+  assert.equal(normalized.settings.feedbackMode, 'summary');
+  assert.equal(normalized.settings.penalty.enabled, true);
+  assert.equal(normalized.settings.penalty.failureEndingId, 'agreement');
+  assert.equal('legacy' in normalized.nodes[0].reactions[0], false);
+  assert.equal('legacyFailure' in normalized.settings, false);
+});
+
+
+function toLegacyV2(source: ReturnType<typeof sourceDefinitionForImport>): any {
+  const definition = structuredClone(source) as any;
+  definition.schemaVersion = 2;
+  for (const node of definition.nodes) {
+    for (const reaction of node.reactions) {
+      reaction.evaluation = {
+        grade: reaction.penalty === 0 ? 'strong' : reaction.penalty === 1 ? 'weak' : 'critical',
+        penalty: reaction.penalty,
+        feedback: reaction.feedback,
+      };
+      delete reaction.penalty;
+      delete reaction.feedback;
+    }
+  }
+  delete definition.settings.penalty;
+  return definition;
+}
 
 function sourceDefinitionForImport() {
   const definition = fixture().definition;

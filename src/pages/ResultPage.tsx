@@ -7,19 +7,19 @@ import { useNegotiation } from '../features/negotiation/NegotiationProvider.tsx'
 import { toResultView } from '../features/negotiation/presentation.ts';
 import { ResultView } from '../features/negotiation/ui/ResultView.tsx';
 import { FeedbackForm } from '../features/negotiation/ui/FeedbackForm.tsx';
-import { DemoResultPage } from '../features/negotiation/ui/DemoResultPage.tsx';
 import { ErrorPage } from './ErrorPage.tsx';
+import { RewardPanel } from '../features/gamification/RewardPanel.tsx';
 
 export function ResultPage() {
   const { scenarioId } = useParams();
-  const { findNegotiation, findScenario } = useCatalog();
+  const { findNegotiation } = useCatalog();
   if (findNegotiation(scenarioId))
     return (
       <RequireAuth>
         <ActiveResult id={scenarioId!} key={scenarioId} />
       </RequireAuth>
     );
-  return findScenario(scenarioId) ? <DemoResultPage /> : <ErrorPage />;
+  return <ErrorPage />;
 }
 function ActiveResult({ id }: { id: string }) {
   const { entries, restart, saveFeedback, loading, error: loadError, reload } = useNegotiation();
@@ -61,6 +61,7 @@ function ActiveResult({ id }: { id: string }) {
           : undefined
       }
       notice={error ? <p role="alert">{error}</p> : undefined}
+      reward={value.reward ? <RewardPanel reward={value.reward} /> : undefined}
       feedback={
         scenario.definition.settings.collectFeedback ? (
           <FeedbackForm
@@ -69,7 +70,6 @@ function ActiveResult({ id }: { id: string }) {
             caption="Отзыв сохранится в вашем аккаунте"
             onSubmit={async (input) => {
               await saveFeedback(attempt.id, input);
-              return 'Спасибо! Отзыв сохранён.';
             }}
           />
         ) : undefined

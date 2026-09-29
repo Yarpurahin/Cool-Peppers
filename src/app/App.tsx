@@ -4,11 +4,11 @@ import { Component } from 'react';
 import type { ReactNode } from 'react';
 import { ErrorPage } from '../pages/ErrorPage.tsx';
 import { BrowserRouter, useLocation } from 'react-router-dom';
-import { DemoProvider } from './DemoProvider.tsx';
 import { AppRoutes } from '../routes/AppRoutes.tsx';
 import { NegotiationProvider } from '../features/negotiation/NegotiationProvider.tsx';
 import { DataProvider, useCatalog } from './DataProvider.tsx';
 import { RouteEffects } from '../routes/RouteEffects.tsx';
+import { GamificationProvider } from '../features/gamification/GamificationProvider.tsx';
 
 class RenderBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
@@ -23,11 +23,13 @@ function SessionApp() {
   const location = useLocation();
   const { user } = useCatalog();
   return (
-    <NegotiationProvider key={user?.id ?? 'guest'}>
-      <RenderBoundary key={location.pathname}>
-        <AppRoutes />
-      </RenderBoundary>
-    </NegotiationProvider>
+    <GamificationProvider key={user?.id ?? 'guest'}>
+      <NegotiationProvider>
+        <RenderBoundary key={location.pathname}>
+          <AppRoutes />
+        </RenderBoundary>
+      </NegotiationProvider>
+    </GamificationProvider>
   );
 }
 
@@ -35,12 +37,10 @@ export function AppContent() {
   return (
     <ThemeProvider>
       <ServiceNotice />
-      <DemoProvider>
-        <DataProvider>
-          <RouteEffects />
-          <SessionApp />
-        </DataProvider>
-      </DemoProvider>
+      <DataProvider>
+        <RouteEffects />
+        <SessionApp />
+      </DataProvider>
     </ThemeProvider>
   );
 }

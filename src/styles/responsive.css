@@ -1200,3 +1200,35 @@
     background: var(--tone-soft, #fffefb);
   }
 }
+
+@media (max-width: 1000px) {
+  .achievement-admin-row { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .achievement-admin-reach { grid-column: 2; text-align: left; display: flex; align-items: baseline; gap: 6px; }
+  .achievement-admin-actions { grid-column: 3; grid-row: 1 / span 2; flex-direction: column; align-items: stretch; }
+}
+@media (max-width: 900px) {
+  .gamification-hero { grid-template-columns: auto minmax(0, 1fr); }
+  .weekly-goal-card { grid-column: 1 / -1; }
+  .gamification-columns { grid-template-columns: 1fr; }
+  .reward-breakdown { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 620px) {
+  .gamification-hero { grid-template-columns: 1fr; padding: 21px; }
+  .gamification-level-mark { width: 48px; height: 48px; }
+  .gamification-level-line,
+  .gamification-progress-copy,
+  .reward-panel-heading,
+  .reward-metrics { align-items: flex-start; flex-direction: column; }
+  .achievement-grid { grid-template-columns: 1fr; }
+  .mastery-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .mastery-row > small { grid-column: 1 / -1; }
+  .reward-metrics { display: grid; grid-template-columns: 1fr; }
+  .reward-metric { width: 100%; }
+  .reward-breakdown { grid-template-columns: 1fr; }
+  .achievement-admin-row { grid-template-columns: auto minmax(0, 1fr); padding: 16px; }
+  .achievement-admin-reach,
+  .achievement-admin-actions { grid-column: 2; }
+  .achievement-admin-actions { grid-row: auto; flex-direction: row; flex-wrap: wrap; }
+  .achievement-dialog > form { padding: 20px; }
+  .achievement-rule-fields { grid-template-columns: 1fr; }
+}

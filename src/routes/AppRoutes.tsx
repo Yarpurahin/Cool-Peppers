@@ -1,4 +1,4 @@
-import { Route, Routes, Outlet, useParams } from 'react-router-dom';
+import { Navigate, Route, Routes, Outlet, useParams } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import { Layout } from '../components/layout/Layout.tsx';
 import { AdminLayout } from '../components/admin/AdminLayout.tsx';
@@ -22,6 +22,8 @@ import { AttemptPage } from '../pages/AttemptPage.tsx';
 import { AboutPage } from '../pages/AboutPage.tsx';
 import { ContactPage } from '../pages/ContactPage.tsx';
 import { AdminMessagesPage } from '../pages/AdminMessagesPage.tsx';
+import { AdminReviewsPage } from '../pages/AdminReviewsPage.tsx';
+import { AdminAchievementsPage } from '../pages/AdminAchievementsPage.tsx';
 
 // Unknown scenario IDs receive a genuine not-found screen, never another scenario.
 function ValidScenario() {
@@ -83,18 +85,12 @@ export function AppRoutes() {
             <Route index element={<AdminDashboardPage />} />
             <Route path="accounts" element={<AdminAccountsPage />} />
             <Route path="messages" element={<AdminMessagesPage />} />
+            <Route path="reviews" element={<AdminReviewsPage />} />
+            <Route path="achievements" element={<AdminAchievementsPage />} />
             <Route path="scenarios" element={<EditorListPage />} />
           </Route>
 
-          {/* Legacy editor URLs are intentionally kept while the admin area is introduced. */}
-          <Route
-            path="editor"
-            element={
-              <RequireAdmin>
-                <EditorListPage />
-              </RequireAdmin>
-            }
-          />
+          <Route path="editor" element={<Navigate to="/admin/scenarios" replace />} />
         </Route>
         {/* The maker has its own full-height workspace, matching the design reference. */}
         <Route

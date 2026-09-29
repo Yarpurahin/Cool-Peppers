@@ -30,6 +30,14 @@ export function AdminLayout() {
             <Icon name="message" size={18} />
             <span>Обращения</span>
           </NavLink>
+          <NavLink to="/admin/reviews">
+            <Icon name="star" size={18} />
+            <span>Отзывы</span>
+          </NavLink>
+          <NavLink to="/admin/achievements">
+            <Icon name="award" size={18} />
+            <span>Достижения</span>
+          </NavLink>
           {user?.isSuperAdmin && (
             <NavLink to="/admin/accounts">
               <Icon name="shield" size={18} />

@@ -86,6 +86,8 @@ export function ScenarioBuilderPage() {
   const [selection, setSelection] = useState<Selection>({ type: 'main' });
   const [inspectorOpen, setInspectorOpen] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [nodesCollapsed, setNodesCollapsed] = useState(false);
+  const [endingsCollapsed, setEndingsCollapsed] = useState(false);
   const [checked, setChecked] = useState(false);
   const [validationOpen, setValidationOpen] = useState(false);
   const [testDefinition, setTestDefinition] = useState<MakerDefinition | null>(null);
@@ -453,7 +455,7 @@ export function ScenarioBuilderPage() {
         ? 'Arena JSON'
         : imported.source === 'exported-draft'
           ? 'старый экспорт черновика'
-          : 'описание schemaVersion 2';
+          : 'описание сценария';
 
     if (
       !window.confirm(
@@ -481,7 +483,7 @@ export function ScenarioBuilderPage() {
     });
   }
   function showIssue(issue: GraphIssue) {
-    if (issue.code === 'legacy-failure' || issue.code === 'start') {
+    if (issue.code === 'failure-rule' || issue.code === 'start') {
       select({ type: 'settings' });
       return;
     }
@@ -782,69 +784,93 @@ export function ScenarioBuilderPage() {
               </button>
             ))}
           </nav>
-          <div className="maker-section-heading">
-            <h2>Диалог</h2>
+          <button
+            type="button"
+            className="maker-section-heading maker-section-toggle"
+            aria-expanded={!nodesCollapsed}
+            onClick={() => setNodesCollapsed((value) => !value)}
+          >
+            <span className="maker-section-title">
+              <Icon name="chevron" size={14} className={nodesCollapsed ? '' : 'is-open'} />
+              <strong>Реплики</strong>
+            </span>
             <span>{draft.definition.nodes.length}</span>
-          </div>
-          <label className="maker-search">
-            <Icon name="search" size={14} />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              aria-label="Поиск реплики"
-              placeholder="Найти реплику"
-            />
-          </label>
-          <div className="maker-node-list">
-            {filteredNodes.map((n) => (
+          </button>
+          {!nodesCollapsed && (
+            <>
+              <label className="maker-search">
+                <Icon name="search" size={14} />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  aria-label="Поиск реплики"
+                  placeholder="Найти реплику"
+                />
+              </label>
+              <div className="maker-node-list">
+                {filteredNodes.map((n) => (
+                  <button
+                    type="button"
+                    key={n.id}
+                    aria-pressed={selectedId === n.id}
+                    className={selectedId === n.id ? 'is-active' : ''}
+                    onClick={() => selectAndFocus({ type: 'node', id: n.id })}
+                  >
+                    <span>{String(draft.definition.nodes.indexOf(n) + 1).padStart(2, '0')}</span>
+                    <strong>{n.title || 'Без названия'}</strong>
+                    {draft.definition.startNodeId === n.id && <i title="Старт">●</i>}
+                  </button>
+                ))}
+                {!filteredNodes.length && <p className="maker-hint">Реплики не найдены.</p>}
+              </div>
               <button
                 type="button"
-                key={n.id}
-                aria-pressed={selectedId === n.id}
-                className={selectedId === n.id ? 'is-active' : ''}
-                onClick={() => selectAndFocus({ type: 'node', id: n.id })}
+                className="maker-dashed-button"
+                disabled={busy || draft.definition.nodes.length >= 500}
+                onClick={() => add('node')}
               >
-                <span>{String(draft.definition.nodes.indexOf(n) + 1).padStart(2, '0')}</span>
-                <strong>{n.title || 'Без названия'}</strong>
-                {draft.definition.startNodeId === n.id && <i title="Старт">●</i>}
+                + Добавить реплику
               </button>
-            ))}
-            {!filteredNodes.length && <p className="maker-hint">Реплики не найдены.</p>}
-          </div>
+            </>
+          )}
           <button
             type="button"
-            className="maker-dashed-button"
-            disabled={busy || draft.definition.nodes.length >= 500}
-            onClick={() => add('node')}
+            className="maker-section-heading maker-section-toggle"
+            aria-expanded={!endingsCollapsed}
+            onClick={() => setEndingsCollapsed((value) => !value)}
           >
-            + Добавить реплику
-          </button>
-          <div className="maker-section-heading">
-            <h2>Финалы</h2>
+            <span className="maker-section-title">
+              <Icon name="chevron" size={14} className={endingsCollapsed ? '' : 'is-open'} />
+              <strong>Финалы</strong>
+            </span>
             <span>{draft.definition.endings.length}</span>
-          </div>
-          <div className="maker-node-list">
-            {draft.definition.endings.map((e) => (
+          </button>
+          {!endingsCollapsed && (
+            <>
+              <div className="maker-node-list">
+                {draft.definition.endings.map((e) => (
+                  <button
+                    type="button"
+                    key={e.id}
+                    aria-pressed={selectedId === e.id}
+                    className={selectedId === e.id ? 'is-active' : ''}
+                    onClick={() => selectAndFocus({ type: 'ending', id: e.id })}
+                  >
+                    <Icon name="flag" size={15} />
+                    <strong>{e.title || 'Без названия'}</strong>
+                  </button>
+                ))}
+              </div>
               <button
                 type="button"
-                key={e.id}
-                aria-pressed={selectedId === e.id}
-                className={selectedId === e.id ? 'is-active' : ''}
-                onClick={() => selectAndFocus({ type: 'ending', id: e.id })}
+                className="maker-dashed-button"
+                disabled={busy || draft.definition.endings.length >= 100}
+                onClick={() => add('ending')}
               >
-                <Icon name="flag" size={15} />
-                <strong>{e.title || 'Без названия'}</strong>
+                + Добавить финал
               </button>
-            ))}
-          </div>
-          <button
-            type="button"
-            className="maker-dashed-button"
-            disabled={busy || draft.definition.endings.length >= 100}
-            onClick={() => add('ending')}
-          >
-            + Добавить финал
-          </button>
+            </>
+          )}
           <p className="maker-sidebar-hint">
             Потяните точку реакции к карточке или в пустое место, чтобы продолжить ветку.
           </p>

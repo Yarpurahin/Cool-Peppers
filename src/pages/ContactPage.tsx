@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { api, errorMessage } from '../api/client.ts';
 import { Button, ButtonLink } from '../components/ui/Button.tsx';
+import { Select } from '../components/ui/Select.tsx';
 import { AccordionItem } from '../components/ui/AccordionItem.tsx';
 import { Icon } from '../components/ui/Icon.tsx';
 import { contactSchema, contactTopics, type ContactInput } from '../types/contact.ts';
@@ -154,7 +155,7 @@ export function ContactPage() {
                     setValues(emptyForm);
                     submission.current = null;
                     requestAnimationFrame(() =>
-                      form.current?.querySelector<HTMLSelectElement>('select')?.focus(),
+                      form.current?.querySelector<HTMLElement>('#contact-topic')?.focus(),
                     );
                   }}
                 >
@@ -190,14 +191,12 @@ export function ContactPage() {
                   <legend className="sr-only">Ваше обращение</legend>
                   <div className="field">
                     <label htmlFor="contact-topic">О чём хотите рассказать?</label>
-                    <select
+                    <Select
                       id="contact-topic"
                       name="topic"
                       required
                       value={values.topic}
-                      onChange={(event) =>
-                        update('topic', event.target.value as ContactInput['topic'])
-                      }
+                      onValueChange={(value) => update('topic', value as ContactInput['topic'])}
                       aria-invalid={Boolean(errors.topic)}
                       aria-describedby={errors.topic ? 'contact-topic-error' : undefined}
                     >
@@ -206,7 +205,7 @@ export function ContactPage() {
                           {label}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                     {errors.topic && (
                       <p className="contact-field-error" id="contact-topic-error">
                         {errors.topic}

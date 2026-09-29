@@ -3,9 +3,15 @@ import type { Pool, PoolClient } from 'pg';
 import { config } from './config.ts';
 
 export function createPool(connectionString = config.databaseUrl): Pool {
-  if (!connectionString) throw new Error('Задайте DATABASE_URL в .env. См. README.md');
+  const hasPgEnvironment = Boolean(
+    process.env.PGHOST && process.env.PGDATABASE && process.env.PGUSER,
+  );
+  if (!connectionString && !hasPgEnvironment)
+    throw new Error(
+      'Задайте DATABASE_URL или переменные PGHOST, PGDATABASE и PGUSER. См. README.md',
+    );
   const pool = new pg.Pool({
-    connectionString,
+    ...(connectionString ? { connectionString } : {}),
     max: 10,
     connectionTimeoutMillis: 5000,
     statement_timeout: 15000,

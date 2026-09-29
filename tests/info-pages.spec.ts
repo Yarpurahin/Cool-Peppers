@@ -62,7 +62,8 @@ test('contact validates fields, preserves a failed draft, saves to the inbox and
   const email = `contact-${crypto.randomUUID()}@example.test`;
   await page.getByLabel('Email для ответа').fill(email);
   await page.getByLabel('Ваше сообщение', { exact: true }).fill(message);
-  await page.getByLabel('О чём хотите рассказать?').selectOption('idea');
+  await page.getByRole('combobox', { name: 'О чём хотите рассказать?' }).click();
+  await page.getByRole('option', { name: 'Идея или новый сценарий' }).click();
   await page.route(
     '**/api/contact',
     (route) =>
