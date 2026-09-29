@@ -1,11 +1,19 @@
 services:
+
+  # ==========================================================
+  # PostgreSQL
+  # ==========================================================
+
   postgres:
     image: postgres:17-alpine
 
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-arena}
       POSTGRES_USER: ${POSTGRES_USER:-arena}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5436}:5432"
 
     volumes:
       - arena_postgres:/var/lib/postgresql/data
@@ -27,6 +35,10 @@ services:
       - arena_internal
 
 
+  # ==========================================================
+  # Application
+  # ==========================================================
+
   app:
     build:
       context: .
@@ -38,13 +50,20 @@ services:
       API_HOST: 0.0.0.0
       API_PORT: 3001
 
+      # ВАЖНО:
+      # .env содержит DATABASE_URL для локального PostgreSQL.
+      # В Docker мы переопределяем его и подключаемся
+      # к сервису "postgres".
+      DATABASE_URL: postgresql://${POSTGRES_USER:-arena}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-arena}
+
+      # Оставляем также стандартные PG-переменные.
       PGHOST: postgres
       PGPORT: 5432
       PGDATABASE: ${POSTGRES_DB:-arena}
       PGUSER: ${POSTGRES_USER:-arena}
-      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
 
-      APP_ORIGIN: ${APP_ORIGIN:-http://localhost:3001,http://127.0.0.1:3001}
+      APP_ORIGIN: ${APP_ORIGIN}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
 
       ADMIN_NAME: ${ADMIN_NAME:-}
@@ -64,7 +83,7 @@ services:
           "CMD",
           "node",
           "-e",
-          "fetch('http://127.0.0.1:3001/api/health').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"
+          "fetch('http://127.0.0.1:3001/api/health').then(r => { if (!r.ok) process.exit(1); }).catch(() => process.exit(1))"
         ]
       interval: 10s
       timeout: 5s
@@ -77,8 +96,15 @@ services:
       - arena_internal
 
 
+  # ==========================================================
+  # Database backup
+  #
+  # docker compose --profile tools run --rm backup
+  # ==========================================================
+
   backup:
     image: postgres:17-alpine
+
     profiles:
       - tools
 
@@ -87,7 +113,7 @@ services:
       PGPORT: 5432
       PGDATABASE: ${POSTGRES_DB:-arena}
       PGUSER: ${POSTGRES_USER:-arena}
-      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
 
       BACKUP_NAME: ${BACKUP_NAME:-}
       BACKUP_OVERWRITE: ${BACKUP_OVERWRITE:-false}
@@ -108,8 +134,15 @@ services:
       - arena_internal
 
 
+  # ==========================================================
+  # Database restore
+  #
+  # docker compose --profile tools run --rm restore
+  # ==========================================================
+
   restore:
     image: postgres:17-alpine
+
     profiles:
       - tools
 
@@ -118,7 +151,7 @@ services:
       PGPORT: 5432
       PGDATABASE: ${POSTGRES_DB:-arena}
       PGUSER: ${POSTGRES_USER:-arena}
-      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
 
       BACKUP_FILE: ${BACKUP_FILE:-}
 
@@ -138,11 +171,18 @@ services:
       - arena_internal
 
 
+# ============================================================
+# Volumes
+# ============================================================
+
 volumes:
   arena_postgres:
-    name: cool_peppers_postgres
 
+
+# ============================================================
+# Networks
+# ============================================================
 
 networks:
   arena_internal:
-    name: cool_peppers_internal
+    driver: bridge

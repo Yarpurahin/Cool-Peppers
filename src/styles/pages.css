@@ -1888,7 +1888,7 @@
   border-radius: 10px;
   background: var(--sage);
   color: var(--green);
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 800;
 }
 .achievement-grid {
@@ -1906,7 +1906,7 @@
   border-radius: 13px;
   background: var(--surface);
 }
-.achievement-item.is-locked { opacity: 0.7; }
+.achievement-item.is-locked .achievement-icon { color: var(--muted); }
 .achievement-item.is-unlocked {
   border-color: color-mix(in srgb, var(--green) 38%, var(--line));
   background: color-mix(in srgb, var(--sage) 52%, var(--surface));
@@ -1921,7 +1921,7 @@
   background: var(--sage);
   color: var(--green);
 }
-.achievement-copy { min-width: 0; flex: 1; }
+.achievement-copy { min-width: 0; flex: 1; overflow-wrap: anywhere; }
 .achievement-title-row {
   display: flex;
   align-items: baseline;
@@ -1934,13 +1934,13 @@
   background: var(--sand);
   white-space: nowrap;
 }
-.achievement-item strong { display: block; font-size: 11px; }
+.achievement-item strong { display: block; font-size: 16px; line-height: 1.4; }
 .achievement-item p,
 .achievement-item small {
   display: block;
   margin-top: 4px;
   color: var(--muted);
-  font-size: 8px;
+  font-size: 12px;
   line-height: 1.55;
 }
 .achievement-progress-wrap { margin-top: 10px; }
@@ -1951,7 +1951,7 @@
   gap: 8px;
 }
 .achievement-progress-copy span,
-.achievement-progress-copy strong { font-size: 8px; color: var(--muted); }
+.achievement-progress-copy strong { font-size: 13px; color: var(--muted); }
 .achievement-progress-track { height: 5px; margin-top: 5px; background: var(--sage); }
 .achievement-progress-track > span { background: var(--green); }
 .mastery-list { display: grid; }

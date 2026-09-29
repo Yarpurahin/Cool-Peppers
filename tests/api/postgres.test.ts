@@ -6,6 +6,7 @@ import pg from 'pg';
 import { createApp } from '../../server/app.ts';
 import { migrate } from '../../server/migrate.ts';
 import { seed } from '../../server/seed.ts';
+import { deadlineScenario } from '../../src/features/negotiation/data/deadline.ts';
 import type { AttemptDetail, ScenarioDraft } from '../../src/types/api.ts';
 import type { MakerDraft } from '../../src/features/maker/model/types.ts';
 
@@ -715,6 +716,68 @@ test('PostgreSQL API integration', { timeout: 120000 }, async (t) => {
         );
       },
     );
+    await t.test('built-in publications are editable without a draft and seed preserves admin changes', async () => {
+      const deadlineId = deadlineScenario.metadata.id;
+      const list = await a.request('/editor');
+      assert.equal(list.status, 200);
+      for (const id of ['terms', deadlineId]) {
+        const item = list.data.find((row: { id: string }) => row.id === id);
+        assert.ok(item, `${id} must appear in scenario management`);
+        assert.equal(item.hasUnpublishedChanges, false);
+        assert.ok(item.publishedVersion);
+        assert.ok(item.title);
+        assert.ok(item.questionCount > 0);
+      }
+      assert.equal((await guest.request('/editor/terms')).status, 401);
+      const ordinary = actor();
+      await ordinary.request('/auth/register', 'POST', {
+        name: 'Участник', email: `shared-player-${randomUUID()}@example.test`, password,
+      });
+      assert.equal((await ordinary.request('/editor/terms')).status, 403);
+      assert.equal((await ordinary.request('/editor/terms/archive', 'POST')).status, 403);
+
+      const loaded = await a.request('/editor/terms');
+      assert.equal(loaded.status, 200);
+      const shared = loaded.data as MakerDraft;
+      assert.equal(shared.hasUnpublishedChanges, false);
+      assert.equal((await pool.query("SELECT 1 FROM scenario_drafts WHERE scenario_id = 'terms'")).rowCount, 0);
+      const oldVersion = shared.publishedVersion!;
+      const oldText = shared.definition.nodes[0].text;
+      shared.definition.nodes[0].text = 'Обновлённая реплика общего сценария';
+      const body = { preview: shared.preview, definition: shared.definition, revision: shared.revision };
+      const saved = await a.request('/editor/terms', 'PUT', body);
+      assert.equal(saved.status, 200);
+      assert.equal(saved.data.hasUnpublishedChanges, true);
+      assert.equal((await b.request('/editor/terms')).data.definition.nodes[0].text, shared.definition.nodes[0].text);
+      assert.equal((await b.request('/editor/terms', 'PUT', body)).status, 409);
+      const publicBefore = (await guest.request('/scenarios')).data.find((row: { preview: { id: string } }) => row.preview.id === 'terms');
+      assert.equal(publicBefore.definition.nodes[0].text, oldText);
+      await seed(pool);
+      assert.equal((await a.request('/editor/terms')).data.revision, saved.data.revision);
+
+      const published = await a.request('/editor/terms/publish', 'POST', { revision: saved.data.revision });
+      assert.equal(published.status, 200);
+      assert.equal(published.data.version, oldVersion + 1);
+      await seed(pool);
+      const afterSeed = (await a.request('/editor/terms')).data;
+      assert.equal(afterSeed.definition.nodes[0].text, shared.definition.nodes[0].text);
+      assert.equal(afterSeed.publishedVersion, published.data.version);
+      assert.equal(afterSeed.hasUnpublishedChanges, false);
+      assert.equal((await pool.query(
+        "SELECT definition FROM scenario_versions WHERE scenario_id = 'terms' AND version = $1", [oldVersion],
+      )).rows[0].definition.nodes[0].text, oldText);
+
+      assert.equal((await a.request('/editor/terms/archive', 'POST')).status, 204);
+      assert.equal((await a.request(`/editor/${deadlineId}`, 'DELETE')).status, 204);
+      await seed(pool);
+      const finalList = (await a.request('/editor')).data;
+      assert.ok(finalList.find((row: { id: string }) => row.id === 'terms').archivedAt);
+      assert.equal(finalList.some((row: { id: string }) => row.id === deadlineId), false);
+      assert.equal((await a.request(`/editor/${deadlineId}`)).status, 404);
+      assert.equal((await guest.request('/scenarios')).data.some(
+        (row: { preview: { id: string } }) => ['terms', deadlineId].includes(row.preview.id),
+      ), false);
+    });
     await t.test('logout revokes session and login restores persisted account data', async () => {
       assert.equal((await a.request('/auth/logout', 'POST')).status, 204);
       assert.equal((await a.request('/auth/me')).data, null);

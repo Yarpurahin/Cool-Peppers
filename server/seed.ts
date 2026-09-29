@@ -53,6 +53,17 @@ async function ensurePublishedScenario(
   const scenarioId = parsed.definition.metadata.id;
   await client.query('INSERT INTO scenarios(id) VALUES ($1) ON CONFLICT DO NOTHING', [scenarioId]);
 
+  const managed = await client.query(
+    `SELECT owner_id, archived_at, deleted_at,
+     EXISTS(SELECT 1 FROM scenario_drafts d WHERE d.scenario_id = scenarios.id) AS has_draft
+     FROM scenarios WHERE id = $1 FOR UPDATE`,
+    [scenarioId],
+  );
+  const scenario = managed.rows[0];
+  // Once an administrator manages a built-in scenario, seed must preserve
+  // their draft, publication and archive/deletion decisions across restarts.
+  if (scenario.owner_id || scenario.has_draft || scenario.archived_at || scenario.deleted_at) return;
+
   const latest = await client.query(
     `SELECT version, preview, definition FROM scenario_versions
      WHERE scenario_id = $1 ORDER BY version DESC LIMIT 1 FOR UPDATE`,

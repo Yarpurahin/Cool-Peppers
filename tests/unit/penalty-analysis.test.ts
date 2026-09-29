@@ -74,18 +74,28 @@ test('positive reachable penalty cycles are reported as unbounded', () => {
 test('published built-in scenarios receive stable graph-based recommendations', () => {
   const terms = analyzePenalty(employmentScenario);
   const deadline = analyzePenalty(deadlineScenario);
+  assert.equal(deadline.maxReachablePenalty, 7);
+  assert.equal(deadline.maxThresholdReachablePenalty, 5);
   assert.deepEqual(terms.recommendations, {
     strict: 1,
     recommended: 2,
     soft: 3,
-    range: { min: 2, max: 2 },
+    range: { min: 2, max: 3 },
   });
   assert.deepEqual(deadline.recommendations, {
     strict: 2,
     recommended: 3,
     soft: 4,
-    range: { min: 3, max: 3 },
+    range: { min: 3, max: 4 },
   });
   assert.equal(terms.current?.penaltyEndingReachable, true);
   assert.equal(deadline.current?.penaltyEndingReachable, true);
+  for (const definition of [employmentScenario, deadlineScenario, smallGraph()]) {
+    const range = analyzePenalty(definition).recommendations!.range;
+    for (let threshold = range.min; threshold <= range.max; threshold += 1) {
+      const check = checkPenaltyThreshold(definition, threshold);
+      assert.equal(check.penaltyEndingReachable, true);
+      assert.equal(check.normalEndingReachable, true);
+    }
+  }
 });

@@ -531,6 +531,7 @@
   outline-offset: -3px;
 }
 .maker-inspector {
+  container: maker-inspector / inline-size;
   width: 100%;
   background: var(--surface);
   border-left: 1px solid var(--line);
@@ -2166,9 +2167,12 @@
   border: 0;
 }
 .maker-penalty-choice label {
+  position: relative;
   display: grid;
+  align-content: space-between;
   gap: 5px;
   min-width: 0;
+  min-height: 64px;
   padding: 10px;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -2180,15 +2184,29 @@
   background: var(--sage);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--green) 20%, transparent);
 }
-.maker-penalty-choice input {
+.maker-penalty-choice label:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.maker-penalty-choice input[type='radio'] {
   position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  clip-path: inset(50%);
   opacity: 0;
   pointer-events: none;
 }
 .maker-penalty-choice span {
   color: var(--muted);
-  font-size: 9px;
-  line-height: 1.25;
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 .maker-penalty-choice strong {
   font-size: 15px;
@@ -2221,6 +2239,8 @@
   gap: 7px;
 }
 .maker-penalty-analysis > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
   display: grid;
   gap: 3px;
   padding: 10px;
@@ -2252,6 +2272,8 @@
 }
 .maker-threshold-presets button {
   display: grid;
+  min-width: 0;
+  overflow-wrap: anywhere;
   gap: 4px;
   padding: 10px 8px;
   border: 1px solid var(--line);
@@ -2266,7 +2288,8 @@
 }
 .maker-threshold-presets button span {
   color: var(--muted);
-  font-size: 8px;
+  font-size: 11px;
+  line-height: 1.4;
 }
 .maker-threshold-presets button strong {
   font-size: 14px;
@@ -2297,6 +2320,19 @@
 }
 .maker-threshold-status .maker-threshold-warning {
   color: var(--tone-orange, #b54228);
+}
+@container maker-inspector (max-width: 430px) {
+  .maker-penalty-choice,
+  .maker-threshold-presets {
+    grid-template-columns: 1fr;
+  }
+  .maker-penalty-choice label,
+  .maker-threshold-presets button {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    min-height: 44px;
+    gap: 12px;
+  }
 }
 @media (max-width: 700px) {
   .maker-penalty-choice,
