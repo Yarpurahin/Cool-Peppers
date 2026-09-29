@@ -157,7 +157,9 @@ function buildRecommendations(def: MakerDefinition, max: number): PenaltyRecomme
   const strict = nearest(candidates, Math.max(1, Math.round(max * 0.45)), (v) => v < recommended);
   const soft = nearest(candidates, Math.max(1, Math.round(max * 0.8)), (v) => v > recommended);
   const rangeCandidates = candidates.filter(
-    (value) => value >= Math.ceil(max * 0.5) && value <= Math.max(1, Math.floor(max * 0.75)),
+    // Round the upper bound up too: 75% of five points is a limit of four,
+    // not three. Reachability still filters out unsuitable thresholds.
+    (value) => value >= Math.ceil(max * 0.5) && value <= Math.ceil(max * 0.75),
   );
   const range = rangeCandidates.length
     ? { min: rangeCandidates[0], max: rangeCandidates.at(-1)! }

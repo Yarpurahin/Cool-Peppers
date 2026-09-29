@@ -5,7 +5,22 @@ import { Button } from '../../components/ui/Button.tsx';
 import { MasteryStars } from './MasteryStars.tsx';
 
 const SKILLS_PAGE_SIZE = 4;
-const ACHIEVEMENTS_PAGE_SIZE = 3;
+// Keep this breakpoint in sync with .achievement-grid in responsive.css.
+const ACHIEVEMENTS_MOBILE_QUERY = '(max-width: 620px)';
+
+function useAchievementsPageSize() {
+  const [mobile, setMobile] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia(ACHIEVEMENTS_MOBILE_QUERY).matches,
+  );
+  useEffect(() => {
+    const media = window.matchMedia(ACHIEVEMENTS_MOBILE_QUERY);
+    const update = () => setMobile(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+  return mobile ? 3 : 6;
+}
 
 function Pagination({
   page,
@@ -47,7 +62,8 @@ export function GamificationProfile({
   error: string;
 }) {
   const [skillsPage, setSkillsPage] = useState(0);
-  const [achievementsPage, setAchievementsPage] = useState(0);
+  const achievementsPageSize = useAchievementsPageSize();
+  const [achievementsOffset, setAchievementsOffset] = useState(0);
 
   const activeAchievements = useMemo(
     () => summary?.achievements.filter((item) => item.active || item.unlocked) ?? [],
@@ -57,10 +73,12 @@ export function GamificationProfile({
     const maxSkillsPage = Math.max(0, Math.ceil((summary?.skills.length ?? 0) / SKILLS_PAGE_SIZE) - 1);
     setSkillsPage((page) => Math.min(page, maxSkillsPage));
   }, [summary?.skills.length]);
+  const maxAchievementsPage = Math.max(0, Math.ceil(activeAchievements.length / achievementsPageSize) - 1);
+  // Keep the previously visible achievement on the page when the viewport changes.
+  const achievementsPage = Math.min(Math.floor(achievementsOffset / achievementsPageSize), maxAchievementsPage);
   useEffect(() => {
-    const maxPage = Math.max(0, Math.ceil(activeAchievements.length / ACHIEVEMENTS_PAGE_SIZE) - 1);
-    setAchievementsPage((page) => Math.min(page, maxPage));
-  }, [activeAchievements.length]);
+    setAchievementsOffset(achievementsPage * achievementsPageSize);
+  }, [achievementsPage, achievementsPageSize]);
 
   if (loading && !summary)
     return <section className="panel gamification-loading" role="status">Загружаем прогресс…</section>;
@@ -72,8 +90,8 @@ export function GamificationProfile({
   const weeklyPercent = Math.round((weekly / summary.weeklyGoal.target) * 100);
   const visibleSkills = summary.skills.slice(skillsPage * SKILLS_PAGE_SIZE, (skillsPage + 1) * SKILLS_PAGE_SIZE);
   const visibleAchievements = activeAchievements.slice(
-    achievementsPage * ACHIEVEMENTS_PAGE_SIZE,
-    (achievementsPage + 1) * ACHIEVEMENTS_PAGE_SIZE,
+    achievementsPage * achievementsPageSize,
+    (achievementsPage + 1) * achievementsPageSize,
   );
 
   return (
@@ -143,7 +161,7 @@ export function GamificationProfile({
               </article>
             ))}
           </div>
-          <Pagination page={achievementsPage} total={activeAchievements.length} pageSize={ACHIEVEMENTS_PAGE_SIZE} onPage={setAchievementsPage} label="Страницы достижений" />
+          <Pagination page={achievementsPage} total={activeAchievements.length} pageSize={achievementsPageSize} onPage={(page) => setAchievementsOffset(page * achievementsPageSize)} label="Страницы достижений" />
         </section>
       </div>
 

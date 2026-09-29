@@ -69,14 +69,28 @@ function validateGraph(document: AuthoringDocument) {
     throw new ApiError(422, error instanceof Error ? error.message : 'Некорректный граф сценария');
   }
 }
-async function ownedScenario(db: Database, id: string, ownerId: string, lock = false) {
+async function editableScenario(db: Database, id: string, ownerId: string, lock = false) {
   const row = await db.query(
-    `SELECT * FROM scenarios WHERE id = $1 AND owner_id = $2 AND deleted_at IS NULL${lock ? ' FOR UPDATE' : ''}`,
+    `SELECT * FROM scenarios WHERE id = $1
+     AND (owner_id = $2 OR (owner_id IS NULL AND published_version IS NOT NULL))
+     AND deleted_at IS NULL${lock ? ' FOR UPDATE' : ''}`,
     [id, ownerId],
   );
   if (!row.rowCount)
     throw new ApiError(404, 'Сценарий не найден или недоступен для редактирования');
   return row.rows[0];
+}
+
+// The caller holds the scenario row lock. Published imports and built-ins may
+// have no draft yet; create one only when saving or publishing, never on GET.
+async function ensureScenarioDraft(db: Database, id: string) {
+  await db.query(
+    `INSERT INTO scenario_drafts(scenario_id, preview, definition)
+     SELECT s.id, v.preview, v.definition FROM scenarios s
+     JOIN scenario_versions v ON (v.scenario_id, v.version) = (s.id, s.published_version)
+     WHERE s.id = $1 ON CONFLICT (scenario_id) DO NOTHING`,
+    [id],
+  );
 }
 
 export function createApp(pool: Pool) {
@@ -430,13 +444,15 @@ export function createApp(pool: Pool) {
   app.get('/api/editor', async (_req, res) => {
     const result = await pool.query(
       `SELECT s.id, s.published_version AS "publishedVersion", s.archived_at AS "archivedAt",
-      s.created_at AS "createdAt", s.updated_at AS "updatedAt", d.revision,
-      coalesce(d.definition #>> '{metadata,title}', d.preview->>'title') AS title,
-      coalesce(jsonb_array_length(d.definition->'nodes'), 0)::int AS "questionCount",
-      (v.version IS NULL OR d.preview IS DISTINCT FROM v.preview OR d.definition IS DISTINCT FROM v.definition) AS "hasUnpublishedChanges"
-      FROM scenarios s JOIN scenario_drafts d ON d.scenario_id = s.id
+      s.created_at AS "createdAt", s.updated_at AS "updatedAt", coalesce(d.revision, 1) AS revision,
+      coalesce(d.definition #>> '{metadata,title}', d.preview->>'title', v.definition #>> '{metadata,title}', v.preview->>'title') AS title,
+      coalesce(jsonb_array_length(coalesce(d.definition, v.definition)->'nodes'), 0)::int AS "questionCount",
+      (v.version IS NULL OR (d.scenario_id IS NOT NULL AND (d.preview IS DISTINCT FROM v.preview OR d.definition IS DISTINCT FROM v.definition))) AS "hasUnpublishedChanges"
+      FROM scenarios s LEFT JOIN scenario_drafts d ON d.scenario_id = s.id
       LEFT JOIN scenario_versions v ON v.scenario_id = s.id AND v.version = s.published_version
-      WHERE s.owner_id = $1 AND s.deleted_at IS NULL ORDER BY s.updated_at DESC`,
+      WHERE (s.owner_id = $1 OR (s.owner_id IS NULL AND s.published_version IS NOT NULL))
+      AND s.deleted_at IS NULL AND (d.scenario_id IS NOT NULL OR v.version IS NOT NULL)
+      ORDER BY s.updated_at DESC, s.id`,
       [admin(res).id],
     );
     res.json(result.rows);
@@ -493,16 +509,18 @@ export function createApp(pool: Pool) {
   });
   app.get('/api/editor/:id', async (req, res) => {
     const id = idSchema.parse(req.params.id);
-    const scenario = await ownedScenario(pool, id, admin(res).id);
+    const scenario = await editableScenario(pool, id, admin(res).id);
     const draft = await pool.query(
-      `SELECT d.preview, d.definition, d.editor, d.revision,
-       (v.version IS NULL OR d.preview IS DISTINCT FROM v.preview OR d.definition IS DISTINCT FROM v.definition) AS "hasUnpublishedChanges"
-       FROM scenario_drafts d JOIN scenarios s ON s.id = d.scenario_id
+      `SELECT coalesce(d.preview, v.preview) AS preview, coalesce(d.definition, v.definition) AS definition,
+       d.editor, coalesce(d.revision, 1) AS revision,
+       (v.version IS NULL OR (d.scenario_id IS NOT NULL AND (d.preview IS DISTINCT FROM v.preview OR d.definition IS DISTINCT FROM v.definition))) AS "hasUnpublishedChanges"
+       FROM scenarios s LEFT JOIN scenario_drafts d ON d.scenario_id = s.id
        LEFT JOIN scenario_versions v ON v.scenario_id = s.id AND v.version = s.published_version
-       WHERE d.scenario_id = $1`,
+       WHERE s.id = $1`,
       [id],
     );
     const row = draft.rows[0];
+    if (!row?.definition) throw new ApiError(404, 'Версия сценария не найдена');
     const doc = documentSchema.parse({
       preview: row.preview,
       definition: row.definition,
@@ -523,7 +541,8 @@ export function createApp(pool: Pool) {
     if (input.preview.id !== id || input.definition.metadata.id !== id)
       throw new ApiError(422, 'ID сценария нельзя изменять');
     const saved = await transaction(pool, async (client) => {
-      await ownedScenario(client, id, userId, true);
+      await editableScenario(client, id, userId, true);
+      await ensureScenarioDraft(client, id);
       const result = await client.query(
         `UPDATE scenario_drafts SET preview=$2,definition=$3,editor=coalesce($5::jsonb,editor),revision=revision+1,updated_at=now()
         WHERE scenario_id=$1 AND revision=$4 RETURNING revision`,
@@ -557,7 +576,8 @@ export function createApp(pool: Pool) {
     const userId = admin(res).id;
     const { revision } = publishSchema.parse(req.body);
     const saved = await transaction(pool, async (client) => {
-      const scenario = await ownedScenario(client, id, userId, true);
+      const scenario = await editableScenario(client, id, userId, true);
+      await ensureScenarioDraft(client, id);
       const found = await client.query(
         'SELECT * FROM scenario_drafts WHERE scenario_id=$1 FOR UPDATE',
         [id],
@@ -598,7 +618,7 @@ export function createApp(pool: Pool) {
     const id = idSchema.parse(req.params.id);
     const userId = admin(res).id;
     await transaction(pool, async (client) => {
-      await ownedScenario(client, id, userId, true);
+      await editableScenario(client, id, userId, true);
       await client.query('UPDATE scenarios SET deleted_at=now(),updated_at=now() WHERE id=$1', [
         id,
       ]);
@@ -610,7 +630,7 @@ export function createApp(pool: Pool) {
     const id = idSchema.parse(req.params.id);
     const userId = admin(res).id;
     await transaction(pool, async (client) => {
-      await ownedScenario(client, id, userId, true);
+      await editableScenario(client, id, userId, true);
       await client.query('UPDATE scenarios SET archived_at=now(),updated_at=now() WHERE id=$1', [
         id,
       ]);
