@@ -1,6 +1,6 @@
 import 'dotenv/config';
 
-const port = Number(process.env.API_PORT ?? 3001);
+const port = Number(process.env.PORT ?? process.env.API_PORT ?? 3001);
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Invalid API_PORT');
 
 const adminName = process.env.ADMIN_NAME?.trim();
@@ -16,7 +16,9 @@ if (hasAdminSetting && (!adminName || !adminEmail || !adminPassword)) {
 
 export const config = {
   port,
-  host: process.env.API_HOST ?? '127.0.0.1',
+  host:
+    process.env.API_HOST ??
+    (process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1'),
   databaseUrl: process.env.DATABASE_URL,
   secureCookie: process.env.COOKIE_SECURE === 'true',
   origins: (
